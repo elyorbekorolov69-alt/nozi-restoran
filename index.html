@@ -568,12 +568,21 @@ function Table3D(canvas, opts) {
     uniform mat4 uPV;
     varying vec3 vN; varying vec3 vW; varying vec3 vL; varying vec4 vC; varying vec4 vM;
     void main(){ vW = aP; vN = aN; vL = aL; vC = aC; vM = aM; gl_Position = uPV * vec4(aP, 1.0); }`;
-  // material: x shine, y sharpness/128, z glow, w surface*30/255
-  // surfaces: 1 plate with a dotted rim, 2 breaded crust, 3 ribbed glass, 4 velvet, 5 clustered blossoms, 6 streaked plate
-  const FS = `precision mediump float;
+  // material: x shine, y sharpness/128, z glow, w surface*15/255
+  // surfaces: 1 plate with a dotted rim, 2 breaded crust, 3 ribbed glass, 4 velvet, 5 clustered blossoms, 6 streaked plate,
+  //           7 planked floor, 8 plaster wall, 9 sky, 10 soft shadow, 11 marble tile, 12 lit window (7, 8, 11, 12 are drawn from the inside only)
+  const FS = `
+    #ifdef GL_FRAGMENT_PRECISION_HIGH
+    precision highp float;
+    #else
+    precision mediump float;
+    #endif
     varying vec3 vN; varying vec3 vW; varying vec3 vL; varying vec4 vC; varying vec4 vM;
-    uniform vec3 uEye;
+    uniform vec3 uEye, uLP, uLC, uTint, uSk1, uSk2;
+    uniform float uAm, uSun, uTM, uAO;
     float hh(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+    float ell(vec2 p, vec2 c, vec2 ab, float an){ vec2 d = p - c; float ca = cos(an), sa = sin(an); return step(length(vec2((d.x * ca + d.y * sa) / ab.x, (-d.x * sa + d.y * ca) / ab.y)), 1.0); }
+    float rng(vec2 p, vec2 c, float r, float w){ return step(abs(length(p - c) - r), w); }
     float nz(vec3 p){
       vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
       float o = i.z * 17.0, o2 = o + 17.0;
@@ -583,16 +592,35 @@ function Table3D(canvas, opts) {
     }
     void main(){
       vec3 N = normalize(vN); vec3 V = normalize(uEye - vW);
-      if (dot(N, V) < 0.0) N = -N;
       vec3 base = vC.rgb; float alpha = vC.a;
-      float uS = vM.x, uSh = vM.y * 128.0 + 1.0, uE = vM.z, uP = floor(vM.w * 255.0 / 30.0 + 0.5);
+      float uS = vM.x, uSh = vM.y * 128.0 + 1.0, uE = vM.z, uP = floor(vM.w * 255.0 / 15.0 + 0.5);
+      bool inner = (uP > 6.5 && uP < 8.5) || (uP > 10.5 && uP < 12.5) || uP > 15.5;
+      if (inner && dot(N, V) < 0.0) discard;
+      if (uP > 8.5 && uP < 9.5) {
+        vec3 dr = normalize(vW - uEye);
+        float t = clamp(dr.y, 0.0, 1.0);
+        vec3 sk = dr.y < 0.0 ? uSk1 * 0.45 : mix(uSk1, uSk2, pow(t, 0.55));
+        gl_FragColor = vec4(sk, 1.0); return;
+      }
+      if (uP > 9.5 && uP < 10.5) {
+        float r = clamp(length(vL.xz) * 2.0, 0.0, 1.0);
+        gl_FragColor = vec4(0.02, 0.015, 0.03, alpha * pow(1.0 - r, 1.7)); return;
+      }
+      if (uP > 11.5 && uP < 12.5) {
+        float u = vW.x + vW.z, g = clamp(vL.y + 0.5, 0.0, 1.0);
+        vec3 gl2 = mix(uSk1 * 1.3 + 0.12, uSk2 * 1.6 + 0.05, g);
+        float bar = max(step(fract(u * 0.8), 0.045), step(fract(vW.y * 0.8 + 0.2), 0.045));
+        float edge = max(step(0.465, abs(vL.x)), step(0.475, abs(vL.y)));
+        gl_FragColor = vec4(mix(gl2, vec3(0.1, 0.085, 0.07), max(bar, edge)), 1.0); return;
+      }
+      if (dot(N, V) < 0.0) N = -N;
       if (uP > 0.5 && uP < 1.5) {
         float r = length(vL.xz) * 2.0, ang = atan(vL.z, vL.x) / 6.2831853 + 0.5;
         float ring = r * 20.0, ri = floor(ring), n = floor(6.0 + ri * 6.0), ai = floor(ang * n);
         float d = length(vec2(fract(ring), fract(ang * n)) - 0.5);
         float on = step(d, 0.34) * step(hh(vec2(ri, ai)), smoothstep(0.4, 0.97, r));
-        vec3 dc = mix(vec3(0.05, 0.16, 0.17), vec3(0.62, 0.5, 0.3), step(0.72, hh(vec2(ai + 3.0, ri))));
-        base = mix(base * mix(1.0, 0.84, smoothstep(0.22, 0.55, r)), dc, on);
+        vec3 dc = mix(vec3(0.05, 0.14, 0.13), vec3(0.64, 0.54, 0.34), step(0.72, hh(vec2(ai + 3.0, ri))));
+        base = mix(mix(vec3(0.95, 0.93, 0.85), vec3(0.6, 0.66, 0.57), smoothstep(0.25, 0.62, r)), dc, on);
       } else if (uP > 1.5 && uP < 2.5) {
         float cr = nz(vL * 45.0), fl = nz(vL * 170.0);
         base *= 0.6 + 0.45 * cr + 0.25 * fl;
@@ -607,15 +635,79 @@ function Table3D(canvas, opts) {
         float r = length(vL.xz) * 2.0, ang = atan(vL.z, vL.x);
         float st = pow(abs(sin(ang * 70.0 + nz(vL * 30.0) * 3.0)), 10.0) * smoothstep(0.3, 0.95, r);
         base = mix(base, vec3(0.55, 0.62, 0.66), st * 0.55);
+      } else if (uP > 6.5 && uP < 7.5) {
+        vec2 p = vW.xz; float row = floor(p.y / 0.16), off = hh(vec2(row, 3.0)) * 2.0;
+        float cl = floor((p.x + off) / 1.1);
+        float seam = smoothstep(0.0, 0.05, fract(p.y / 0.16)) * smoothstep(0.0, 0.012, fract((p.x + off) / 1.1));
+        float grain = 0.9 + 0.2 * nz(vec3(p.x * 5.0, p.y * 60.0, 1.0));
+        base *= (0.8 + 0.34 * hh(vec2(row, cl))) * grain * mix(0.5, 1.0, seam);
+      } else if (uP > 7.5 && uP < 8.5) {
+        float u = vW.x + vW.z;
+        base *= (0.93 + 0.12 * nz(vW * 2.5)) * mix(0.8, 1.06, smoothstep(0.0, 2.6, vW.y));
+        if (N.y > -0.5 && vW.y < 1.0) base *= 0.72 * mix(0.8, 1.0, step(0.03, fract(u / 0.85)));
+        else if (N.y > -0.5 && vW.y < 1.07) base *= 0.55;
+      } else if (uP > 10.5 && uP < 11.5) {
+        vec2 p = vW.xz; vec2 cell = floor(p);
+        float chk = mod(cell.x + cell.y, 2.0);
+        float v = nz(vec3(p * 1.6, 2.0)) + 0.5 * nz(vec3(p * 5.0, 7.0));
+        vec2 gr = fract(p);
+        float grout = smoothstep(0.0, 0.012, min(min(gr.x, 1.0 - gr.x), min(gr.y, 1.0 - gr.y)));
+        base = mix(base, base * 0.8 + vec3(0.03, 0.02, 0.0), chk);
+        base *= 0.95 + 0.08 * smoothstep(0.45, 0.8, v) - 0.04 * (1.0 - smoothstep(0.0, 0.05, abs(fract(v * 2.0) - 0.5)));
+        base *= mix(0.55, 1.0, grout);
+      } else if (uP > 12.5 && uP < 13.5) {
+        vec2 q = vL.xy * 2.0;
+        float rr = length(q);
+        if (rr > 1.0) discard;
+        vec2 a = vec2(abs(q.x), q.y);
+        float so = step(0.9, rr);
+        so = max(so, step(a.x, 0.07) * step(abs(a.y + 0.02), 0.68));
+        so = max(so, ell(a, vec2(0.30, 0.22), vec2(0.32, 0.12), 0.7));
+        so = max(so, ell(a, vec2(0.37, -0.12), vec2(0.32, 0.12), -0.6));
+        so = max(so, ell(a, vec2(0.17, 0.52), vec2(0.22, 0.1), 1.1));
+        so = max(so, ell(a, vec2(0.16, -0.30), vec2(0.26, 0.1), -1.0));
+        so = max(so, rng(a, vec2(0.58, 0.14), 0.13, 0.055));
+        so = max(so, rng(a, vec2(0.52, -0.48), 0.12, 0.055));
+        so = max(so, rng(a, vec2(0.0, -0.58), 0.17, 0.045));
+        so = max(so, rng(a, vec2(0.0, 0.74), 0.11, 0.045));
+        so = max(so, step(length(a - vec2(0.08, 0.06)), 0.07));
+        if (so < 0.5) discard;
+        base *= 0.92 + 0.1 * nz(vW * 35.0);
+      } else if (uP > 13.5 && uP < 14.5) {
+        base *= 0.92 + 0.08 * sin(vL.y * 60.0 + 3.0 * nz(vL * 7.0));
+      } else if (uP > 14.5 && uP < 15.5) {
+        vec2 q = vec2(vL.x * 0.1, vL.z * 0.062); float r = length(q);
+        float m = rng(q, vec2(0.0), 0.021, 0.0017) + step(r, 0.011) * step(0.45, nz(vec3(q * 400.0, 1.0)));
+        m += step(abs(abs(q.x) - 0.04), 0.0016) * step(abs(q.y), 0.02) + step(abs(abs(q.y) - 0.026), 0.0012) * step(abs(q.x), 0.044);
+        base = mix(vec3(0.05, 0.05, 0.06), vec3(0.82, 0.64, 0.27), clamp(m, 0.0, 1.0) * step(0.9, vL.y + 0.5));
+      } else if (uP > 15.5 && uP < 16.5) {
+        float u = vW.x + vW.z, y = vW.y;
+        vec3 wood = vec3(0.3, 0.18, 0.12) * (0.85 + 0.3 * nz(vec3(u * 2.0, y * 30.0, 1.0))) * mix(0.72, 1.0, step(0.03, fract(u / 0.9)));
+        vec2 g = vec2(u, y) * 3.4;
+        float rel = sin(g.x * 6.2832 + sin(g.y * 6.2832) * 1.2) * sin(g.y * 6.2832 + sin(g.x * 6.2832) * 1.2);
+        vec3 wall = base * (0.9 + 0.12 * rel);
+        base = (N.y > -0.5 && y < 1.1) ? wood : wall;
+        if (N.y > -0.5 && abs(y - 1.1) < 0.025) base = vec3(0.72, 0.56, 0.26);
+      } else if (uP > 16.5) {
+        vec2 p = vW.xz; vec2 q = vec2(p.x + p.y, p.x - p.y) * 0.7071;
+        vec2 t = floor(q / 0.6); float par = mod(t.x + t.y, 2.0); vec2 lc = fract(q / 0.6); if (par > 0.5) lc = lc.yx;
+        float pl = floor(lc.y * 6.0), sm = smoothstep(0.0, 0.04, fract(lc.y * 6.0)) * smoothstep(0.0, 0.012, lc.x);
+        base *= (0.82 + 0.3 * hh(vec2(pl, t.x * 3.0 + t.y * 7.0 + par))) * (0.92 + 0.1 * nz(vec3(lc * vec2(3.0, 40.0), 2.0))) * mix(0.5, 1.0, sm);
       }
+      if (uAO > 0.5 && (uP < 6.5 || (uP > 12.5 && uP < 15.5))) base *= mix(0.55, 1.0, smoothstep(0.0, 0.42, vW.y));
       vec3 L1 = normalize(vec3(0.45, 1.0, 0.35)), L2 = normalize(vec3(-0.6, 0.45, -0.5));
       float d1 = max(dot(N, L1), 0.0), d2 = max(dot(N, L2), 0.0);
-      vec3 amb = mix(vec3(0.20, 0.19, 0.22), vec3(0.46, 0.47, 0.52), N.y * 0.5 + 0.5);
-      vec3 col = base * (amb + vec3(1.0, 0.95, 0.88) * d1 * 0.78 + vec3(0.55, 0.62, 0.8) * d2 * 0.22);
+      vec3 amb = mix(vec3(0.20, 0.19, 0.22), vec3(0.46, 0.47, 0.52), N.y * 0.5 + 0.5) * uAm;
+      vec3 col = base * uTint * (amb + vec3(1.0, 0.95, 0.88) * d1 * 0.78 * uSun + vec3(0.55, 0.62, 0.8) * d2 * 0.22 * uSun);
+      vec3 pd = uLP - vW; float pl = length(pd); vec3 pn = pd / pl;
+      float att = 1.0 / (1.0 + 0.03 * pl * pl);
+      col += base * uLC * max(dot(N, pn), 0.0) * att;
       vec3 H = normalize(L1 + V);
-      col += vec3(1.0, 0.97, 0.92) * pow(max(dot(N, H), 0.0), uSh) * uS;
+      col += vec3(1.0, 0.97, 0.92) * pow(max(dot(N, H), 0.0), uSh) * uS * uSun;
+      col += uLC * pow(max(dot(N, normalize(pn + V)), 0.0), uSh) * uS * att * 1.6;
       float fr = pow(1.0 - max(dot(N, V), 0.0), 3.0);
-      col += vec3(0.85, 0.88, 1.0) * fr * 0.12 + base * uE;
+      col += vec3(0.85, 0.88, 1.0) * fr * 0.12 * uSun + base * uE;
+      if (uTM > 0.5) col = (1.0 - exp(-col * 2.1)) * 1.03;
       float a = alpha < 0.99 ? clamp(alpha + fr * 0.5, 0.0, 1.0) : 1.0;
       gl_FragColor = vec4(col, a);
     }`;
@@ -624,7 +716,7 @@ function Table3D(canvas, opts) {
   gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS));
   gl.linkProgram(prog); gl.useProgram(prog);
   const A = {}; ["aP", "aN", "aL", "aC", "aM"].forEach(k => A[k] = gl.getAttribLocation(prog, k));
-  const U = { uPV: gl.getUniformLocation(prog, "uPV"), uEye: gl.getUniformLocation(prog, "uEye") };
+  const U = {}; ["uPV", "uEye", "uLP", "uLC", "uTint", "uSk1", "uSk2", "uAm", "uSun", "uTM", "uAO"].forEach(k => U[k] = gl.getUniformLocation(prog, k));
   gl.enable(gl.DEPTH_TEST);
   gl.disable(gl.CULL_FACE);
 
@@ -659,6 +751,18 @@ function Table3D(canvas, opts) {
     });
     return geo(pos, nor, idx);
   }
+  // a round-section tube along a curve of [y, z offset, radius] points: the bent legs of the chair
+  function tubeG(pts, seg = 8) {
+    const pos = [], nor = [], idx = [], m = pts.length;
+    for (let i = 0; i < m; i++) {
+      const [y, z, r] = pts[i];
+      for (let k = 0; k <= seg; k++) { const a = k / seg * 2 * PI, c = Math.cos(a), si = Math.sin(a); pos.push(c * r, y, z + si * r); nor.push(c, 0, si); }
+    }
+    for (let i = 0; i < m - 1; i++) for (let k = 0; k < seg; k++) { const a = i * (seg + 1) + k, b = (i + 1) * (seg + 1) + k; idx.push(a, b, a + 1, b, b + 1, a + 1); }
+    return geo(pos, nor, idx);
+  }
+  // a single unit square in the XY plane facing +z
+  function quadG() { return geo([-0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0], [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1], [0, 1, 2, 0, 2, 3]); }
   // a ring standing in the XY plane, for the chair backs
   function ringG(r, seg, side) {
     const pos = [], nor = [], idx = [];
@@ -701,7 +805,8 @@ function Table3D(canvas, opts) {
     return geo(pos, nor, idx);
   }
   const G = {
-    box: boxG(),
+    box: boxG(), quad: quadG(),
+    leg: tubeG([[0, -0.05, 0.022], [0.025, -0.032, 0.028], [0.07, -0.004, 0.018], [0.15, 0.004, 0.016], [0.23, -0.02, 0.024], [0.31, -0.046, 0.034], [0.38, -0.03, 0.036], [0.42, 0, 0.034]]),
     ball: lathe(sphere(12), 18),
     ballLo: lathe(sphere(7), 10),
     cyl: lathe([[0, 0], [0.5, 0], [0.5, 1], [0, 1]], 20),
@@ -771,7 +876,7 @@ function Table3D(canvas, opts) {
       let v = 0, ii = 0;
       for (const it of ch.list) {
         const g = it.g, m = it.M.m, n = it.M.n;
-        const mat = [Math.round(Math.min(1, it.s) * 255), Math.round(Math.min(1, it.sh / 128) * 255), Math.round(Math.min(1, it.e) * 255), it.p * 30];
+        const mat = [Math.round(Math.min(1, it.s) * 255), Math.round(Math.min(1, it.sh / 128) * 255), Math.round(Math.min(1, it.e) * 255), it.p * 15];
         const ca = Math.round(it.a * 255);
         for (let k = 0; k < g.idx.length; k++) I[ii++] = g.idx[k] + v;
         for (let k = 0; k < g.n; k++, v++) {
@@ -799,7 +904,7 @@ function Table3D(canvas, opts) {
 
   const C = {
     gold: "#c9a256", white: "#f6f5f7", plate: "#fbfbfd", silver: "#c9ccd4", glass: "#dfeaf3",
-    cloth: "#eee0dc", floor: "#2a2e3c", cushion: "#c3c4c8", chair: "#f6f6f7", runner: "#0f3b31", longCloth: "#f4f3ef",
+    cloth: "#eee0dc", floor: "#2a2e3c", cushion: "#c3c4c8", chair: "#f6f6f7", runner: "#05402d", longCloth: "#f4f3ef",
     charger: "#d4c39b", parquet: "#4a3022", carpet: "#b8b2ad", legs: "#1d1e22", wood: "#6b4426",
   };
 
@@ -940,11 +1045,10 @@ function Table3D(canvas, opts) {
     const fx = -Math.sin(face), fz = -Math.cos(face);   // towards the middle of the table
     const at = (a, b) => [x + sx * a * k + fx * b * k, z + sz * a * k + fz * b * k];
     put("plate", C.plate, x, top, z, face, 0.28 * k, 0.4, 0.28 * k, { s: 0.3, sh: 40, p: 1 });
-    if (!course1) put("bowl", C.plate, x, top + 0.067, z, 0, 0.115 * k, -0.1, 0.115 * k, { s: 0.4, sh: 50 });
+    if (!course1) put("bowl", "#f4f2ee", x, top + 0.067, z, 0, 0.115 * k, -0.1, 0.115 * k, { s: 0.45, sh: 60, p: 14 });
     const [nx, nz] = at(0, -0.105);
-    put("box", "#111214", nx, top + 0.024, nz, face, 0.1 * k, 0.003, 0.062 * k, { s: 0.3, sh: 30 });
+    put("box", "#111214", nx, top + 0.024, nz, face, 0.1 * k, 0.003, 0.062 * k, { s: 0.3, sh: 30, p: 15 });
     if (LO) { const [gx, gz] = at(0.15, 0.15); put("goblet", C.glass, gx, top, gz, 0, 0.085, 0.17, 0.085, { a: 0.3, s: 0.9, sh: 90 }); return; }
-    put("ring", C.gold, nx, top + 0.027, nz, face, 0.036 * k, 0.036 * k, 0.02, { t: -PI / 2, s: 0.8, sh: 50 });
     const [lx, lz] = at(-0.165, -0.01), [hx, hz] = at(-0.165, 0.075);
     put("box", C.silver, lx, top + 0.004, lz, face, 0.011, 0.004, 0.14 * k, { s: 0.8, sh: 60 });
     put("box", C.silver, hx, top + 0.004, hz, face, 0.024, 0.003, 0.045 * k, { s: 0.8, sh: 60 });
@@ -958,34 +1062,29 @@ function Table3D(canvas, opts) {
     put("goblet", C.glass, gx, top, gz, 0, 0.085, 0.17, 0.085, { a: 0.3, s: 0.9, sh: 90, p: 3 });
   }
 
-  // the restaurant's carved white chair: egg-shaped open back, grey seat, curved front legs
+  // the restaurant's carved white chair: egg-shaped open back with carved leaves, grey velvet seat, cabriole front legs
   function chair(x, z, face) {
     const c = Math.cos(face), s = Math.sin(face);
+    put("disc", "#000000", x, 0.012, z, 0, 0.95, 1, 0.95, { a: 0.55, p: 10 });
     const at = (a, b) => [x + a * c + b * s, z - a * s + b * c];   // a: sideways, b: towards the back
-    const W = { s: 0.4, sh: 45 };
-    put("box", C.cushion, x, 0.49, z, face, 0.44, 0.05, 0.42, { s: 0.06 });
-    put("box", C.chair, x, 0.445, z, face, 0.46, 0.06, 0.44, W);
-    if (LO) {
-      [[-0.19, -0.18], [0.19, -0.18], [-0.18, 0.18], [0.18, 0.18]].forEach(([a, b]) => { const [px, pz] = at(a, b); put("box", C.chair, px, 0.21, pz, face, 0.04, 0.42, 0.04, W); });
-      const [bx, bz] = at(0, 0.2);
-      put("box", C.chair, bx, 0.56, bz, face, 0.2, 0.16, 0.03, W);
-      put("ringLo", C.chair, bx, 0.84, bz, face, 0.42, 0.52, 0.8, W);
-      return;
-    }
-    [[-0.19, -0.18], [0.19, -0.18]].forEach(([a, b]) => {
-      const [px, pz] = at(a, b), [fx, fz] = at(a, b - 0.025);
-      put("box", C.chair, px, 0.24, pz, face, 0.045, 0.36, 0.045, W);
-      put("ball", C.chair, fx, 0.035, fz, face, 0.06, 0.06, 0.08, W);
+    const W = { s: 0.55, sh: 60 };
+    put("box", C.chair, x, 0.40, z, face, 0.46, 0.09, 0.44, W);
+    put("box", C.cushion, x, 0.462, z, face, 0.45, 0.07, 0.43, { s: 0.05, p: 4 });
+    put("box", "#d9dade", x, 0.43, z, face, 0.465, 0.012, 0.445, { s: 0.3 });
+    const [mx, mz] = at(0, -0.225);
+    put("ball", C.chair, mx, 0.4, mz, face, 0.12, 0.07, 0.03, W);
+    [-0.19, 0.19].forEach(a => {
+      const [fx, fz] = at(a, -0.19);
+      put("leg", C.chair, fx, 0, fz, face, 1, 1, 1, W);
+      const [bx, bz] = at(a, 0.2);
+      put("box", C.chair, bx, 0.26, bz + 0 * c, face, 0.04, 0.5, 0.04, Object.assign({ t: 0.1 }, W));
     });
-    [[-0.18, 0.18], [0.18, 0.18]].forEach(([a, b]) => { const [px, pz] = at(a, b); put("box", C.chair, px, 0.21, pz, face, 0.04, 0.42, 0.04, W); });
-    [-0.11, 0.11].forEach(a => { const [px, pz] = at(a, 0.2); put("box", C.chair, px, 0.56, pz, face, 0.035, 0.16, 0.03, W); });
-    const [bx, bz] = at(0, 0.2);
-    put("ring", C.chair, bx, 0.84, bz, face, 0.42, 0.52, 0.8, W);
-    put("ring", C.chair, bx, 0.84, bz, face, 0.36, 0.45, 0.35, W);
-    // carved scrolls inside the back
-    [[0, 1.0, 0.08, 0.06], [-0.085, 0.92, 0.09, 0.09], [0.085, 0.92, 0.09, 0.09], [-0.08, 0.77, 0.1, 0.1], [0.08, 0.77, 0.1, 0.1], [0, 0.69, 0.07, 0.1]]
-      .forEach(([a, y, w, h]) => { const [px, pz] = at(a, 0.2); put("ringLo", C.chair, px, y, pz, face, w, h, 0.45, W); });
-    [-0.04, 0.04].forEach(a => { const [px, pz] = at(a, 0.2); put("ball", C.chair, px, 0.84, pz, face, 0.045, 0.2, 0.025, W); });
+    const [kx, kz] = at(0, 0.215);
+    put("quad", C.chair, kx, 0.84, kz, face, 0.4, 0.5, 1, Object.assign({ p: 13 }, W));
+    if (LO) { put("ringLo", C.chair, kx, 0.84, kz, face, 0.46, 0.56, 0.9, W); return; }
+    put("ring", C.chair, kx, 0.84, kz, face, 0.45, 0.56, 0.9, W);
+    put("ring", C.chair, kx, 0.84, kz, face, 0.38, 0.48, 0.4, W);
+    [-0.19, 0.19].forEach(a => { const [fx, fz] = at(a * 1.0, -0.215); put("ball", C.chair, fx, 0.02, fz, face, 0.05, 0.04, 0.07, W); });
   }
 
   // tall gold candlestick with a crystal bead, a white vase, and a loose mass of
@@ -996,18 +1095,18 @@ function Table3D(canvas, opts) {
     put("column", C.gold, x, top, z, 0, 0.2, 0.56, 0.2, { s: 0.85, sh: 70 });
     put("ball", C.glass, x, top + 0.335, z, 0, 0.065, 0.065, 0.065, { a: 0.35, s: 1, sh: 90 });
     put("vase", "#f3f1ee", x, top + 0.555, z, 0, 0.17, 0.25, 0.17, { s: 0.55, sh: 60 });
-    const cy = top + 0.94, R = 0.24, NB = LO ? 26 : 52;
-    const blooms = ["#fbfaf6", "#f6efe2", "#f4d6bd", "#fbfaf6", "#f7e3d0", "#fffdf9"];
+    const cy = top + 0.94, R = 0.3, NB = LO ? 40 : 96;
+    const blooms = ["#ffffff", "#fbf3e6", "#f6d9c2", "#ffffff", "#f9e6d4", "#fffdf9", "#f3c9d2"];
     for (let k = 0; k < NB; k++) {
       const yv = 1 - 1.6 * (k + 0.5) / NB, rr = Math.sqrt(Math.max(0, 1 - yv * yv)), th = k * 2.39996 + rnd() * 0.4;
-      const sz = 0.07 + rnd() * 0.05, out = 1.0 + (rnd() - 0.5) * 0.25;
+      const sz = 0.085 + rnd() * 0.06, out = 1.0 + (rnd() - 0.5) * 0.25;
       put("ballLo", blooms[k % blooms.length], x + Math.cos(th) * rr * R * 1.15 * out, cy + yv * R * 0.72 * out, z + Math.sin(th) * rr * R * 1.15 * out,
         th + rnd(), sz * (0.9 + rnd() * 0.4), sz * 0.6, sz, { t: (rnd() - 0.5) * 1.2, s: 0.08, p: 5 });
     }
     for (let k = 0; k < 6; k++) {
       const th = k * 1.05 + rnd() * 0.5, d = 0.12 + rnd() * 0.08;
       put("ballLo", k % 2 ? "#f2c3cd" : "#f3ede4", x + Math.cos(th) * d, cy + 0.17 + rnd() * 0.05, z + Math.sin(th) * d, PI / 2 - th,
-        0.07, 0.01, 0.24, { t: -0.5 - rnd() * 0.4, s: 0.1 });
+        0.075, 0.011, 0.25, { t: -0.5 - rnd() * 0.4, s: 0.1 });
     }
     for (let k = 0; k < 6; k++) {
       const th = k * 1.13 + 0.4, yv = 0.1 + rnd() * 0.6, rr = Math.sqrt(1 - yv * yv);
@@ -1016,7 +1115,7 @@ function Table3D(canvas, opts) {
     for (let k = 0; k < 12; k++) {
       const th = k * PI / 6 + rnd() * 0.3, d = 0.25 + rnd() * 0.04;
       put("ballLo", k % 3 === 1 ? "#f2c3cd" : "#f3ede4", x + Math.cos(th) * d, cy - 0.1 - rnd() * 0.08, z + Math.sin(th) * d, PI / 2 - th,
-        0.075, 0.012, 0.26 + rnd() * 0.06, { t: 0.45 + rnd() * 0.35, s: 0.1 });
+        0.085, 0.012, 0.27 + rnd() * 0.05, { t: 0.45 + rnd() * 0.35, s: 0.1 });
     }
     for (let k = 0; k < 9; k++) {
       const th = k * 0.7 + rnd(), d = 0.22 + rnd() * 0.06;
@@ -1025,10 +1124,178 @@ function Table3D(canvas, opts) {
     }
   }
 
+  // ---------- the hall around the tables ----------
+  // sky/lamp colours and light per place; walls, floor and ceiling are drawn from the inside only so the orbit camera is never blocked
+  const HALLFX = {
+    dish:    { sk1: [0.07, 0.09, 0.16], sk2: [0.07, 0.09, 0.16], tint: [1, 1, 1], lp: [0, 3, 0], lc: [0, 0, 0], am: 1, sun: 1, tm: 0, ao: 0, yaw: 0.6, pitch: 0 },
+    terrasa: { sk1: [0.98, 0.6, 0.38], sk2: [0.08, 0.12, 0.3], tint: [1, 0.94, 0.88], lp: [0, 2.7, 0], lc: [0.75, 0.46, 0.2], am: 0.9, sun: 0.55, tm: 1, ao: 1, yaw: 0.35, pitch: -0.18, dist: 2.0 },
+    mayda:   { sk1: [0.5, 0.3, 0.25], sk2: [0.1, 0.12, 0.26], tint: [1, 0.95, 0.88], lp: [0, 2.8, 0], lc: [1.15, 0.8, 0.45], am: 0.95, sun: 0.4, tm: 1, ao: 1, yaw: -0.4, pitch: -0.18, dist: 1.5 },
+    toyxona: { sk1: [0.6, 0.38, 0.3], sk2: [0.09, 0.11, 0.26], tint: [1, 0.95, 0.9], lp: [0, 4.6, 0], lc: [1.5, 1.05, 0.6], am: 0.95, sun: 0.38, tm: 1, ao: 1, yaw: 0.15, pitch: -0.22, dist: 1.15 },
+    butun:   { sk1: [0.6, 0.4, 0.34], sk2: [0.09, 0.12, 0.28], tint: [0.97, 0.96, 0.95], lp: [0, 5.4, 0], lc: [1.55, 1.15, 0.7], am: 0.95, sun: 0.4, tm: 1, ao: 1, yaw: 0.3, pitch: -0.22, dist: 1.1 },
+  };
+  let curHall = "mayda";
+  const FX = () => HALLFX[curHall] || HALLFX.mayda;
+  const surf = (c, x, y, z, r, w, h, t, mat) => put("quad", c, x, y, z, r, w, h, 1, Object.assign({ t }, mat));
+  const wallN = (c, rx, rz, H, mat) => {   // four inward-facing walls
+    surf(c, 0, H / 2, -rz, 0, 2 * rx, H, 0, mat); surf(c, 0, H / 2, rz, PI, 2 * rx, H, 0, mat);
+    surf(c, -rx, H / 2, 0, PI / 2, 2 * rz, H, 0, mat); surf(c, rx, H / 2, 0, -PI / 2, 2 * rz, H, 0, mat);
+  };
+  const strip = (c, rx, rz, y, h, mat) => wallN2(c, rx, rz, y, h, mat);
+  const wallN2 = (c, rx, rz, y, h, mat) => {
+    surf(c, 0, y, -rz + 0.01, 0, 2 * rx, h, 0, mat); surf(c, 0, y, rz - 0.01, PI, 2 * rx, h, 0, mat);
+    surf(c, -rx + 0.01, y, 0, PI / 2, 2 * rz, h, 0, mat); surf(c, rx - 0.01, y, 0, -PI / 2, 2 * rz, h, 0, mat);
+  };
+  const floorQ = (c, rx, rz, mat) => surf(c, 0, 0, 0, 0, 2 * rx, 2 * rz, -PI / 2, mat);
+  const sky = () => put("ball", "#ffffff", 0, 0, 0, 0, 800, 800, 800, { p: 9 });
+  const winOn = (side, rx, rz, pos, y, w, h) => {   // a lit window set into one wall; side 0 back, 1 front, 2 left, 3 right
+    const o = 0.03;
+    if (side === 0) surf("#ffffff", pos, y, -rz + o, 0, w, h, 0, { p: 12 });
+    else if (side === 1) surf("#ffffff", pos, y, rz - o, PI, w, h, 0, { p: 12 });
+    else if (side === 2) surf("#ffffff", -rx + o, y, pos, PI / 2, w, h, 0, { p: 12 });
+    else surf("#ffffff", rx - o, y, pos, -PI / 2, w, h, 0, { p: 12 });
+  };
+  const curtainOn = (side, rx, rz, pos, y, w, h, col) => {
+    [-1, 1].forEach(sg => {
+      const o = sg * (w / 2 + 0.2);
+      const x = side === 0 ? pos + o : side === 1 ? pos + o : side === 2 ? -rx + 0.18 : rx - 0.18;
+      const z = side === 0 ? -rz + 0.18 : side === 1 ? rz - 0.18 : pos + o;
+      const alongX = side < 2;
+      put("box", col, x, y, z, 0, alongX ? 0.42 : 0.22, h, alongX ? 0.22 : 0.42, { p: 4, s: 0.06 });
+    });
+    const x = side === 0 || side === 1 ? pos : side === 2 ? -rx + 0.16 : rx - 0.16;
+    const z = side === 0 ? -rz + 0.16 : side === 1 ? rz - 0.16 : pos;
+    put("box", C.gold, x, y + h / 2 + 0.05, z, 0, side < 2 ? w + 1.2 : 0.14, 0.09, side < 2 ? 0.14 : w + 1.2, { s: 0.6, sh: 50 });
+  };
+  function chandelier(x, y, z, sc) {
+    put("cyl", C.gold, x, y, z, 0, 0.03 * sc, 5, 0.03 * sc, { s: 0.7, sh: 50 });
+    put("cyl", C.gold, x, y - 0.55 * sc, z, 0, 0.5 * sc, 0.05 * sc, 0.5 * sc, { s: 0.8, sh: 60 });
+    put("cyl", C.gold, x, y - 0.85 * sc, z, 0, 0.95 * sc, 0.04 * sc, 0.95 * sc, { s: 0.8, sh: 60 });
+    put("gem", "#e8f1fa", x, y - 0.95 * sc, z, 0, 0.3 * sc, 0.5 * sc, 0.3 * sc, { a: 0.55, s: 1, sh: 90 });
+    for (let k = 0; k < 10; k++) {
+      const a = k * 2 * PI / 10;
+      put("ballLo", "#fff0c8", x + Math.cos(a) * 0.47 * sc, y - 0.78 * sc, z + Math.sin(a) * 0.47 * sc, 0, 0.09 * sc, 0.12 * sc, 0.09 * sc, { e: 1.6 });
+      put("ballLo", "#fff0c8", x + Math.cos(a + 0.3) * 0.9 * sc, y - 0.9 * sc, z + Math.sin(a + 0.3) * 0.9 * sc, 0, 0.08 * sc, 0.1 * sc, 0.08 * sc, { e: 1.6 });
+      put("ballLo", "#e8f1fa", x + Math.cos(a) * 0.7 * sc, y - 1.1 * sc, z + Math.sin(a) * 0.7 * sc, 0, 0.05 * sc, 0.08 * sc, 0.05 * sc, { a: 0.6, s: 1, sh: 90 });
+    }
+  }
+  function plant(x, z, sc, col) {
+    put("pot", "#c8b79b", x, 0, z, 0, 0.5 * sc, 0.55 * sc, 0.5 * sc, { s: 0.15 });
+    for (let k = 0; k < 5; k++) {
+      const a = k * 1.3;
+      put("ball", col || "#2f6b3a", x + Math.cos(a) * 0.17 * sc, 0.8 * sc + (k % 3) * 0.2 * sc, z + Math.sin(a) * 0.17 * sc, a, 0.5 * sc, 0.45 * sc, 0.5 * sc, { p: 5, s: 0.1 });
+    }
+  }
+  function rug(fx, fz, c1, c2) {
+    put("box", c2, 0, 0.006, 0, 0, 2 * fx + 0.6, 0.012, 2 * fz + 0.6, { s: 0.1, p: 4 });
+    put("box", c1, 0, 0.011, 0, 0, 2 * fx + 0.3, 0.012, 2 * fz + 0.3, { s: 0.08, p: 4 });
+  }
+  function env(hall, fx, fz) {
+    curHall = hall;
+    sky();
+    if (hall === "terrasa") {
+      const rx = Math.max(fx + 2.3, 5.5), rz = Math.max(fz + 2.3, 5);
+      put("disc", "#18221a", 0, -0.06, 0, 0, 500, 1, 500, { s: 0.02 });
+      floorQ("#8b6d4f", rx, rz, { p: 7, s: 0.1, sh: 20 });
+      // the house at the back: wall, lit windows, door, pergola
+      surf("#d8c5a6", 0, 2.0, -rz - 0.02, 0, 2 * rx + 6, 4, 0, { p: 8 });
+      const nw = Math.max(2, Math.floor(rx / 2.2));
+      for (let k = 0; k < nw; k++) { const x = (k - (nw - 1) / 2) * 2.7; winOn(0, rx, rz + 0.02, x, 1.8, 1.4, 2.2); curtainOn(0, rx, rz + 0.02, x, 1.8, 1.4, 2.3, "#8a3140"); }
+      for (let k = 0; k < 6; k++) put("box", "#4a3426", (k - 2.5) * (2 * rx / 5), 3.15, -rz + 1.3, 0, 0.12, 0.2, 2.8, { s: 0.1 });
+      put("box", "#4a3426", 0, 3.05, -rz + 2.65, 0, 2 * rx + 0.2, 0.16, 0.16, { s: 0.1 });
+      [-1, 1].forEach(sg => put("box", "#4a3426", sg * rx, 1.55, -rz + 2.65, 0, 0.16, 3.1, 0.16, { s: 0.1 }));
+      // railing round the other three sides
+      const rail = (x1, z1, x2, z2) => {
+        const l = Math.hypot(x2 - x1, z2 - z1), ang = Math.atan2(-(z2 - z1), x2 - x1), n = Math.max(2, Math.round(l / 1.4));
+        put("box", "#efe9dd", (x1 + x2) / 2, 1.0, (z1 + z2) / 2, ang, l, 0.07, 0.1, { s: 0.2 });
+        put("box", "#efe9dd", (x1 + x2) / 2, 0.45, (z1 + z2) / 2, ang, l, 0.04, 0.05, { s: 0.2 });
+        for (let k = 0; k <= n; k++) { const t = k / n; put("box", "#efe9dd", x1 + (x2 - x1) * t, 0.5, z1 + (z2 - z1) * t, 0, 0.09, 1.0, 0.09, { s: 0.2 }); }
+      };
+      rail(-rx, -rz + 0.2, -rx, rz); rail(rx, -rz + 0.2, rx, rz); rail(-rx, rz, rx, rz);
+      // planters with greenery along the rail
+      for (let k = 0; k < 5; k++) { const x = -rx + 0.6 + (2 * rx - 1.2) * k / 4; put("box", "#b8a488", x, 0.3, rz - 0.55, 0, 0.8, 0.6, 0.5, { s: 0.1 }); put("ball", "#2f6b3a", x, 0.8, rz - 0.55, k, 0.8, 0.6, 0.55, { p: 5, s: 0.1 }); }
+      for (let k = 0; k < 3; k++) { const z = -rz + 2 + (2 * rz - 3) * k / 2; [-1, 1].forEach(sg => { put("box", "#b8a488", sg * (rx - 0.55), 0.3, z, 0, 0.5, 0.6, 0.8, { s: 0.1 }); put("ball", "#2f6b3a", sg * (rx - 0.55), 0.8, z, k, 0.55, 0.6, 0.8, { p: 5, s: 0.1 }); }); }
+      // trees beyond the rail
+      for (let k = 0; k < 18; k++) {
+        const a = k * 2 * PI / 18 + 0.2, R = Math.max(rx, rz) + 7 + (k % 3) * 3, h = 4 + (k * 7 % 5);
+        put("cyl", "#3a2a1c", Math.cos(a) * R * 1.15, 0, Math.sin(a) * R, 0, 0.5, h * 0.6, 0.5, { s: 0.05 });
+        put("ball", k % 2 ? "#1f4a2a" : "#2a5a30", Math.cos(a) * R * 1.15, h * 0.75, Math.sin(a) * R, a, 4.2 + (k % 3), h * 0.9, 4.2 + (k % 3), { p: 5, s: 0.05 });
+      }
+      // strings of lights between poles
+      const poles = [[-rx, -rz], [rx, -rz], [rx, rz], [-rx, rz]];
+      poles.forEach(([x, z]) => put("cyl", "#2a2a2e", x, 0, z, 0, 0.1, 3.2, 0.1, { s: 0.2 }));
+      [[0, -rz], [0, rz]].forEach(([x, z]) => put("cyl", "#2a2a2e", x, 0, z, 0, 0.1, 3.2, 0.1, { s: 0.2 }));
+      const string = (x1, z1, x2, z2, sag) => {
+        const l = Math.hypot(x2 - x1, z2 - z1), n = Math.max(4, Math.round(l / 0.55));
+        for (let k = 0; k <= n; k++) { const t = k / n; put("ballLo", "#ffdca0", x1 + (x2 - x1) * t, 3.1 - sag * Math.sin(PI * t), z1 + (z2 - z1) * t, 0, 0.065, 0.08, 0.065, { e: 1.8 }); }
+      };
+      string(-rx, -rz, rx, -rz, 0.35); string(-rx, rz, rx, rz, 0.35); string(-rx, -rz, -rx, rz, 0.35); string(rx, -rz, rx, rz, 0.35);
+      string(0, -rz, 0, rz, 0.5); string(-rx, -rz, rx, rz, 0.7); string(rx, -rz, -rx, rz, 0.7);
+      return { rx, rz };
+    }
+    if (hall === "mayda") {
+      const rx = Math.max(fx + 1.7, 4.8), rz = Math.max(fz + 1.7, 4.2), H = 3.4;
+      put("disc", "#15141a", 0, -0.06, 0, 0, 500, 1, 500, { s: 0.02 });
+      floorQ("#7d4a2c", rx, rz, { p: 17, s: 0.3, sh: 45 });
+      wallN("#f2f0ea", rx, rz, H, { p: 16 });
+      surf("#f1e9d8", 0, H, 0, 0, 2 * rx, 2 * rz, PI / 2, { p: 8 });
+      strip("#5a3d28", rx, rz, 0.09, 0.18, { p: 8, s: 0.3, sh: 40 }); strip("#f3ecdc", rx, rz, H - 0.1, 0.2, { p: 8 });
+      const wn = Math.max(2, Math.floor(rx / 1.8));
+      for (let k = 0; k < wn; k++) { const x = (k - (wn - 1) / 2) * (2 * rx - 1.6) / Math.max(1, wn - 1) * (wn > 1 ? 1 : 0); winOn(0, rx, rz, x, 1.75, 1.2, 1.9); curtainOn(0, rx, rz, x, 1.7, 1.2, 2.5, "#8a7660"); }
+      [-1, 1].forEach(sg => { const sd = sg < 0 ? 2 : 3; for (let k = 0; k < 2; k++) { const z = (k - 0.5) * (rz * 0.9); winOn(sd, rx, rz, z, 1.75, 1.2, 1.9); curtainOn(sd, rx, rz, z, 1.7, 1.2, 2.5, "#8a7660"); } });
+      // sconces
+      [-1, 1].forEach(sg => [-1, 1].forEach(sh2 => { put("box", C.gold, sg * (rx - 0.08), 2.1, sh2 * rz * 0.5 + (sh2 > 0 ? 0 : 0), 0, 0.1, 0.18, 0.1, { s: 0.8, sh: 60 }); put("ballLo", "#fff0c8", sg * (rx - 0.14), 2.3, sh2 * rz * 0.5, 0, 0.14, 0.18, 0.14, { e: 1.6 }); }));
+      // gold-framed mirror on the back wall
+      [[0, 0.8, 1.7, 0.1], [0, -0.8, 1.7, 0.1]].forEach(([_, dx, y, t]) => put("box", C.gold, rx * 0.45 + dx, y, -rz + 0.05, 0, 0.1, 1.5, 0.05, { s: 0.7, sh: 60 }));
+      [0.7, -0.7].forEach(dy => put("box", C.gold, rx * 0.45, 1.7 + dy, -rz + 0.05, 0, 1.7, 0.1, 0.05, { s: 0.7, sh: 60 }));
+      surf("#9db2c0", rx * 0.45, 1.7, -rz + 0.04, 0, 1.5, 1.3, 0, { s: 0.9, sh: 100, p: 8 });
+      chandelier(0, H, 0, 1.0);
+      plant(-rx + 0.6, -rz + 0.6, 1.4); plant(rx - 0.6, -rz + 0.6, 1.4); plant(-rx + 0.6, rz - 0.6, 1.2); plant(rx - 0.6, rz - 0.6, 1.2);
+      return { rx, rz };
+    }
+    // wedding hall and the whole restaurant share a grand plan
+    const big = hall === "butun";
+    const rx = Math.max(fx + (big ? 3.2 : 2.6), big ? 11 : 8), rz = Math.max(fz + (big ? 3.2 : 2.6), big ? 9 : 6.5), H = big ? 6.4 : 5.6;
+    put("disc", "#101018", 0, -0.06, 0, 0, 500, 1, 500, { s: 0.02 });
+    floorQ(big ? "#d9d2c6" : "#e8dfcf", rx, rz, { p: 11, s: 0.6, sh: 90 });
+    wallN("#f3f0ea", rx, rz, H, { p: 16 });
+    surf("#f2ead8", 0, H, 0, 0, 2 * rx, 2 * rz, PI / 2, { p: 8 });
+    strip("#ffd89a", rx, rz, H - 0.12, 0.14, { p: 8, e: 1.3 }); strip("#6a4a2a", rx, rz, 0.1, 0.2, { p: 8, s: 0.3, sh: 40 });
+    // tall windows with curtains and pilasters along both long walls
+    const nz2 = Math.max(3, Math.floor(rz / 2.4));
+    for (let k = 0; k < nz2; k++) {
+      const z = (k - (nz2 - 1) / 2) * (2 * rz - 3) / Math.max(1, nz2 - 1);
+      winOn(2, rx, rz, z, 2.7, 1.5, 3.6); winOn(3, rx, rz, z, 2.7, 1.5, 3.6);
+      curtainOn(2, rx, rz, z, 2.6, 1.5, 4.4, big ? "#d8d0c2" : "#9b2f45"); curtainOn(3, rx, rz, z, 2.6, 1.5, 4.4, big ? "#d8d0c2" : "#9b2f45");
+      [-1, 1].forEach(sg => { put("box", "#f4ecdc", -rx + 0.12, H / 2, z + sg * 1.5, 0, 0.24, H, 0.38, { s: 0.2 }); put("box", "#f4ecdc", rx - 0.12, H / 2, z + sg * 1.5, 0, 0.24, H, 0.38, { s: 0.2 }); });
+    }
+    // free-standing columns inside the long walls
+    for (let k = 0; k < nz2; k++) {
+      const z = (k - (nz2 - 1) / 2) * (2 * rz - 3) / Math.max(1, nz2 - 1) + (rz - 1.5) / Math.max(1, nz2 - 1) * 0;
+      [-1, 1].forEach(sg => { const cx = sg * (rx - 1.1);
+        put("box", "#efe6d2", cx, 0.15, z, 0, 0.95, 0.3, 0.95, { s: 0.4, sh: 50 }); put("cyl", "#f4ecdc", cx, 0.3, z, 0, 0.7, H - 0.7, 0.7, { s: 0.35, sh: 50 });
+        put("box", C.gold, cx, H - 0.32, z, 0, 1.0, 0.24, 1.0, { s: 0.7, sh: 60 }); });
+    }
+    // stage at the back with an arch of light
+    const sw = Math.min(2 * rx - 4, big ? 12 : 9);
+    put("box", "#3a2a22", 0, 0.25, -rz + 1.3, 0, sw, 0.5, 2.4, { s: 0.3, sh: 30 });
+    put("box", "#c8b88a", 0, 0.52, -rz + 1.3, 0, sw - 0.2, 0.04, 2.2, { s: 0.2, p: 4 });
+    surf("#1a2347", 0, H / 2 - 0.2, -rz + 0.04, 0, sw, H - 0.4, 0, { p: 4, s: 0.05 });
+    put("ring", C.gold, 0, 0.5 + 2.5, -rz + 0.2, 0, 5.2, 5.2, 1, { e: 0.9, s: 0.8, sh: 60 });
+    put("ring", "#ffe3ad", 0, 0.5 + 2.5, -rz + 0.25, 0, 4.4, 4.4, 0.6, { e: 1.8 });
+    [-1, 1].forEach(sg => { put("vase", "#f3f1ee", sg * (sw / 2 - 0.6), 0.5, -rz + 1.6, 0, 0.5, 0.9, 0.5, { s: 0.5 }); put("ball", "#f3c9d2", sg * (sw / 2 - 0.6), 1.7, -rz + 1.6, 0, 0.85, 0.8, 0.85, { p: 5, s: 0.1 }); });
+    // chandeliers down the middle
+    const nc = Math.max(1, Math.round(rx / 5));
+    for (let k = 0; k < nc; k++) chandelier((k - (nc - 1) / 2) * 6, H, 0, big ? 1.8 : 1.6);
+    if (big) { chandelier(0, H, -rz * 0.55, 1.4); chandelier(0, H, rz * 0.55, 1.4); }
+    rug(fx + 0.5, fz + 0.5, big ? "#2c3a5c" : "#2a3158", "#c9a256");
+    return { rx, rz };
+  }
+
   // ---------- layouts ----------
   // a long row of tables at z0: cloth, frames, runner, chairs and places, flowers and napkin boxes
   function longRow(z0, seats, L, side, gap, top, served) {
-    const drop = 0.3, W2 = 0.55;
+    const drop = 0.42, W2 = 0.55;
+    put("disc", "#000000", 0, 0.012, z0, 0, L + 2.2, 1, 3.4, { a: 0.7, p: 10 });
     put("box", C.longCloth, 0, top - 0.01, z0, 0, L + 0.06, 0.02, 2 * W2 + 0.02, { s: 0.05 });
     [W2 + 0.005, -W2 - 0.005].forEach(zz => put("box", C.longCloth, 0, top - drop / 2, z0 + zz, 0, L + 0.06, drop, 0.01, { s: 0.04 }));
     [L / 2 + 0.035, -L / 2 - 0.035].forEach(xx => put("box", C.longCloth, xx, top - drop / 2, z0, 0, 0.01, drop, 2 * W2 + 0.02, { s: 0.04 }));
@@ -1085,14 +1352,14 @@ function Table3D(canvas, opts) {
     const per = Math.ceil(guests / rows), side = Math.max(1, Math.ceil((per - (per >= 6 ? 2 : 0)) / 2)), gap = 0.62, L = side * gap + 0.5, top = 0.77;
     const zs = rows === 1 ? [0] : Array.from({ length: rows }, (_, r) => (r - (rows - 1) / 2) * 2.7);
     const depth = rows * 2.7;
-    put("disc", C.parquet, 0, -0.02, 0, 0, Math.max(L, depth) * 1.6 + 6, 1, Math.max(L, depth) * 1.6 + 6, { s: 0.04 });
     const list = zs.map((z0, r) => longRow(z0, r < rows - 1 ? per : guests - per * (rows - 1), L, side, gap, top, served));
-    return { kind: "long", lo: LO, list, L: L + 1.1, size: Math.max(L + 1.1, depth) };
+    const room = env(curHall, L / 2 + 1.0, depth / 2 + 0.5);
+    return { kind: "long", lo: LO, list, L: L + 1.1, size: Math.max(L + 1.1, depth), room };
   }
 
   function roundTable(cx, cz, seats, served) {
     const top = 0.765;
-    put("disc", "#6f6a66", cx, -0.005, cz, 0, 3.0, 1, 3.0, { a: 0.35 });
+    put("disc", "#000000", cx, 0.012, cz, 0, 4.0, 1, 4.0, { a: 0.75, p: 10 });
     put("cloth", C.cloth, cx, 0, cz, 0, 1, 1, 1, { s: 0.06, sh: 12 });
     const seatsAt = [];
     for (let k = 0; k < seats; k++) {
@@ -1113,17 +1380,17 @@ function Table3D(canvas, opts) {
     const n = seatsList && seatsList.length ? seatsList.length : Math.max(1, Math.ceil(guests / 14));
     LO = n > 3;
     const cols = Math.ceil(Math.sqrt(n)), rowsN = Math.ceil(n / cols), sp = 3.4;
-    put("disc", C.carpet, 0, -0.02, 0, 0, Math.max(cols, rowsN) * sp * 1.6 + 6, 1, Math.max(cols, rowsN) * sp * 1.6 + 6, { s: 0.04 });
     const list = [];
     for (let i = 0; i < n; i++) {
       const cx = (i % cols - (cols - 1) / 2) * sp, cz = (Math.floor(i / cols) - (rowsN - 1) / 2) * sp;
       list.push(roundTable(cx, cz, seatsList && seatsList.length ? seatsList[i] : Math.min(14, guests - i * 14), served));
     }
-    return { kind: "round", lo: LO, list, size: Math.max(cols, rowsN) * sp };
+    const room = env(curHall, (cols - 1) * sp / 2 + 1.9, (rowsN - 1) * sp / 2 + 1.9);
+    return { kind: "round", lo: LO, list, size: Math.max(cols, rowsN) * sp, room };
   }
 
   let target = [0, 0.75, 0], minDist = 1.6, maxDist = 6, dist = 3.2, yaw = 0.6, pitch = 0.62;
-  let staticKey = "", staticB = [[], []], dynB = [[], []], layout = null, lastCam = "";
+  let staticKey = "", staticB = [[], []], dynB = [[], []], layout = null, lastCam = "", lastHall = "", cam = null;
   function setStatic(list) { free(staticB[0]); free(staticB[1]); staticB = split(list).map(bake); }
   function setDyn(list) { free(dynB[0]); free(dynB[1]); dynB = split(list).map(bake); }
 
@@ -1134,7 +1401,7 @@ function Table3D(canvas, opts) {
 
     if (spec.shape === "dish") {
       // one dish on its own, to turn around and look at closely
-      LO = false; items = [];
+      LO = false; items = []; curHall = "dish"; cam = null; lastHall = "";
       target = [0, 0.1, 0]; minDist = 0.3; maxDist = 1.2; dist = 0.58;
       put("disc", "#123c32", 0, -0.02, 0, 0, 1.4, 1, 1.4, { s: 0.15, sh: 14, p: 4 });
       vis.slice(0, 1).forEach(x => { const [k, col] = kindOf(x.d); dish(k, col, 0, 0, 0.5, 0, x.d); });
@@ -1156,7 +1423,8 @@ function Table3D(canvas, opts) {
     const served = (perTable || [common]).some(p => p.perSeat.length > 0) && course !== "dasturxon";
     const guests = Math.max(1, Math.round(spec.guests || spec.seats || 14));
     const rows = spec.shape === "long" ? Math.max(1, Math.min(4, spec.rows || 1)) : 1;
-    const key = JSON.stringify([spec.shape, guests, rows, served, spec.seatsList || 0]);
+    curHall = HALLFX[spec.hall] ? spec.hall : "mayda";
+    const key = JSON.stringify([spec.shape, guests, rows, served, spec.seatsList || 0, curHall]);
     if (key !== staticKey) {
       items = [];
       layout = spec.shape === "long" ? buildLong(guests, rows, served) : buildRound(guests, served, spec.seatsList);
@@ -1185,20 +1453,28 @@ function Table3D(canvas, opts) {
     const fIdx = Math.max(0, Math.min(layout.list.length - 1, spec.focusIdx || 0));
     const camKey = key + "|" + (spec.focus || "all") + "|" + fIdx;
     if (camKey !== lastCam) {
-      lastCam = camKey;
+      const firstTime = lastCam === "", hallChanged = lastHall !== curHall, fxh = FX();
+      lastCam = camKey; lastHall = curHall;
       const asp = Math.min(1, (canvas.clientWidth || 1) / (canvas.clientHeight || 1));
       const first = layout.list[fIdx];
+      let gT, gD, gP;
       if (spec.focus === "one" && layout.list.length > 1) {
-        if (layout.kind === "long") { target = [0, 0.7, first.z0]; dist = Math.min(Math.max(3.4, layout.L * 0.75), 14) / Math.max(0.7, asp); }
-        else { target = [first.cx, 0.75, first.cz]; dist = 3.4 / Math.max(0.7, asp); }
-        minDist = 1.5; maxDist = Math.max(8, layout.size * 2); pitch = 0.62;
+        if (layout.kind === "long") { gT = [0, 0.7, first.z0]; gD = Math.min(Math.max(3.4, layout.L * 0.75), 14) / Math.max(0.7, asp); }
+        else { gT = [first.cx, 0.75, first.cz]; gD = 3.4 / Math.max(0.7, asp); }
+        minDist = 1.5; maxDist = Math.max(8, layout.size * 2); gP = 0.62;
       } else if (layout.list.length > 1) {
-        target = [0, 0.4, 0]; dist = Math.max(6, layout.size * 1.65 / Math.max(0.6, asp)); minDist = 1.5; maxDist = Math.max(10, dist * 1.8); pitch = 0.82;
+        gT = [0, 0.4, 0]; gD = Math.max(6, layout.size * 1.65 / Math.max(0.6, asp)); minDist = 1.5; maxDist = Math.max(10, gD * 1.8); gP = 0.82;
       } else if (layout.kind === "long") {
-        target = [0, 0.7, 0]; minDist = 1.8; dist = Math.max(3.4, layout.L * 0.75) / Math.max(0.75, asp); maxDist = Math.max(6, dist * 1.6); pitch = 0.62;
+        gT = [0, 0.7, 0]; minDist = 1.8; gD = Math.max(3.4, layout.L * 0.75) / Math.max(0.75, asp); maxDist = Math.max(6, gD * 1.6); gP = 0.62;
       } else {
-        target = [0, 0.75, 0]; minDist = 1.5; dist = 3.3 / Math.max(0.8, asp); maxDist = 6; pitch = 0.62;
+        gT = [0, 0.75, 0]; minDist = 1.5; gD = 3.3 / Math.max(0.8, asp); maxDist = 6; gP = 0.62;
       }
+      // each hall is looked at from its own angle, a little lower and further back so the walls and what is around show
+      gD *= fxh.dist || 1; gP = Math.max(0.3, gP + (fxh.pitch || 0)); maxDist = Math.max(maxDist, gD * 1.6);
+      let gY = yaw;
+      if (firstTime || hallChanged) { gY = fxh.yaw; while (gY - yaw > PI) gY -= 2 * PI; while (gY - yaw < -PI) gY += 2 * PI; }
+      if (firstTime || !canvas.clientWidth) { target = gT; dist = gD; pitch = gP; yaw = gY; cam = null; }
+      else cam = { t0: performance.now(), dur: 1400, f: { t: target.slice(), d: dist, p: pitch, y: yaw }, g: { t: gT, d: gD, p: gP, y: gY } };
     }
     draw();
   }
@@ -1225,23 +1501,34 @@ function Table3D(canvas, opts) {
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     const eye = [target[0] + dist * Math.cos(pitch) * Math.sin(yaw), target[1] + dist * Math.sin(pitch), target[2] + dist * Math.cos(pitch) * Math.cos(yaw)];
-    gl.uniformMatrix4fv(U.uPV, false, mul(persp(0.75, w / Math.max(1, h), 0.05, 120), lookAt(eye, target)));
+    gl.uniformMatrix4fv(U.uPV, false, mul(persp(0.75, w / Math.max(1, h), 0.1, 900), lookAt(eye, target)));
     gl.uniform3fv(U.uEye, eye);
+    const fx = FX();
+    gl.uniform3fv(U.uLP, fx.lp); gl.uniform3fv(U.uLC, fx.lc); gl.uniform3fv(U.uTint, fx.tint); gl.uniform3fv(U.uSk1, fx.sk1); gl.uniform3fv(U.uSk2, fx.sk2);
+    gl.uniform1f(U.uAm, fx.am); gl.uniform1f(U.uSun, fx.sun); gl.uniform1f(U.uTM, fx.tm); gl.uniform1f(U.uAO, fx.ao);
     gl.disable(gl.BLEND); gl.depthMask(true);
     staticB[0].forEach(drawBatch); dynB[0].forEach(drawBatch);
     gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false);
+    gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(-2, -2);
     staticB[1].forEach(drawBatch); dynB[1].forEach(drawBatch);
+    gl.disable(gl.POLYGON_OFFSET_FILL);
     gl.depthMask(true);
   }
   function tick(now) {
     if (!alive) return;
     // a slow turn when nobody is touching it, at about 30 frames a second
-    if (canvas.isConnected && canvas.clientWidth > 0 && !(opts && opts.still) && now - lastUser > 2500 && now - lastDraw > 30) { yaw += 0.005; draw(); }
+    if (cam) {
+      const k = Math.min(1, (now - cam.t0) / cam.dur), e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+      target = cam.f.t.map((v, i) => v + (cam.g.t[i] - v) * e);
+      dist = cam.f.d + (cam.g.d - cam.f.d) * e; pitch = cam.f.p + (cam.g.p - cam.f.p) * e; yaw = cam.f.y + (cam.g.y - cam.f.y) * e;
+      if (k >= 1) cam = null;
+      draw();
+    } else if (canvas.isConnected && canvas.clientWidth > 0 && !(opts && opts.still) && now - lastUser > 2500 && now - lastDraw > 30) { yaw += 0.005; draw(); }
     raf = requestAnimationFrame(tick);
   }
   const pts = new Map();
   canvas.style.touchAction = "none";
-  canvas.addEventListener("pointerdown", e => { pts.set(e.pointerId, [e.clientX, e.clientY]); canvas.setPointerCapture(e.pointerId); lastUser = performance.now(); });
+  canvas.addEventListener("pointerdown", e => { cam = null; pts.set(e.pointerId, [e.clientX, e.clientY]); canvas.setPointerCapture(e.pointerId); lastUser = performance.now(); });
   canvas.addEventListener("pointermove", e => {
     if (!pts.has(e.pointerId)) return;
     const prev = pts.get(e.pointerId);
@@ -1262,7 +1549,7 @@ function Table3D(canvas, opts) {
 
   return {
     build,
-    view(y, p, d) { if (y != null) yaw = y; if (p != null) pitch = p; if (d != null) dist = d; draw(); },
+    view(y, p, d) { cam = null; if (y != null) yaw = y; if (p != null) pitch = p; if (d != null) dist = d; draw(); },
     zoom(f) { dist = Math.min(maxDist, Math.max(minDist, dist * f)); lastUser = performance.now(); draw(); },
     redraw: draw,
     stats() { const c = b => b.reduce((s, x) => s + x.n, 0); return { calls: staticB[0].length + staticB[1].length + dynB[0].length + dynB[1].length, tris: (c(staticB[0]) + c(staticB[1]) + c(dynB[0]) + c(dynB[1])) / 3 }; },
@@ -1482,7 +1769,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
     <radialGradient id="b${uid}" cx="0.46" cy="0.4" r="0.7"><stop offset="0" stop-color="${c0}"/><stop offset="0.55" stop-color="${c1}"/><stop offset="0.85" stop-color="${c2}"/><stop offset="1" stop-color="${c3}"/></radialGradient>
     <radialGradient id="p${uid}" cx="${bx}" cy="${by}" r="0.5"><stop offset="0" stop-color="${bc}" stop-opacity="${bo}"/><stop offset="0.6" stop-color="${bc}" stop-opacity="${bo * 0.35}"/><stop offset="1" stop-color="${bc}" stop-opacity="0"/></radialGradient>
     <linearGradient id="g${uid}" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="${sh.base}"/><stop offset="0.1" stop-color="${sh.base}" stop-opacity="0.55"/><stop offset="0.26" stop-color="#eef0c8" stop-opacity="0"/></linearGradient>
-    <radialGradient id="s${uid}" cx="0.38" cy="0.3" r="0.3"><stop offset="0" stop-color="#fff" stop-opacity="0.75"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+    <radialGradient id="s${uid}" cx="0.38" cy="0.3" r="0.3"><stop offset="0" stop-color="#ffffff" stop-opacity="0.75"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient>
     <clipPath id="c${uid}"><path d="${sh.path}"/></clipPath>
   </defs>
   <g clip-path="url(#c${uid})">
@@ -1789,7 +2076,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
     const g = ctx.createRadialGradient(top.x, top.y, 0, top.x, top.y, slot.w * 0.9);
     g.addColorStop(0, `rgba(255,255,255,${(0.28 * a * a).toFixed(3)})`); g.addColorStop(1, "rgba(255,255,255,0)");
     ctx.fillStyle = g; ctx.fillRect(top.x - slot.w, top.y - slot.w, slot.w * 2, slot.w * 2);
-    ctx.fillStyle = "#fff";
+    ctx.fillStyle = "#ffffff";
     for (let k = 0; k < 7; k++) {
       const ang = k * 0.9 + i * 1.7, dist = slot.w * (0.45 + 0.35 * sstep(0, 0.6, d)) * (0.8 + (k % 3) * 0.15);
       ctx.globalAlpha = 0.7 * a;
@@ -2652,6 +2939,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
     const tv = tviewNow();
     t3d.build({
       shape: round ? "round" : "long",
+      hall: hallNow().id,
       guests: bk.guests,
       rows: rowsNow(),
       seatsList: round ? roundSeats() : undefined,
