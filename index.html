@@ -1,3 +1,5 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>NoZi Kadupul</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -228,6 +230,7 @@ body {
 .dish .dm { min-width: 0; }
 .pic { position: relative; width: 84px; height: 84px; padding: 0; border: 1px solid var(--line2); border-radius: 14px; overflow: hidden; cursor: pointer; background: #000; }
 .pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pic video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .b3d { position: absolute; left: 6px; bottom: 6px; padding: 3px 7px; border-radius: 999px; background: var(--gold-soft); color: var(--ink); font: 600 10.5px/1 var(--font-ui); letter-spacing: 0.06em; }
 .see3d { margin-top: 8px; padding: 7px 12px; border-radius: 999px; border: 1px solid rgba(240, 211, 154, 0.5); background: transparent; color: var(--gold-soft); font: 500 12.5px/1 var(--font-ui); cursor: pointer; }
 .pic:focus-visible, .see3d:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
@@ -320,12 +323,31 @@ body {
 .gal figcaption { color: var(--mist); font-size: 12px; }
 
 /* banquet */
-.steps { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; margin-bottom: 18px; }
-.steps span { display: grid; gap: 6px; color: var(--mist); font-size: 10.5px; letter-spacing: 0.02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.steps span::before { content: ""; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.16); }
+.steps { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; margin-bottom: 8px; counter-reset: st; }
+.steps span { display: grid; justify-items: center; gap: 5px; color: var(--mist); font-size: 11.5px; letter-spacing: 0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; position: relative; }
+.steps span::before { counter-increment: st; content: counter(st); width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font: 600 13px/1 var(--font-ui); border: 1px solid var(--line2); background: rgba(255, 255, 255, 0.05); color: var(--mist); position: relative; z-index: 1; }
+.steps span::after { content: ""; position: absolute; top: 12px; left: calc(-50% + 14px); right: calc(50% + 14px); height: 2px; background: rgba(255, 255, 255, 0.14); }
+.steps span:first-child::after { display: none; }
 .steps span.on { color: var(--gold-soft); }
-.steps span.on::before { background: var(--gold-soft); }
+.steps span.on::before { border-color: var(--gold-soft); color: var(--gold-soft); }
+.steps span.on::after { background: var(--gold-soft); }
+.steps span.cur { color: var(--petal); font-weight: 500; }
+.steps span.cur::before { background: var(--gold-soft); color: var(--ink); border-color: var(--gold-soft); box-shadow: 0 0 0 4px rgba(240, 211, 154, 0.18); }
+.bk-now { margin: 0 0 14px; color: var(--mist); font-size: 12.5px; letter-spacing: 0.04em; text-transform: uppercase; }
+.bk-todo { display: flex; gap: 10px; align-items: flex-start; margin: 0 0 16px; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(240, 211, 154, 0.35); background: rgba(240, 211, 154, 0.08); color: var(--petal); font-size: 15px; line-height: 1.45; }
+.bk-todo::before { content: "i"; flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--gold-soft); color: var(--ink); font: 700 13px/22px var(--font-ui); text-align: center; margin-top: 1px; }
+.bk-todo b { font-weight: 600; color: var(--gold-soft); }
+@media (max-height: 520px) {
+  .bk-now { display: none; }
+  .steps { margin-bottom: 8px; }
+  .steps span { gap: 3px; font-size: 11px; }
+  .steps span::before { width: 22px; height: 22px; font-size: 12px; }
+  .steps span::after { top: 10px; left: calc(-50% + 12px); right: calc(50% + 12px); }
+  .bk-todo { padding: 8px 12px; font-size: 14px; margin-bottom: 10px; }
+  .bk-nav { margin-top: 12px; padding: 8px 0 10px; }
+}
 .bk-h { font-family: var(--font-display); font-weight: 400; font-size: 27px; color: var(--gold-soft); margin: 0 0 4px; }
+@media (max-height: 520px) { .bk-h { font-size: 22px; } }
 .bk-p { color: var(--mist); font-size: 14px; line-height: 1.5; margin: 0 0 14px; max-width: 62ch; }
 .opts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .opt {
@@ -356,8 +378,8 @@ body {
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .bk-nav {
   display: flex; justify-content: space-between; gap: 10px; margin-top: 22px;
-  position: sticky; bottom: -28px; z-index: 2; padding: 14px 0 16px;
-  background: linear-gradient(to bottom, rgba(10, 14, 30, 0), var(--glass-solid) 35%);
+  position: sticky; bottom: -28px; z-index: 2; padding: 12px 0 16px;
+  background: var(--glass-solid); border-top: 1px solid var(--line2);
 }
 .bk-nav .btn.primary { margin-left: auto; }
 .pick { padding: 16px; border-radius: 16px; border: 1px solid rgba(240, 211, 154, 0.4); background: rgba(240, 211, 154, 0.07); display: grid; gap: 10px; }
@@ -404,8 +426,20 @@ body {
 .adm-login label { display: flex; flex-direction: column; gap: 6px; color: var(--mist); font-size: 13px; }
 .adm-err { color: #ff9b9b; font-size: 13px; min-height: 18px; margin: 0; }
 .adm-ok { color: #9be3a8; font-size: 13px; min-height: 18px; margin: 8px 0 0; }
-.adm-dish { display: grid; grid-template-columns: minmax(0, 1fr) 130px; gap: 8px; padding: 10px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
-.adm-dish .adm-k { grid-column: 1 / -1; font-size: 14px; }
+.adm-dish { display: grid; grid-template-columns: 64px minmax(0, 1fr) 130px; gap: 8px; padding: 12px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); align-items: center; }
+.adm-dish .adm-thw { grid-row: 1 / 3; align-self: start; }
+.adm-dish .adm-k { grid-column: 2 / -1; font-size: 14px; }
+.adm-dish .adm-acts { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
+.adm-dish.hall { grid-template-columns: minmax(0, 1fr); }
+.adm-dish.hall .adm-k { grid-column: 1; }
+.adm-th { width: 64px; height: 64px; object-fit: cover; border-radius: 12px; border: 1px solid var(--line2); background: rgba(255, 255, 255, 0.05); display: block; flex: none; }
+.adm-th.none { display: grid; place-items: center; text-align: center; font-size: 11px; color: var(--mist); }
+.adm-up { cursor: pointer; font-size: 13px; padding: 8px 12px; }
+.adm-name { word-break: break-all; font-size: 14px; }
+.adm-code { display: grid; gap: 8px; padding: 14px; border-radius: 14px; border: 1px solid rgba(155, 227, 168, 0.5); background: rgba(155, 227, 168, 0.08); }
+.adm-code.used { border-color: rgba(255, 155, 155, 0.5); background: rgba(255, 155, 155, 0.07); }
+.adm-code b { font: 600 28px/1.1 var(--font-menu); letter-spacing: 0.1em; color: var(--gold-soft); }
+.adm-code span { color: var(--mist); font-size: 13px; }
 .adm-form { display: grid; gap: 12px; max-width: 360px; }
 .adm-form label { display: flex; flex-direction: column; gap: 6px; color: var(--mist); font-size: 13px; }
 .adm-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
@@ -491,6 +525,46 @@ body {
 }
 .toast.on { opacity: 1; transform: translate(-50%, 0); }
 
+
+/* the window a guest sees after scanning the table QR code */
+.hub { position: fixed; inset: 0; z-index: 11; overflow: auto; overscroll-behavior: contain; display: flex; justify-content: center; padding: max(18px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+  background: radial-gradient(120% 70% at 50% 0%, rgba(40, 52, 110, 0.55), rgba(5, 8, 18, 0.94) 60%), rgba(5, 8, 18, 0.9); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  opacity: 0; transform: translateY(18px); transition: opacity 0.45s ease, transform 0.45s ease; }
+.hub.on { opacity: 1; transform: none; }
+.hub-in { width: min(100%, 460px); display: grid; align-content: start; gap: 14px; padding-bottom: 12px; }
+.hub-top { display: grid; justify-items: center; gap: 2px; text-align: center; padding-top: 6px; }
+.hub-top img { width: 64px; height: auto; filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.6)); }
+.hub-top b { font-family: var(--font-display); font-weight: 400; font-size: 44px; letter-spacing: 0.22em; padding-left: 0.22em; color: var(--gold-soft); line-height: 1.1; }
+.hub-top small { color: var(--mist); letter-spacing: 0.2em; text-transform: uppercase; font-size: 11px; }
+.hub-hi { margin: 4px 0 0; text-align: center; color: var(--petal); font: italic 600 24px/1.2 var(--font-menu); }
+.hub-list { display: grid; gap: 10px; }
+.hub-row { box-sizing: border-box; display: grid; grid-template-columns: 44px minmax(0, 1fr) 18px; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 14px 16px; border-radius: 18px; cursor: pointer;
+  border: 1px solid var(--line2); background: rgba(255, 255, 255, 0.055); color: var(--petal); font: inherit; text-decoration: none; min-height: 68px; transition: background 0.2s, border-color 0.2s, transform 0.15s; }
+.hub-row:hover, .hub-row:focus-visible { background: rgba(240, 211, 154, 0.11); border-color: rgba(240, 211, 154, 0.6); outline: none; }
+.hub-row:active { transform: scale(0.985); }
+.hub-row .ic { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; background: rgba(240, 211, 154, 0.13); color: var(--gold-soft); }
+.hub-row .ic svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.hub-row b { display: block; font-weight: 500; font-size: 17px; line-height: 1.2; }
+.hub-row small { display: block; color: var(--mist); font-size: 13px; line-height: 1.35; margin-top: 2px; }
+.hub-row .go { color: var(--mist); width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.hub-row.gift { border-color: rgba(240, 211, 154, 0.5); background: linear-gradient(135deg, rgba(240, 211, 154, 0.16), rgba(255, 255, 255, 0.04)); }
+.hub-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.hub-bar h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 26px; color: var(--gold-soft); }
+.hub-card { padding: 18px; border-radius: 18px; border: 1px solid rgba(240, 211, 154, 0.35); background: rgba(240, 211, 154, 0.07); display: grid; gap: 12px; }
+.hub-card p { margin: 0; color: var(--petal); font-size: 15px; line-height: 1.5; }
+.hub-card .muted { color: var(--mist); font-size: 13.5px; }
+.hub-step { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 12px; align-items: start; }
+.hub-step i { font-style: normal; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--gold-soft); color: var(--ink); font: 700 14px/1 var(--font-ui); }
+.hub-code { text-align: center; font: 600 40px/1.1 var(--font-menu); letter-spacing: 0.12em; padding-left: 0.12em; color: var(--gold-soft); padding: 16px 8px; border-radius: 16px; border: 1px dashed rgba(240, 211, 154, 0.7); background: rgba(0, 0, 0, 0.25); user-select: all; }
+.hub-kv { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: rgba(0, 0, 0, 0.25); }
+.hub-kv span { color: var(--mist); font-size: 13px; }
+.hub-kv b { font-weight: 500; font-size: 18px; word-break: break-all; text-align: right; }
+.hub-ok { color: #9fe3b4; font-size: 14px; margin: 0; }
+.hub-err { color: #ffb3a8; font-size: 14px; margin: 0; }
+.hub textarea, .hub input[type="text"] { width: 100%; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line2); background: rgba(255, 255, 255, 0.06); color: var(--petal); font: 16px/1.4 var(--font-ui); }
+.hub textarea { min-height: 130px; resize: vertical; }
+.hub .hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+
 /* the NoZi logo film a guest sees first after scanning the table card */
 .logo-intro { position: fixed; inset: 0; z-index: 12; background: #000; display: grid; place-items: center; transition: opacity 0.7s ease; }
 .logo-intro.out { opacity: 0; pointer-events: none; }
@@ -541,6 +615,7 @@ body {
   <button class="ctl" id="liSkip" type="button">Menyuga o‘tish</button>
 </div>
 <button class="gate" id="gate" type="button" hidden><i aria-hidden="true"></i><span>Boshlash</span></button>
+<div class="hub" id="hub" role="dialog" aria-modal="true" aria-label="NoZi Restaurant" hidden></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -2217,7 +2292,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
   $("wave").style.display = "none";
 
   // ---------- section windows ----------
-  const TITLES = { menyu: "Menyu", reklamalar: "Reklamalar", banket: "Banket", kartochka: "Stol kartochkasi", admin: "Admin" };
+  const TITLES = { menyu: "Menyu", reklamalar: "Reklamalar", banket: "Banket", kartochka: "Stol kartochkasi", admin: "Admin", qr: "NoZi" };
   // phone or tablet/computer layout: follows the screen width by itself, and the guest can switch it with a button
   const PH_ICON = `<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4.5" y="1.5" width="7" height="13" rx="1.6"/></svg>`;
   const TB_ICON = `<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="3" width="13" height="10" rx="1.6"/></svg>`;
@@ -2375,7 +2450,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
     const what = [t.vid && "video", t.img && "rasmlar", t.v && "3D ko‘rinish"].filter(Boolean);
     const label = what.length > 1 ? what.slice(0, -1).join(", ") + " va " + what[what.length - 1] : what[0];
     return `<div class="dish has-pic" data-row="${t.id}"><button class="pic" type="button" data-dish="${t.id}" aria-label="${esc(t.uz)}: ${label}">` +
-      `<img src="${t.th}" alt=""><span class="b3d">${t.vid ? "▶ Video" : "3D"}</span></button><div class="dm">${text}` +
+      `${(t.th || t.pic || (t.img && t.img[0])) ? `<img src="${t.th || t.pic || t.img[0]}" alt="">` : `<video src="${t.vid}#t=0.5" preload="metadata" muted playsinline aria-hidden="true"></video>`}<span class="b3d">${t.vid ? "▶ Video" : "3D"}</span></button><div class="dm">${text}` +
       `<button class="see3d" type="button" data-dish="${t.id}">${t.vid ? "▶ Videoni ko‘rish" : "3D ko‘rish va rasmlar"}</button></div></div>`;
   }
 
@@ -2701,54 +2776,133 @@ if (typeof module !== "undefined") module.exports = makeQR;
   });
   document.addEventListener("keydown", e => { if (e.key === "Escape" && fsBox()) fsExit(fsBox()); });
   new MutationObserver(paintFS).observe(document.body, { childList: true, subtree: true });
-  // ----- Admin (NAMUNA): kirish va boshqaruv paneli. Server yo'q, shuning uchun tekshiruv haqiqiy emas; hammasi shu sahifada qoladi -----
-  const adm = {
-    on: false, tab: "menyu", sec: "sovuq", pass: "demo", queue: [], vurl: "",
-    reqs: [
-      { code: "a3f9c1", date: "14.11.2026", guests: 60, hall: "To‘yxona", st: "yangi" },
-      { code: "7be204", date: "21.11.2026", guests: 18, hall: "Terrasa", st: "qabul" },
-      { code: "c15d88", date: "28.11.2026", guests: 120, hall: "To‘yxona", st: "yangi" }]
-  };
-  const ADM_TABS = [["menyu", "Menyu"], ["banket", "Banket so‘rovlari"], ["video", "Stol videosi"], ["qoshiq", "Qo‘shiq navbati"], ["parol", "Parol"]];
+  // ----- Admin: haqiqiy kirish (parol serverda tekshiriladi), o'zgarishlar bazaga yoziladi, rasm va video Supabase Storage'ga yuklanadi -----
+  const adm = { on: false, pw: "", tab: "menyu", sec: "sovuq", queue: [], vurl: "", codes: null, found: null };
+  const ADM_TABS = [["menyu", "Menyu"], ["reklama", "Reklamalar"], ["banket", "Banket zallari"], ["qr", "QR oynasi"], ["kodlar", "Sovg‘a kodlari"], ["video", "Stol videosi"], ["qoshiq", "Qo‘shiq navbati"], ["parol", "Parol"]];
+  const admStore = { get() { try { return sessionStorage.getItem("nozi_adm") || ""; } catch (e) { return ""; } }, set(v) { try { v ? sessionStorage.setItem("nozi_adm", v) : sessionStorage.removeItem("nozi_adm"); } catch (e) {} } };
+  // one call to the server; a wrong or expired password sends the admin back to the login form
+  async function admApi(method, path, body, headers) {
+    const h = Object.assign({ "x-admin": adm.pw }, headers || {});
+    let payload;
+    if (body instanceof Blob) payload = body; else if (body !== undefined) { h["Content-Type"] = "application/json"; payload = JSON.stringify(body); }
+    try {
+      const r = await fetch(path, { method, headers: h, body: payload });
+      const j = await r.json().catch(() => ({}));
+      if (r.status === 401) { adm.on = false; admStore.set(""); }
+      return { ok: r.ok && j.ok !== false, status: r.status, j };
+    } catch (e) { return { ok: false, status: 0, j: { error: "Internet yo‘q yoki server javob bermadi." } }; }
+  }
+  const admSave = (key, value) => admApi("PUT", "/api/content", { key, value }).then(r => { if (r.ok) CFG[key] = value; return r; });
+  // a phone photo is several MB: shrink it to a web-sized JPEG before it is uploaded
+  function shrinkImg(file, max) {
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return Promise.resolve(file);
+    return new Promise(res => {
+      const u = URL.createObjectURL(file), im = new Image();
+      im.onload = () => {
+        const k = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight));
+        const c = document.createElement("canvas"); c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k);
+        c.getContext("2d").drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(u);
+        c.toBlob(b => res(b && b.size < file.size ? new File([b], file.name.replace(/\.\w+$/, "") + ".jpg", { type: "image/jpeg" }) : file), "image/jpeg", 0.86);
+      };
+      im.onerror = () => { URL.revokeObjectURL(u); res(file); };
+      im.src = u;
+    });
+  }
+  async function admUpload(file, kind) {
+    const f = kind === "img" ? await shrinkImg(file, 1600) : file;
+    return admApi("PUT", "/api/upload?name=" + encodeURIComponent(f.name), f, { "Content-Type": f.type });
+  }
   function viewAdmin(body) {
     body.classList.remove("split");
-    const banner = `<p class="adm-banner"><b>Demo rejim.</b> Bu faqat ko‘rish uchun namuna: server hali ulanmagan, o‘zgarishlar sahifa yangilansa yo‘qoladi, kirish tekshiruvi haqiqiy emas.</p>`;
+    if (!adm.on && admStore.get()) { adm.pw = admStore.get(); adm.on = true; }
     if (!adm.on) {
-      body.innerHTML = `<div id="admRoot">${banner}
+      body.innerHTML = `<div id="admRoot">
         <form class="adm-login" id="admForm" autocomplete="off">
-          <label>Login<input type="text" id="admU" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
-          <label>Parol<input type="password" id="admP" autocomplete="new-password"></label>
+          <p class="bk-p" style="margin:0">Faqat NoZi xodimlari uchun. Parolni boshliqdan so‘rang.</p>
+          <label>Parol<input type="password" id="admP" autocomplete="current-password"></label>
           <p class="adm-err" id="admErr" role="alert"></p>
           <button class="pill gold" type="submit">Kirish</button>
-          <p class="note" style="margin:0">Namuna kirish: login <b>demo</b>, parol <b>demo</b></p>
         </form></div>`;
-      body.querySelector("#admForm").addEventListener("submit", e => {
+      body.querySelector("#admForm").addEventListener("submit", async e => {
         e.preventDefault();
-        const u = body.querySelector("#admU").value.trim(), pw = body.querySelector("#admP").value;
-        if (u === "demo" && pw === adm.pass) { adm.on = true; viewAdmin(body); }
-        else body.querySelector("#admErr").textContent = "Login yoki parol noto‘g‘ri.";
+        const pw = body.querySelector("#admP").value, err = body.querySelector("#admErr"), btn = e.target.querySelector("button");
+        if (!pw) return;
+        btn.disabled = true; err.textContent = "";
+        adm.pw = pw;
+        const r = await admApi("POST", "/api/login");
+        btn.disabled = false;
+        if (r.ok) { adm.on = true; admStore.set(pw); viewAdmin(body); }
+        else { adm.pw = ""; err.textContent = r.status === 401 ? "Parol noto‘g‘ri." : (r.j && r.j.error) || "Server bilan aloqa yo‘q. Birozdan keyin urinib ko‘ring."; }
       });
       return;
     }
-    body.innerHTML = `<div id="admRoot">${banner}
+    body.innerHTML = `<div id="admRoot">
       <div class="chips" id="admTabs">${ADM_TABS.map(([k, n]) => `<button class="chip" type="button" data-tab="${k}" aria-pressed="${k === adm.tab}">${n}</button>`).join("")}<button class="chip" type="button" data-tab="out" aria-pressed="false">Chiqish</button></div>
       <div id="admBody"></div></div>`;
     const root = body.querySelector("#admRoot"), box = root.querySelector("#admBody");
     const msg = (t, bad) => { const m = box.querySelector("#admMsg"); if (m) { m.className = bad ? "adm-err" : "adm-ok"; m.textContent = t; } };
+    const out = () => { adm.on = false; admStore.set(""); viewAdmin(body); };
+    const failMsg = r => r.status === 401 ? (out(), "") : ((r.j && r.j.error) || "Saqlanmadi");
+    const picOf = d => d.pic || (d.img && d.img[0]) || d.th || "";
+    const menuPatch = (id, patch) => { const m = Object.assign({}, cfg("menu", {})); m[id] = Object.assign({}, m[id], patch); return admSave("menu", m); };
+    const fmtDate = t => t ? new Date(t * 1000).toLocaleString("uz-UZ", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
+    const fileBtn = (act, id, label, accept) => `<label class="pill adm-up">${label}<input type="file" accept="${accept}" data-up="${act}" data-id="${id}" hidden></label>`;
     const tabs = {
       menyu() {
         const s = MENU.find(x => x.id === adm.sec) || MENU[0];
         return `<div class="chips" id="admSecs">${MENU.map(x => `<button class="chip" type="button" data-sec="${x.id}" aria-pressed="${x.id === s.id}">${esc(x.uz)}</button>`).join("")}</div>
-          ${s.t.map(d => `<div class="adm-dish"><input type="text" data-ed="${d.id}" data-f="uz" value="${esc(d.uz)}" aria-label="Nomi">
+          <p class="note" style="margin:0 0 6px">Nom, narx va tarkibni o‘zgartirib, maydondan chiqing: o‘zi saqlanadi. Rasm va video tugmasi bilan taomga surat yoki video qo‘shing.</p>
+          ${s.t.map(d => `<div class="adm-dish" data-d="${d.id}">
+            <span class="adm-thw">${picOf(d) ? `<img class="adm-th" src="${esc(picOf(d))}" alt="">` : `<span class="adm-th none">rasm yo‘q</span>`}</span>
+            <input type="text" data-ed="${d.id}" data-f="uz" value="${esc(d.uz)}" aria-label="Nomi">
             <input type="number" min="0" inputmode="numeric" data-ed="${d.id}" data-f="n" value="${d.n == null ? "" : d.n}" placeholder="narxi" aria-label="Narxi">
-            <input type="text" class="adm-k" data-ed="${d.id}" data-f="k" value="${esc(d.k || "")}" placeholder="Tarkibi" aria-label="Tarkibi"></div>`).join("")}
+            <input type="text" class="adm-k" data-ed="${d.id}" data-f="k" value="${esc(d.k || "")}" placeholder="Tarkibi" aria-label="Tarkibi">
+            <span class="adm-acts">${fileBtn("pic", d.id, "Rasm qo‘shish", "image/jpeg,image/png,image/webp")}${fileBtn("vid", d.id, d.vid ? "Videoni almashtirish" : "Video qo‘shish", "video/mp4,video/webm")}</span></div>`).join("")}
+          <p id="admMsg" class="adm-ok" role="status"></p>`;
+      },
+      reklama() {
+        const L = ADS.map((u, i) => `<div class="adm-row"><span class="adm-name">${i + 1}. ${esc(String(u).split("/").pop())}</span>
+          <button class="pill" type="button" data-adup="${i}" aria-label="Yuqoriga">↑</button><button class="pill" type="button" data-addn="${i}" aria-label="Pastga">↓</button><button class="pill" type="button" data-addel="${i}" aria-label="Olib tashlash">✕</button></div>`).join("");
+        const G = GAL.map((g, i) => `<div class="adm-row"><img class="adm-th" src="${esc(g.src)}" alt=""><input type="text" data-gcap="${i}" value="${esc(g.cap)}" aria-label="Rasm izohi"><button class="pill" type="button" data-gdel="${i}" aria-label="Olib tashlash">✕</button></div>`).join("");
+        return `<p class="bk-sub" style="margin-top:0">Restoran videolari (tartib bilan aylanadi)</p>${L || `<p class="note">Video yo‘q.</p>`}
+          <div style="margin-top:10px">${fileBtn("ad", "new", "Video qo‘shish", "video/mp4,video/webm")}</div>
+          <p class="bk-sub">Zal va dasturxon rasmlari (galereya)</p>${G || `<p class="note">Rasm yo‘q.</p>`}
+          <div style="margin-top:10px">${fileBtn("gal", "new", "Rasm qo‘shish", "image/jpeg,image/png,image/webp")}</div>
           <p id="admMsg" class="adm-ok" role="status"></p>
-          <p class="note">Nom, narx va tarkib o‘zgarsa, Menyu va Banket oynasida darrov ko‘rinadi. Taom qo‘shish va o‘chirish baza ulangandan keyin qo‘shiladi.</p>`;
+          <p class="note">Video 48 MB dan katta bo‘lmasin. Kattaroq bo‘lsa, avval telefonda qisqartiring.</p>`;
       },
       banket() {
-        return `<p class="note" style="margin:0 0 8px">Namuna ma‘lumot. Haqiqiy so‘rovlar bot va bazadan keladi.</p>` +
-          adm.reqs.map(r => `<div class="adm-row"><span><b>${esc(r.code)}</b> · ${esc(r.date)}<br><small class="muted">${r.guests} kishi · ${esc(r.hall)}</small></span>
-            <select data-rq="${r.code}" aria-label="Holati">${[["yangi", "Yangi"], ["qabul", "Qabul qilindi"], ["rad", "Rad etildi"]].map(([v, n]) => `<option value="${v}"${r.st === v ? " selected" : ""}>${n}</option>`).join("")}</select></div>`).join("");
+        return `<p class="note" style="margin:0 0 8px">Banket oynasida mehmonga ko‘rinadigan zal nomi va izohi. Sig‘imni kod belgilaydi, uni o‘zgartirish kerak bo‘lsa, menga ayting.</p>
+          ${HALLS.map(h => `<div class="adm-dish hall" data-h="${h.id}"><input type="text" data-hn="${h.id}" value="${esc(h.name)}" aria-label="Zal nomi"><input type="text" class="adm-k" data-hd="${h.id}" value="${esc(h.note)}" aria-label="Izoh"></div>`).join("")}
+          <p id="admMsg" class="adm-ok" role="status"></p>`;
+      },
+      qr() {
+        const h = hcfg(), w = h.wifi || {};
+        const f = (id, label, val, ph, type) => `<label>${label}<input type="${type || "text"}" id="${id}" value="${esc(val == null ? "" : val)}" placeholder="${ph || ""}"></label>`;
+        return `<p class="note" style="margin:0 0 10px">Mehmon stoldagi QR kodni skanerlaganda ochiladigan oyna uchun ma‘lumotlar.</p>
+          <form class="adm-form" id="admHub" autocomplete="off" style="max-width:520px">
+            ${f("hbWn", "Wi-Fi nomi", w.name, "masalan, NoZi")}
+            ${f("hbWp", "Wi-Fi paroli (parolsiz bo‘lsa, bo‘sh qoldiring)", w.pass, "")}
+            ${f("hbPh", "Telefon raqami", h.phone, "+998 90 123 45 67")}
+            ${f("hbAd", "Manzil", h.address, "Termiz yo‘li, Samarqand")}
+            ${f("hbHo", "Ish vaqti", h.hours, "har kuni 10:00 dan 23:00 gacha")}
+            ${f("hbDi", "Sharh uchun chegirma, foizda", h.discount != null ? h.discount : 1, "1", "number")}
+            <p id="admMsg" role="status" class="adm-ok"></p>
+            <button class="pill gold" type="submit">Saqlash</button></form>
+          <p class="bk-sub">Stol QR kodlari</p>
+          <p class="note">Hozircha bitta QR hamma stolga. Har stolga alohida raqamli QR keyingi bosqichda shu yerga qo‘shiladi.</p>`;
+      },
+      kodlar() {
+        const f = adm.found;
+        const card = !f ? "" : !f.found ? `<p class="adm-err">Bunday kod topilmadi.</p>`
+          : `<div class="adm-code ${f.item.used ? "used" : "ok"}"><b>${esc(f.item.code)}</b><span>${f.item.used ? "Allaqachon ishlatilgan" : "Ishlatilmagan, chegirma berish mumkin"} · berilgan ${fmtDate(f.item.created)}</span>
+            ${f.item.used ? "" : `<button class="pill gold" type="button" data-use="${esc(f.item.code)}">Chegirma berildi, belgilash</button>`}</div>`;
+        const list = adm.codes === null ? `<p class="note">Yuklanmoqda…</p>` : adm.codes.length ? adm.codes.map(c => `<div class="adm-row"><span><b>${esc(c.code)}</b> · ${fmtDate(c.created)}${c.email ? `<br><small class="muted">${esc(c.email)}</small>` : ""}</span><span class="${c.used ? "muted" : ""}">${c.used ? "ishlatilgan" : "yangi"}</span></div>`).join("") : `<p class="note">Hozircha kod berilmagan.</p>`;
+        return `<p class="note" style="margin:0 0 8px">Mehmon sharh qoldirib kod oladi. Avval Google xaritada sharh borligini tekshiring, keyin kodni kiriting va chegirma bering.</p>
+          <form class="sg-form" id="admCodeF" autocomplete="off"><input type="text" id="admCode" placeholder="NZ-XXXXX" aria-label="Kod" autocapitalize="characters" spellcheck="false"><button class="pill gold" type="submit">Tekshirish</button></form>
+          <div id="admCodeRes" style="margin-top:12px">${card}</div>
+          <p id="admMsg" class="adm-ok" role="status"></p>
+          <p class="bk-sub">Oxirgi kodlar</p>${list}`;
       },
       video() {
         return `<p class="note" style="margin:0 0 10px">Haqiqiy bezatilgan stolning qisqa videosini tanlang. AI uni ko‘rib dasturxonni tavsiflab beradi (keyingi bosqichda).</p>
@@ -2756,31 +2910,34 @@ if (typeof module !== "undefined") module.exports = makeQR;
           <video class="adm-vid" id="admPrev" controls playsinline hidden></video>
           <p id="admVinfo" class="note"></p>
           <button class="pill gold" type="button" id="admSend" disabled>AI’ga yuborish</button>
-          <p class="note">Tugma server va AI ulangach ishlaydi. Yaxshi video uchun: yorug‘likda, 30 soniya atrofida, stol atrofida sekin aylaning, likopcha va qadahlarga yaqinlashing.</p>`;
+          <p class="note">Tugma AI ulangach ishlaydi. Yaxshi video uchun: yorug‘likda, 30 soniya atrofida, stol atrofida sekin aylaning, likopcha va qadahlarga yaqinlashing.</p>`;
       },
       qoshiq() {
         return `<p class="bk-sub" style="margin-top:0">Mehmonlar so‘rovi (Reklamalar oynasidagi ro‘yxat)</p>
-          ${songReqs.length ? songReqs.map((s, i) => `<div class="adm-row"><span>${esc(s)}</span><button class="pill" type="button" data-toq="${i}">Navbatga</button></div>`).join("") : `<p class="note" style="margin:0">Hozircha so‘rov yo‘q. Reklamalar oynasida "Qo‘shiq buyurtma"ga nom yozib ko‘ring.</p>`}
+          ${songReqs.length ? songReqs.map((s, i) => `<div class="adm-row"><span>${esc(s)}</span><button class="pill" type="button" data-toq="${i}">Navbatga</button></div>`).join("") : `<p class="note" style="margin:0">Hozircha so‘rov yo‘q. Reklamalar oynasida mehmon qo‘shiq nomini yozganda shu yerda paydo bo‘ladi.</p>`}
           <p class="bk-sub">Katta ekran navbati</p>
           ${adm.queue.length ? adm.queue.map((s, i) => `<div class="adm-row"><span>${i === 0 ? "▶ " : ""}${esc(s)}</span><button class="pill" type="button" data-qdel="${i}" aria-label="Olib tashlash">✕</button></div>`).join("") : `<p class="note" style="margin:0">Navbat bo‘sh.</p>`}
           <div class="sg-form" style="margin-top:12px"><input type="text" id="admQ" maxlength="60" placeholder="Qo‘shiq nomi" aria-label="Qo‘shiq nomi"><button class="pill gold" type="button" id="admQadd">Qo‘shish</button></div>
-          ${adm.queue.length ? `<div class="pills" style="margin-top:12px"><button class="pill" type="button" id="admQnext">Keyingisi (birinchisini olib tashlash)</button></div>` : ""}`;
+          ${adm.queue.length ? `<div class="pills" style="margin-top:12px"><button class="pill" type="button" id="admQnext">Keyingisi (birinchisini olib tashlash)</button></div>` : ""}
+          <p class="note">Qo‘shiq navbati hozircha faqat shu sahifada turadi, sahifa yangilansa tozalanadi.</p>`;
       },
       parol() {
-        return `<form class="adm-form" id="admPw" autocomplete="off">
-          <label>Hozirgi parol<input type="password" id="pwO" autocomplete="off"></label>
-          <label>Yangi parol <small>(kamida 6 belgi)</small><input type="password" id="pwN" autocomplete="new-password"></label>
-          <label>Yangi parolni takrorlang<input type="password" id="pwR" autocomplete="new-password"></label>
-          <p id="admMsg" role="status" class="adm-ok"></p>
-          <button class="pill gold" type="submit">Parolni o‘zgartirish</button></form>`;
+        return `<p class="bk-p">Admin paroli saytda emas, Cloudflare’da yashirin turadi. O‘zgartirish uchun: Cloudflare → loyiha → Settings → Variables and Secrets → <b>ADMIN_PASSWORD</b> → Edit → yangi parol → Save, so‘ng Deployments → Retry deployment.</p>
+          <p class="note">Parolni hech kimga chatda yozmang. Kamida 8 belgi bo‘lsin.</p>`;
       }
     };
-    const draw = () => { box.innerHTML = tabs[adm.tab](); };
+    const draw = () => { box.innerHTML = tabs[adm.tab](); if (adm.tab === "kodlar" && adm.codes === null) loadCodes(); };
+    async function loadCodes() {
+      const r = await admApi("GET", "/api/kod");
+      adm.codes = r.ok ? r.j.items || [] : [];
+      if (adm.tab === "kodlar" && root.isConnected) { const keep = (box.querySelector("#admCode") || {}).value; draw(); const c = box.querySelector("#admCode"); if (c && keep) c.value = keep; }
+      if (!r.ok && r.status !== 401) msg("Kodlar ro‘yxatini olib bo‘lmadi", true);
+    }
     draw();
-    root.addEventListener("click", e => {
+    root.addEventListener("click", async e => {
       const tb = e.target.closest("[data-tab]");
       if (tb) {
-        if (tb.dataset.tab === "out") { adm.on = false; viewAdmin(body); return; }
+        if (tb.dataset.tab === "out") return out();
         adm.tab = tb.dataset.tab; root.querySelectorAll("#admTabs .chip").forEach(c => c.setAttribute("aria-pressed", String(c === tb))); draw(); return;
       }
       const sc = e.target.closest("[data-sec]");
@@ -2790,23 +2947,72 @@ if (typeof module !== "undefined") module.exports = makeQR;
       const qd = e.target.closest("[data-qdel]");
       if (qd) { adm.queue.splice(+qd.dataset.qdel, 1); draw(); return; }
       if (e.target.closest("#admQadd")) { const i = box.querySelector("#admQ"), v = i.value.trim(); if (v && adm.queue.length < 30) { adm.queue.push(v); draw(); box.querySelector("#admQ").focus(); } return; }
-      if (e.target.closest("#admQnext")) { adm.queue.shift(); draw(); }
+      if (e.target.closest("#admQnext")) { adm.queue.shift(); draw(); return; }
+      // restoran videolari va galereya
+      const mv = e.target.closest("[data-adup],[data-addn],[data-addel],[data-gdel]");
+      if (mv) {
+        if (mv.dataset.adup != null) { const i = +mv.dataset.adup; if (i > 0) [ADS[i - 1], ADS[i]] = [ADS[i], ADS[i - 1]]; }
+        else if (mv.dataset.addn != null) { const i = +mv.dataset.addn; if (i < ADS.length - 1) [ADS[i + 1], ADS[i]] = [ADS[i], ADS[i + 1]]; }
+        else if (mv.dataset.addel != null) { if (ADS.length < 2) return msg("Kamida bitta video qolishi kerak", true); ADS.splice(+mv.dataset.addel, 1); }
+        else if (mv.dataset.gdel != null) GAL.splice(+mv.dataset.gdel, 1);
+        const r = await Promise.all([admSave("ads", ADS.slice()), admSave("gal", GAL.map(g => ({ src: g.src, cap: g.cap })))]);
+        draw(); msg(r.every(x => x.ok) ? "Saqlandi" : (failMsg(r.find(x => !x.ok)) || ""), !r.every(x => x.ok)); return;
+      }
+      const use = e.target.closest("[data-use]");
+      if (use) {
+        use.disabled = true;
+        const r = await admApi("PATCH", "/api/kod", { code: use.dataset.use });
+        if (r.ok && r.j.marked) {
+          adm.found = { found: true, item: Object.assign({}, adm.found.item, { used: true }) };
+          const r2 = await admApi("GET", "/api/kod"); if (r2.ok) adm.codes = r2.j.items || [];
+          draw(); msg("Belgilandi. Chegirma berildi.");
+        }
+        else { use.disabled = false; msg(r.ok ? "Bu kod avval ishlatilgan." : failMsg(r), true); }
+      }
     });
-    root.addEventListener("change", e => {
-      const ed = e.target.closest("[data-ed]");
+    root.addEventListener("change", async e => {
+      const t = e.target;
+      const ed = t.closest("[data-ed]");
       if (ed) {
         const d = byId[ed.dataset.ed], f = ed.dataset.f;
         if (!d) return;
-        if (f === "n") d.n = ed.value === "" ? null : Math.max(0, parseInt(ed.value, 10) || 0);
-        else if (f === "uz") { if (!ed.value.trim()) { ed.value = d.uz; return; } d.uz = ed.value.trim(); }
-        else if (ed.value.trim()) d.k = ed.value.trim(); else delete d.k;
-        msg("Saqlandi (namuna): " + d.uz);
+        const patch = {};
+        if (f === "n") { d.n = ed.value === "" ? null : Math.max(0, parseInt(ed.value, 10) || 0); patch.n = d.n; }
+        else if (f === "uz") { if (!ed.value.trim()) { ed.value = d.uz; return; } d.uz = ed.value.trim(); patch.uz = d.uz; }
+        else { d.k = ed.value.trim(); patch.k = d.k; }
+        msg("Saqlanmoqda…");
+        const r = await menuPatch(d.id, patch);
+        msg(r.ok ? "Saqlandi: " + d.uz : failMsg(r), !r.ok);
         return;
       }
-      const rq = e.target.closest("[data-rq]");
-      if (rq) { const r = adm.reqs.find(x => x.code === rq.dataset.rq); if (r) r.st = rq.value; return; }
-      if (e.target.id === "admVid") {
-        const f = e.target.files && e.target.files[0], pv = box.querySelector("#admPrev");
+      const up = t.closest("[data-up]");
+      if (up && t.files && t.files[0]) {
+        const file = t.files[0], act = up.dataset.up, id = up.dataset.id;
+        const kind = act === "pic" || act === "gal" ? "img" : "vid";
+        msg((kind === "img" ? "Rasm" : "Video") + " yuklanmoqda…");
+        const r = await admUpload(file, kind);
+        t.value = "";
+        if (!r.ok) return msg(r.status === 401 ? (out(), "") : (r.j && r.j.error) || "Yuklanmadi", true);
+        const url = r.j.url;
+        let sv;
+        if (act === "pic") { const d = byId[id]; d.pic = url; d.ai = 0; sv = await menuPatch(id, { pic: url, ai: 0 }); }
+        else if (act === "vid") { const d = byId[id]; d.vid = url; d.th = ""; sv = await menuPatch(id, { vid: url, th: "" }); }
+        else if (act === "ad") { ADS.unshift(url); sv = await admSave("ads", ADS.slice()); }
+        else { GAL.push({ src: url, cap: "Yangi rasm" }); sv = await admSave("gal", GAL.map(g => ({ src: g.src, cap: g.cap }))); }
+        draw(); msg(sv.ok ? "Yuklandi va saqlandi" : failMsg(sv), !sv.ok);
+        return;
+      }
+      if (t.dataset.gcap != null) { const g = GAL[+t.dataset.gcap]; if (g) { g.cap = t.value.trim() || g.cap; const r = await admSave("gal", GAL.map(x => ({ src: x.src, cap: x.cap }))); msg(r.ok ? "Saqlandi" : failMsg(r), !r.ok); } return; }
+      if (t.dataset.hn || t.dataset.hd) {
+        const id = t.dataset.hn || t.dataset.hd, h = HALLS.find(x => x.id === id);
+        if (!h) return;
+        if (t.dataset.hn) h.name = t.value.trim() || h.name; else h.note = t.value.trim() || h.note;
+        const all = {}; HALLS.forEach(x => { all[x.id] = { name: x.name, note: x.note }; });
+        const r = await admSave("halls", all); msg(r.ok ? "Saqlandi" : failMsg(r), !r.ok);
+        return;
+      }
+      if (t.id === "admVid") {
+        const f = t.files && t.files[0], pv = box.querySelector("#admPrev");
         if (adm.vurl) URL.revokeObjectURL(adm.vurl);
         if (!f) { pv.hidden = true; box.querySelector("#admVinfo").textContent = ""; box.querySelector("#admSend").disabled = true; return; }
         adm.vurl = URL.createObjectURL(f); pv.src = adm.vurl; pv.hidden = false;
@@ -2817,14 +3023,25 @@ if (typeof module !== "undefined") module.exports = makeQR;
     root.addEventListener("keydown", e => {
       if (e.key === "Enter" && e.target.id === "admQ") { e.preventDefault(); box.querySelector("#admQadd").click(); }
     });
-    root.addEventListener("submit", e => {
-      if (e.target.id !== "admPw") return;
+    root.addEventListener("submit", async e => {
       e.preventDefault();
-      const o = box.querySelector("#pwO").value, n = box.querySelector("#pwN").value, r = box.querySelector("#pwR").value;
-      if (o !== adm.pass) return msg("Hozirgi parol noto‘g‘ri.", true);
-      if (n.length < 6) return msg("Yangi parol kamida 6 belgi bo‘lsin.", true);
-      if (n !== r) return msg("Yangi parollar bir xil emas.", true);
-      adm.pass = n; e.target.reset(); msg("Parol o‘zgartirildi (namuna, faqat shu sahifada).");
+      if (e.target.id === "admHub") {
+        const v = id => box.querySelector("#" + id).value.trim();
+        const d = parseFloat(v("hbDi").replace(",", "."));
+        if (!(d >= 0 && d <= 100)) return msg("Chegirma 0 dan 100 gacha bo‘lsin.", true);
+        const val = { wifi: { name: v("hbWn"), pass: v("hbWp") }, phone: v("hbPh"), address: v("hbAd"), hours: v("hbHo"), discount: d };
+        msg("Saqlanmoqda…");
+        const r = await admSave("hub", val);
+        msg(r.ok ? "Saqlandi. QR oynasida darrov ko‘rinadi." : failMsg(r), !r.ok);
+        return;
+      }
+      if (e.target.id === "admCodeF") {
+        const code = box.querySelector("#admCode").value.trim();
+        if (code.length < 4) return msg("Kodni kiriting.", true);
+        const r = await admApi("GET", "/api/kod?code=" + encodeURIComponent(code));
+        if (!r.ok) return msg(failMsg(r), true);
+        adm.found = { found: r.j.found, item: r.j.item }; const keep = code; draw(); box.querySelector("#admCode").value = keep;
+      }
     });
   }
   function stopAds() {
@@ -2848,7 +3065,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
   const SERVICE = 0.05;        // waiters' share
   const SERVICE_PCT = Math.round(SERVICE * 100) + "%";
   const BANKET_API = "/api/banket";   // Netlify funksiyasi: so‘rovni bazaga yozadi va NoZi xodimlariga Telegramda yuboradi
-  const STEP_NAMES = ["Tadbir", "Joy", "Dasturxon", "Tartib", "Hisob", "So‘rov"];
+  const STEP_NAMES = ["Tadbir", "Joy", "Taomlar", "Tartib", "Hisob", "Yuborish"];
   const COURSES = [["dasturxon", "Dasturxon"], ["c1", "1-taom"], ["c2", "2-taom"], ["c3", "3-taom"], ["desert", "Desert"]];
   const COURSE_NAME = Object.fromEntries(COURSES);
   // when each kind of dish is brought to the table; the guest can move any dish
@@ -2975,7 +3192,9 @@ if (typeof module !== "undefined") module.exports = makeQR;
   }
 
   function stepsBar() {
-    return `<div class="steps" aria-label="Bosqichlar">${STEP_NAMES.map((n, i) => `<span class="${i <= bk.step ? "on" : ""}">${n}</span>`).join("")}</div>`;
+    const cur = Math.min(bk.step, STEP_NAMES.length - 1);
+    return `<div class="steps" role="list" aria-label="Bosqichlar">${STEP_NAMES.map((n, i) => `<span role="listitem" class="${i <= cur ? "on" : ""}${i === cur ? " cur" : ""}"${i === cur ? ` aria-current="step"` : ""}>${n}</span>`).join("")}</div>
+      <p class="bk-now">${cur + 1}-qadam, jami ${STEP_NAMES.length} ta</p>`;
   }
   function nav(backLabel, nextLabel, nextOk = true) {
     return `<div class="bk-nav">${backLabel ? `<button class="btn" type="button" data-go="-1">${backLabel}</button>` : ""}${nextLabel ? `<button class="btn primary" type="button" data-go="1" ${nextOk ? "" : "disabled"}>${nextLabel}</button>` : ""}</div>`;
@@ -3007,8 +3226,8 @@ if (typeof module !== "undefined") module.exports = makeQR;
     const h = hallNow(), n = sets();
     let html = stepsBar();
     if (bk.step === 0) {
-      html += `<h3 class="bk-h">Tadbir</h3>
-        <p class="bk-p">Tadbir turini va mehmonlar sonini tanlang. Joy va stollarni shunga qarab o‘zimiz tanlab beramiz.</p>
+      html += `<h3 class="bk-h">Qanday tadbir o‘tkazmoqchisiz?</h3>
+        <p class="bk-todo"><span><b>Nima qilish kerak:</b> tadbir turini tanlang, mehmonlar sonini, sanani va vaqtni yozing. Keyin “Keyingi” tugmasini bosing. Joy va stollarni biz o‘zimiz tanlab beramiz.</span></p>
         <div class="opts">
           <button class="opt" type="button" data-type="banket" aria-pressed="${bk.type === "banket"}"><b>Banket</b><small>Tug‘ilgan kun, yubiley, korporativ</small></button>
           <button class="opt" type="button" data-type="toy" aria-pressed="${bk.type === "toy"}"><b>To‘y</b><small>Nikoh to‘yi, fotiha, marosimlar</small></button>
@@ -3024,7 +3243,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
     } else if (bk.step === 1) {
       const sh = shapeNow();
       html += `<h3 class="bk-h">Joy va stol</h3>
-        <p class="bk-p">${bk.guests} kishi uchun tanlaganimiz:</p>
+        <p class="bk-todo"><span><b>Nima qilish kerak:</b> ${bk.guests} kishi uchun biz tanlagan joy va stolni ko‘ring. Yoqsa, “Taomlarni tanlash” ni bosing. Yoqmasa, pastdagi “Joy va stolni o‘zgartirish” tugmasi bilan o‘zgartiring.</span></p>
         <div class="pick">
           <div class="pk-row"><span>Joy</span><b>${h.name}</b></div>
           <div class="pk-row"><span>Stol</span><b>${tableText()}</b></div>
@@ -3044,9 +3263,10 @@ if (typeof module !== "undefined") module.exports = makeQR;
           <p class="bk-sub">Stol</p><div class="opts">
             <button class="opt" type="button" data-shape="round" aria-pressed="${sh === "round"}"><b>Dumaloq stol</b><small>14 kishilik</small></button>
             <button class="opt" type="button" data-shape="long" aria-pressed="${sh === "long"}"><b>To‘rtburchak stol</b><small>Uchma-uch, mehmon soniga qarab</small></button></div>` : ""}
-        ` + nav("Orqaga", "Dasturxonga o‘tish", !needRest() || !!bk.rest);
+        ` + nav("Orqaga", "Taomlarni tanlash", !needRest() || !!bk.rest);
     } else if (bk.step === 2) {
-      html += `<h3 class="bk-h">Dasturxon</h3>
+      html += `<h3 class="bk-h">Taomlarni tanlang</h3>
+        <p class="bk-todo"><span><b>Nima qilish kerak:</b> pastdagi bo‘limni tanlang (masalan, Salatlar), keyin taom yonidagi <b>+</b> tugmasi bilan qo‘shing. Tanlaganingiz stolda ko‘rinadi. Hammasini tanlab bo‘lgach, “Tartibni ko‘rish” ni bosing.</span></p>
         <p class="bk-p">Taomdan tortib suvgacha ${setWord()} qanchadan qo‘yilishini tanlang. ${tablesNow() > 1 ? `Taomlar ${tablesNow()} ta ${tblWord()}ga navbat bilan taqsimlanadi: 1-taom 1-${tblWord()}ga, 2-taom 2-${tblWord()}ga va hokazo. Har bir ${tblWord()} faqat o‘z taomlari uchun hisoblanadi.` : `Tanlaganingiz stolda paydo bo‘ladi${n > 1 ? `, soni ${n} ta qismga o‘zi ko‘paytiriladi` : ""}.`}</p>
         ${isTab() ? "" : view3DHTML(metaText())}
         <div class="chips" role="toolbar" aria-label="Bo‘limlar">
@@ -3055,7 +3275,8 @@ if (typeof module !== "undefined") module.exports = makeQR;
         <div id="pkl">${pickList()}</div>` + nav("Orqaga", "Tartibni ko‘rish", chosenItems().length > 0);
     } else if (bk.step === 3) {
       const items = chosenItems(), warns = courseWarnings();
-      html += `<h3 class="bk-h">Tartib</h3>
+      html += `<h3 class="bk-h">Taomlar qachon chiqadi</h3>
+        <p class="bk-todo"><span><b>Nima qilish kerak:</b> taomlar qaysi paytda tortilishini tekshiring. Hammasi to‘g‘ri bo‘lsa, “Hisobni ko‘rish” ga o‘ting. O‘zgartirmoqchi bo‘lsangiz, taom yonidagi ro‘yxatdan boshqa paytni tanlang.</span></p>
         <p class="bk-p">Qaysi taom qachon tortilishini o‘zimiz ajratdik: sovuq gazak, salat, non va ichimliklar mehmonlar kelguncha dasturxonda turadi, sho‘rva 1-taom, issiq taomlar 2-taom, shashlik 3-taom. Kerak bo‘lsa o‘zgartiring.</p>
         ${isTab() ? "" : view3DHTML("Yuqoridagi tugmalar bilan har bir payt dasturxonini ko‘ring")}
         ${warns.map(w => `<p class="warn">${w}</p>`).join("")}
@@ -3099,6 +3320,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
             <tr class="sum"><td colspan="3">Ofitsiantlar xizmati, ${SERVICE_PCT}</td><td>${fmt(fee)}</td></tr>
             <tr class="total"><td colspan="3">Jami</td><td>${fmt(food + fee)} so‘m</td></tr></tbody></table></div>`;
       html += `<h3 class="bk-h">Hisob</h3>
+        <p class="bk-todo"><span><b>Nima qilish kerak:</b> narxlarni ko‘rib chiqing. Bu taxminiy hisob, yakuniy narxni restoran tasdiqlaydi. Rozi bo‘lsangiz, “So‘rov qoldirish” ni bosing.</span></p>
         <p class="bk-p">${h.name} · ${bk.guests} kishi · ${tableText()}</p>
         ${tabMulti ? tabBill : `<div class="bill-wrap"><table class="bill">
           <thead><tr><th>Taom</th><th>${colName}</th><th>Narx</th><th>Jami</th></tr></thead>
@@ -3111,12 +3333,12 @@ if (typeof module !== "undefined") module.exports = makeQR;
         ${items.some(x => x.d.s) ? `<p class="note"><span class="tag">taxminiy</span> belgili narxlar restoran bilan tasdiqlanmoqda.</p>` : ""}
       ` + nav("Orqaga", "So‘rov qoldirish");
     } else if (!bk.sent) {
-      html += `<h3 class="bk-h">So‘rov</h3>
-        <p class="bk-p">Ismingiz va telefon raqamingizni qoldiring. Restoran siz bilan bog‘lanib, sanani tasdiqlaydi.</p>
+      html += `<h3 class="bk-h">Ism va telefon</h3>
+        <p class="bk-todo"><span><b>Nima qilish kerak:</b> ismingiz va telefon raqamingizni yozing. Restoran siz bilan bog‘lanib, sanani tasdiqlaydi.</span></p>
         <div class="field"><label for="bkn">Ism</label><input id="bkn" type="text" autocomplete="name" value="${esc(bk.name)}"></div>
         <div class="field"><label for="bkp">Telefon</label><input id="bkp" type="tel" inputmode="tel" autocomplete="tel" placeholder="+998 90 123 45 67" value="${esc(bk.phone)}"></div>
         <div class="field"><label for="bko">Izoh (ixtiyoriy)</label><textarea id="bko" rows="3">${esc(bk.note)}</textarea></div>
-      ` + nav("Orqaga", "So‘rovni tayyorlash", bk.name.trim().length > 1 && bk.phone.replace(/\D/g, "").length >= 9);
+      ` + nav("Orqaga", "So‘rovni yuborish", bk.name.trim().length > 1 && bk.phone.replace(/\D/g, "").length >= 9);
     } else {
       const us = units(), food = foodTotal();
       const courseLines = (arr, pre) => COURSES.map(([k, name]) => {
@@ -3302,53 +3524,85 @@ if (typeof module !== "undefined") module.exports = makeQR;
   }
 
   // ----- Stol kartochkasi: a printable card with the QR code (staff tool, opened from the menu or #kartochka) -----
-  const SITE_DEFAULT = "https://claude.ai/artifact/LfBVPMEDindbieEhkecYTU";
+  const SITE_DEFAULT = "https://nozi-restoran.pages.dev/";
   let cardSite = SITE_DEFAULT;
+  const emblemImg = new Image(); emblemImg.src = "nozi-emblem.png";
   function drawCard(url) {
     const Wc = 1200, Hc = 1800, c = document.createElement("canvas");
     c.width = Wc; c.height = Hc;
     const g = c.getContext("2d");
-    const bgG = g.createLinearGradient(0, 0, 0, Hc);
-    bgG.addColorStop(0, "#0d1330"); bgG.addColorStop(1, "#050812");
+    const goldG = (x0, y0, x1, y1) => { const k = g.createLinearGradient(x0, y0, x1, y1); k.addColorStop(0, "#f7e2b0"); k.addColorStop(0.45, "#d6aa52"); k.addColorStop(0.75, "#f0d39a"); k.addColorStop(1, "#b98a35"); return k; };
+    // night ground with a soft glow behind the QR
+    const bgG = g.createLinearGradient(0, 0, 0, Hc); bgG.addColorStop(0, "#0e1536"); bgG.addColorStop(0.55, "#080d24"); bgG.addColorStop(1, "#04060f");
     g.fillStyle = bgG; g.fillRect(0, 0, Wc, Hc);
-    g.strokeStyle = "rgba(240,211,154,0.55)"; g.lineWidth = 3; g.strokeRect(46, 46, Wc - 92, Hc - 92);
-    g.strokeStyle = "rgba(240,211,154,0.25)"; g.lineWidth = 1.5; g.strokeRect(62, 62, Wc - 124, Hc - 124);
-    // a Kadupul petal at the top
-    if (petalImg.complete && petalImg.naturalWidth) { g.save(); g.translate(Wc / 2, 205); g.rotate(-0.25); g.drawImage(petalImg, -55, -72, 110, 143); g.restore(); }
-    g.textAlign = "center"; g.fillStyle = "#f0d39a";
-    g.font = '400 150px Italiana, "Cormorant Garamond", serif';
-    g.save(); g.letterSpacing = "30px"; g.fillText("NoZi", Wc / 2 + 15, 420); g.restore();
-    g.fillStyle = "rgba(220,228,255,0.75)"; g.font = '400 30px Jost, sans-serif';
-    g.save(); g.letterSpacing = "9px"; g.fillText("RESTAURANT · SAMARQAND", Wc / 2 + 4, 478); g.restore();
-    g.fillStyle = "#f6f7fb"; g.font = 'italic 600 92px "Cormorant Garamond", Garamond, serif';
-    g.fillText("Menyu", Wc / 2, 620);
-    // QR on a white tile
-    const M = makeQR(url), n = M.length, q = 4, tile = 640, cell = Math.floor(tile / (n + q * 2)), side = cell * (n + q * 2);
-    const x0 = Math.round((Wc - side) / 2), y0 = 680;
-    g.fillStyle = "#ffffff"; g.beginPath(); g.roundRect(x0 - 10, y0 - 10, side + 20, side + 20, 26); g.fill();
-    g.fillStyle = "#0b1020";
-    // whole-pixel modules, each dark run drawn as one bar so no seams appear between them
+    const glow = g.createRadialGradient(Wc / 2, 1010, 60, Wc / 2, 1010, 640); glow.addColorStop(0, "rgba(240,211,154,0.20)"); glow.addColorStop(1, "rgba(240,211,154,0)");
+    g.fillStyle = glow; g.fillRect(0, 0, Wc, Hc);
+    for (let k = 0; k < 90; k++) { const x = (k * 337) % Wc, y = (k * 619) % Hc, r = 1 + (k % 3) * 0.7; g.fillStyle = `rgba(240,225,190,${0.12 + (k % 5) * 0.05})`; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); }
+    // double gold frame
+    g.strokeStyle = goldG(0, 0, Wc, Hc); g.lineWidth = 5; g.strokeRect(44, 44, Wc - 88, Hc - 88);
+    g.strokeStyle = "rgba(240,211,154,0.35)"; g.lineWidth = 2; g.strokeRect(64, 64, Wc - 128, Hc - 128);
+    // corner ornaments: nested arcs and a bead
+    const corner = (x, y, a) => { g.save(); g.translate(x, y); g.rotate(a); g.strokeStyle = goldG(0, 0, 120, 120); g.lineWidth = 4;
+      for (const r of [96, 70, 44]) { g.beginPath(); g.arc(0, 0, r, 0, Math.PI / 2); g.stroke(); }
+      g.fillStyle = goldG(0, 0, 40, 40); g.beginPath(); g.arc(28, 28, 9, 0, 7); g.fill(); g.restore(); };
+    corner(64, 64, 0); corner(Wc - 64, 64, Math.PI / 2); corner(Wc - 64, Hc - 64, Math.PI); corner(64, Hc - 64, -Math.PI / 2);
+    // pearls
+    const pearl = (x, y, r) => { const p = g.createRadialGradient(x - r * 0.35, y - r * 0.35, r * 0.08, x, y, r); p.addColorStop(0, "#ffffff"); p.addColorStop(0.5, "#f1ece0"); p.addColorStop(1, "#b6aa94");
+      g.fillStyle = p; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); g.strokeStyle = "rgba(110,90,50,0.35)"; g.lineWidth = 1.2; g.stroke(); };
+    const chain = (x0, y0, x1, y1, step, r) => { const L = Math.hypot(x1 - x0, y1 - y0), n = Math.max(1, Math.round(L / step)); for (let k = 0; k <= n; k++) pearl(x0 + (x1 - x0) * k / n, y0 + (y1 - y0) * k / n, r); };
+    // logo with a gold halo
+    const cx = Wc / 2;
+    const halo = g.createRadialGradient(cx, 215, 40, cx, 215, 180); halo.addColorStop(0, "rgba(240,211,154,0.42)"); halo.addColorStop(1, "rgba(240,211,154,0)");
+    g.fillStyle = halo; g.fillRect(cx - 200, 30, 400, 370);
+    if (emblemImg.complete && emblemImg.naturalWidth) g.drawImage(emblemImg, cx - 100, 115, 200, 200 * emblemImg.naturalHeight / emblemImg.naturalWidth);
+    chain(cx - 330, 215, cx - 150, 215, 30, 9); chain(cx + 150, 215, cx + 330, 215, 30, 9);
+    g.textAlign = "center"; g.fillStyle = goldG(cx - 300, 0, cx + 300, 0);
+    g.font = '400 148px Italiana, "Cormorant Garamond", serif';
+    g.save(); g.letterSpacing = "30px"; g.fillText("NoZi", cx + 15, 470); g.restore();
+    g.fillStyle = "rgba(220,228,255,0.78)"; g.font = '400 29px Jost, sans-serif';
+    g.save(); g.letterSpacing = "9px"; g.fillText("RESTAURANT · SAMARQAND", cx + 4, 522); g.restore();
+    g.fillStyle = "#f6f7fb"; g.font = 'italic 600 68px "Cormorant Garamond", Garamond, serif';
+    g.fillText("Menyu, Wi-Fi va sovg‘a", cx, 612);
+    // QR on a cream tile inside a ring of pearls
+    const M = makeQR(url), n = M.length, q = 3, tile = 600, cell = Math.floor(tile / (n + q * 2)), side = cell * (n + q * 2);
+    const x0 = Math.round((Wc - side) / 2), y0 = 728;
+    const pad = 26, rx = x0 - pad, ry = y0 - pad, rw = side + pad * 2, rh = side + pad * 2;
+    g.fillStyle = goldG(rx, ry, rx + rw, ry + rh); g.beginPath(); g.roundRect(rx - 10, ry - 10, rw + 20, rh + 20, 40); g.fill();
+    g.fillStyle = "#fbf7ee"; g.beginPath(); g.roundRect(rx, ry, rw, rh, 32); g.fill();
+    const o = 44, px0 = rx - o, py0 = ry - o, px1 = rx + rw + o, py1 = ry + rh + o;
+    chain(px0, py0, px1, py0, 38, 11); chain(px0, py1, px1, py1, 38, 11); chain(px0, py0 + 38, px0, py1 - 38, 38, 11); chain(px1, py0 + 38, px1, py1 - 38, 38, 11);
+    for (const [x, y] of [[px0, py0], [px1, py0], [px0, py1], [px1, py1]]) pearl(x, y, 19);
+    // modules: dark navy to deep green, slightly rounded
+    const mg = g.createLinearGradient(x0, y0, x0 + side, y0 + side); mg.addColorStop(0, "#0a1030"); mg.addColorStop(1, "#06341f");
+    g.fillStyle = mg;
+    const isEye = (x, y) => (x < 7 && y < 7) || (x >= n - 7 && y < 7) || (x < 7 && y >= n - 7);
+    const rr = cell * 0.12;
     for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
-      if (!M[y][x]) continue;
-      let e = x; while (e + 1 < n && M[y][e + 1]) e++;
-      g.fillRect(x0 + (x + q) * cell, y0 + (y + q) * cell, (e - x + 1) * cell, cell + (y + 1 < n ? 0.5 : 0));
-      x = e;
+      if (!M[y][x] || isEye(x, y)) continue;
+      g.beginPath(); g.roundRect(x0 + (x + q) * cell - 0.4, y0 + (y + q) * cell - 0.4, cell + 0.8, cell + 0.8, rr); g.fill();
     }
-    const ty = y0 + side + 95;
-    g.fillStyle = "#f6f7fb"; g.font = '500 40px Jost, sans-serif';
-    g.fillText("Telefon kamerasini QR kodga tuting", Wc / 2, ty);
-    g.fillStyle = "rgba(220,228,255,0.75)"; g.font = '400 34px Jost, sans-serif';
-    g.fillText("yoki telefonni NFC belgisiga tekkizing", Wc / 2, ty + 54);
-    g.fillStyle = "#f0d39a"; g.font = 'italic 500 46px "Cormorant Garamond", serif';
-    g.fillText("Taomlar yoqdimi? Google’da fikr qoldiring ★", Wc / 2, ty + 160);
-    g.fillStyle = "rgba(220,228,255,0.55)"; g.font = '400 28px Jost, sans-serif';
-    g.fillText("Termiz yo‘li, Samarqand", Wc / 2, Hc - 110);
+    // finder eyes: rounded ring + solid centre, same dark colour so every scanner reads them
+    for (const [ex, ey] of [[0, 0], [n - 7, 0], [0, n - 7]]) {
+      const X = x0 + (ex + q) * cell, Y = y0 + (ey + q) * cell;
+      g.beginPath(); g.roundRect(X, Y, 7 * cell, 7 * cell, cell * 1.6); g.roundRect(X + cell, Y + cell, 5 * cell, 5 * cell, cell * 1.0); g.fill("evenodd");
+      g.beginPath(); g.roundRect(X + 2 * cell, Y + 2 * cell, 3 * cell, 3 * cell, cell * 0.8); g.fill();
+    }
+    const ty = ry + rh + 112;
+    g.fillStyle = "#f6f7fb"; g.font = '500 42px Jost, sans-serif';
+    g.fillText("Telefon kamerasini QR kodga tuting", cx, ty);
+    g.fillStyle = "rgba(220,228,255,0.78)"; g.font = '400 33px Jost, sans-serif';
+    g.fillText("yoki telefonni NFC belgisiga tekkizing", cx, ty + 54);
+    chain(cx - 260, ty + 108, cx + 260, ty + 108, 34, 7);
+    g.fillStyle = goldG(cx - 300, 0, cx + 300, 0); g.font = 'italic 600 44px "Cormorant Garamond", serif';
+    g.fillText("Sharh qoldiring: 1% chegirma kodi sizga ★", cx, ty + 178);
+    g.fillStyle = "rgba(220,228,255,0.6)"; g.font = '400 28px Jost, sans-serif';
+    g.fillText("Termiz yo‘li, Samarqand", cx, Hc - 92);
     return c.toDataURL("image/png");
   }
   function viewCard(body) {
     body.classList.remove("split");
     body.innerHTML = `
-      <p class="bk-p">Bu restoran uchun. Kartochkani stollarga qo‘yiladi: mehmon QR kodni skanerlasa, menyu ochiladi, u yerdan Google xaritada sharh qoldira oladi.</p>
+      <p class="bk-p">Bu restoran uchun. Kartochkani stollarga qo‘yiladi: mehmon QR kodni skanerlasa, NoZi kirish oynasi ochiladi: menyu, Wi-Fi, sharh va sovg‘a kodi, anonim fikr, telefon va manzil.</p>
       <div class="field"><label for="cardUrl">Sayt manzili</label><input id="cardUrl" type="text" inputmode="url" value="${esc(cardSite)}" autocomplete="off"></div>
       <p class="note" id="cardInfo"></p>
       <div style="margin-top:14px;display:grid;justify-items:center;gap:10px">
@@ -3356,15 +3610,15 @@ if (typeof module !== "undefined") module.exports = makeQR;
         <p class="note" style="margin:0;text-align:center">Rasmni bosib turing (telefonda) yoki sichqonchaning o‘ng tugmasini bosing va “Rasmni saqlash”ni tanlang. 10×15 sm qilib chop eting.</p>
       </div>
       <h3 class="sub">NFC belgi</h3>
-      <p class="bk-p" style="margin-top:8px">NTAG213 yoki NTAG215 NFC stikerini kartochka orqasiga yopishtiring. Telefonga “NFC Tools” yoki “NXP TagWriter” ilovasini o‘rnating, “URL” yozuvini tanlab yuqoridagi manzilni <b>#menyu</b> bilan yozing va telefonni stikerga tekkizing.</p>`;
+      <p class="bk-p" style="margin-top:8px">NTAG213 yoki NTAG215 NFC stikerini kartochka orqasiga yopishtiring. Telefonga “NFC Tools” yoki “NXP TagWriter” ilovasini o‘rnating, “URL” yozuvini tanlab yuqoridagi manzilni <b>#qr</b> bilan yozing va telefonni stikerga tekkizing.</p>`;
     const inp = body.querySelector("#cardUrl"), img = body.querySelector("#cardImg"), info = body.querySelector("#cardInfo");
     const render = async () => {
       cardSite = inp.value.trim().replace(/#.*$/, "") || SITE_DEFAULT;
-      const url = cardSite + "#menyu";
+      const url = cardSite.replace(/\/?$/, "/") + "#qr";
       info.textContent = cardSite === SITE_DEFAULT
-        ? `QR kod ochadigan manzil: ${url}. Bu hozircha sinov havolasi: mehmonlar ochishi uchun sahifani ommaga ulashish kerak. Sayt o‘z domeniga chiqqach, shu yerga yangi manzilni yozing.`
+        ? `QR kod ochadigan manzil: ${url}. Sayt o‘z domeniga (masalan restorannozi.uz) chiqqach, shu yerga yangi manzilni yozing va kartochkani qayta chop eting.`
         : `QR kod ochadigan manzil: ${url}`;
-      try { await document.fonts.load('400 150px Italiana'); await document.fonts.load('italic 600 92px "Cormorant Garamond"'); } catch (e) {}
+      try { await document.fonts.load('400 150px Italiana'); await document.fonts.load('italic 600 78px "Cormorant Garamond"'); await document.fonts.load('400 30px Jost'); await emblemImg.decode(); } catch (e) {}
       try { img.src = drawCard(url); } catch (e) { info.textContent = "Manzil juda uzun, qisqaroq manzil kiriting."; }
     };
     inp.addEventListener("change", render);
@@ -3451,6 +3705,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
       win.classList.remove("closed", "white");
       mode = "rest"; windOn = performance.now() - 1200;
       winKey = ""; ambLevel();
+      if (hubMode) openHub();
       windResume();
       const el = i >= 0 ? petalEls[i] : null;
       chosen = -1;
@@ -3466,6 +3721,156 @@ if (typeof module !== "undefined") module.exports = makeQR;
     toast.textContent = msg; toast.classList.add("on");
     clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove("on"), 2200);
   }
+
+
+  // ---------- server content: what the admin changed (menu, texts, pictures, QR window) ----------
+  let CFG = {};
+  const cfg = (k, d) => (CFG[k] !== undefined && CFG[k] !== null ? CFG[k] : d);
+  const CONTENT_API = "/api/content";
+  function applyCfg() {
+    const m = cfg("menu", {});
+    Object.keys(m).forEach(id => {
+      const d = byId[id], o = m[id] || {};
+      if (!d) return;
+      if (o.uz != null && o.uz !== "") d.uz = o.uz;
+      if ("n" in o) d.n = o.n;
+      if (o.k != null) d.k = o.k;
+      if (o.pic) d.pic = o.pic;
+      if (Array.isArray(o.img) && o.img.length) d.img = o.img;
+      if (o.vid) { d.vid = o.vid; d.th = o.th || ""; }
+      if ("ai" in o) d.ai = o.ai;
+    });
+    const ads = cfg("ads", null), gal = cfg("gal", null), hl = cfg("halls", {});
+    if (Array.isArray(ads) && ads.length) ADS.splice(0, ADS.length, ...ads.filter(u => typeof u === "string"));
+    if (Array.isArray(gal) && gal.length) GAL.splice(0, GAL.length, ...gal.filter(g => g && g.src).map(g => ({ src: g.src, cap: String(g.cap || "") })));
+    HALLS.forEach(h => { const o = hl[h.id]; if (o) { if (o.name) h.name = o.name; if (o.note) h.note = o.note; } });
+  }
+  function loadContent() {
+    return fetch(CONTENT_API, { cache: "no-store" }).then(r => r.json()).then(j => {
+      if (!j || !j.ok) return;
+      CFG = j.data || {}; applyCfg();
+      if (!win.hidden && (winKey === "menyu" || winKey === "banket")) refreshView();
+    }).catch(() => {});
+  }
+  loadContent();
+
+  // ---------- the window a guest sees after scanning the table QR code (…#qr) ----------
+  const hubEl = $("hub");
+  let hubView = "main", hubMode = false, hubBusy = false;
+  const hcfg = () => cfg("hub", {});
+  const IC = {
+    menu: '<svg viewBox="0 0 24 24"><path d="M7 3v7a2 2 0 0 0 2 2v9M5 3v6M9 3v6M17 21V3c-2 1-3.5 4-3.5 8H17"/></svg>',
+    star: '<svg viewBox="0 0 24 24"><path d="m12 3 2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.5 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z"/></svg>',
+    wifi: '<svg viewBox="0 0 24 24"><path d="M2.5 9a14 14 0 0 1 19 0M5.5 12.5a9.5 9.5 0 0 1 13 0M8.6 16a5 5 0 0 1 6.8 0"/><circle cx="12" cy="19.2" r="1" fill="currentColor"/></svg>',
+    chat: '<svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></svg>',
+    play: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9.2 5 2.8-5 2.8z"/></svg>',
+    ig: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r="0.7" fill="currentColor"/></svg>',
+    pin: '<svg viewBox="0 0 24 24"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg>',
+    go: '<svg class="go" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>'
+  };
+  const hubRow = (act, ic, t, sub, extra = "") =>
+    `<button class="hub-row ${extra}" type="button" data-hub="${act}"><span class="ic">${IC[ic]}</span><span><b>${t}</b><small>${sub}</small></span>${IC.go}</button>`;
+  function hubHTML() {
+    const h = hcfg(), disc = h.discount != null ? h.discount : 1;
+    if (hubView === "main") return `
+      <div class="hub-top"><img src="nozi-emblem.png" alt=""><b>NoZi</b><small>Restaurant · Samarqand</small></div>
+      <p class="hub-hi">Xush kelibsiz! Nima kerak?</p>
+      <div class="hub-list">
+        ${hubRow("menu", "menu", "Menyu", "Taomlar, narxlar va 3D ko‘rinish")}
+        ${hubRow("kod", "star", "Google’da sharh qoldiring", `Sovg‘a kodi oling: ${disc}% chegirma`, "gift")}
+        ${hubRow("wifi", "wifi", "Wi-Fi’ga ulanish", "Tarmoq nomi va paroli")}
+        ${hubRow("fikr", "chat", "Anonim fikr", "Xodimlarga yozing, ismingiz ko‘rinmaydi")}
+        ${hubRow("ads", "play", "Reklamalar va videolar", "Restoranimiz videolari")}
+        <a class="hub-row" href="${IG_URL}" target="_blank" rel="noopener"><span class="ic">${IC.ig}</span><span><b>Instagram</b><small>Yangiliklar va suratlar</small></span>${IC.go}</a>
+        ${hubRow("aloqa", "pin", "Telefon va manzil", "Qayerdamiz, qanday bog‘lanasiz")}
+      </div>
+      <div class="hub-bar" style="justify-content:center"><button class="btn" type="button" data-hub="site">Saytni to‘liq ochish</button></div>`;
+    const bar = t => `<div class="hub-bar"><h3>${t}</h3><button class="ctl back" type="button" data-hub="home" style="position:static">← Orqaga</button></div>`;
+    if (hubView === "kod") {
+      const have = hubCode();
+      return bar("Sovg‘a kodi") + `<div class="hub-card">
+        <div class="hub-step"><i>1</i><p>Google xaritada NoZi haqida sharh yozing. Bir-ikki gap yetadi, yulduzcha qo‘ying.</p></div>
+        <a class="btn primary" href="${REVIEW_URL}" target="_blank" rel="noopener" style="justify-content:center">★ Google’da sharh yozish</a>
+        <div class="hub-step"><i>2</i><p>Sharh yozib bo‘lgach, shu yerga qaytib kodni oling.</p></div>
+        ${have ? `<div class="hub-code" id="hubCode">${esc(have)}</div><button class="btn" type="button" data-hub="copy" style="justify-content:center">Kodni nusxalash</button>` : `<label class="hub-lbl" for="hubMail">Gmail manzilingiz (majburiy, bir Gmail’ga bitta kod beriladi)</label><input type="email" id="hubMail" inputmode="email" autocomplete="email" placeholder="ismingiz@gmail.com" maxlength="80" style="width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--line2);background:rgba(255,255,255,.06);color:var(--petal);font:16px/1.4 var(--font-ui)"><button class="btn primary" type="button" data-hub="getcode" style="justify-content:center">Sharh yozdim, kod olish</button>`}
+        <p class="hub-err" id="hubMsg" role="alert" hidden></p>
+        <div class="hub-step"><i>3</i><p>Kodni kassirga yoki ofitsiantga ko‘rsating. Sharhingiz tekshiriladi va hisobdan <b>${disc}% chegirma</b> beriladi.</p></div>
+        <p class="muted">Kod bir marta ishlaydi, har bir Gmail’ga faqat bitta kod beriladi. Sharh topilmasa, chegirma berilmaydi.</p></div>`;
+    }
+    if (hubView === "wifi") {
+      const w = h.wifi || {};
+      return bar("Wi-Fi") + (w.name ? `<div class="hub-card">
+        <div class="hub-kv"><span>Tarmoq nomi</span><b>${esc(w.name)}</b></div>
+        ${w.pass ? `<div class="hub-kv"><span>Parol</span><b id="hubPass">${esc(w.pass)}</b></div><button class="btn" type="button" data-hub="copypass" style="justify-content:center">Parolni nusxalash</button>` : `<p class="muted">Bu tarmoqqa parolsiz ulaniladi.</p>`}
+        <p class="hub-ok" id="hubMsg" role="status" hidden></p></div>`
+        : `<div class="hub-card"><p>Wi-Fi nomi va paroli tez orada shu yerda ko‘rinadi. Hozircha ofitsiantdan so‘rang.</p></div>`);
+    }
+    if (hubView === "fikr") return bar("Anonim fikr") + `<form class="hub-card" id="hubForm" autocomplete="off">
+        <p>Xizmat, taom yoki muhit haqida yozing. Ismingiz va telefoningiz so‘ralmaydi, fikr to‘g‘ridan-to‘g‘ri xodimlarga boradi.</p>
+        <textarea id="hubTxt" maxlength="1500" placeholder="Fikringizni yozing…" aria-label="Fikringiz"></textarea>
+        <input class="hp" type="text" id="hubHp" tabindex="-1" autocomplete="off" aria-hidden="true">
+        <p class="hub-err" id="hubMsg" role="alert" hidden></p>
+        <button class="btn primary" type="submit" style="justify-content:center">Yuborish</button></form>`;
+    if (hubView === "fikrok") return bar("Rahmat!") + `<div class="hub-card"><p>Fikringiz xodimlarga yuborildi. Bizga yordam berganingiz uchun rahmat.</p></div>`;
+    if (hubView === "aloqa") {
+      const addr = h.address || "Termiz yo‘li, Samarqand", tel = String(h.phone || "").trim();
+      return bar("Telefon va manzil") + `<div class="hub-card">
+        <div class="hub-kv"><span>Manzil</span><b>${esc(addr)}</b></div>
+        ${h.hours ? `<div class="hub-kv"><span>Ish vaqti</span><b>${esc(h.hours)}</b></div>` : ""}
+        ${tel ? `<div class="hub-kv"><span>Telefon</span><b>${esc(tel)}</b></div><a class="btn primary" href="tel:${esc(tel.replace(/[^\d+]/g, ""))}" style="justify-content:center">Qo‘ng‘iroq qilish</a>` : `<p class="muted">Telefon raqami tez orada qo‘shiladi.</p>`}
+        <a class="btn" href="${MAP_URL}" target="_blank" rel="noopener" style="justify-content:center">Xaritada ochish</a></div>`;
+    }
+    return "";
+  }
+  function hubCode() { try { return localStorage.getItem("nozi_kod") || ""; } catch (e) { return ""; } }
+  function drawHub() { hubEl.innerHTML = `<div class="hub-in">${hubHTML()}</div>`; hubEl.scrollTop = 0; }
+  function openHub() {
+    hubMode = true; hubView = "main"; drawHub();
+    hubEl.hidden = false; void hubEl.offsetWidth; hubEl.classList.add("on");
+  }
+  function closeHub(done) {
+    hubEl.classList.remove("on");
+    setTimeout(() => { hubEl.hidden = true; if (done) done(); }, 460);
+  }
+  const hubMsg = (t, bad) => { const m = hubEl.querySelector("#hubMsg"); if (!m) return; m.hidden = !t; m.className = bad ? "hub-err" : "hub-ok"; m.textContent = t || ""; };
+  hubEl.addEventListener("click", e => {
+    const b = e.target.closest("[data-hub]"); if (!b) return;
+    const a = b.dataset.hub;
+    if (a === "menu") return closeHub(() => enter(0, "menyu"));
+    if (a === "ads") return closeHub(() => enter(1, "reklamalar"));
+    if (a === "site") { hubMode = false; return closeHub(); }
+    if (a === "home") { hubView = "main"; return drawHub(); }
+    if (["kod", "wifi", "fikr", "aloqa"].includes(a)) { hubView = a; return drawHub(); }
+    if (a === "copy" || a === "copypass") {
+      const t = (hubEl.querySelector(a === "copy" ? "#hubCode" : "#hubPass") || {}).textContent || "";
+      (navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => say("Nusxalandi"), () => say("Nusxalab bo‘lmadi, qo‘lda yozib oling"));
+      return;
+    }
+    if (a === "getcode") {
+      const mail = ((hubEl.querySelector("#hubMail") || {}).value || "").trim().toLowerCase();
+      if (!/^[a-z0-9._+-]{3,64}@gmail\.com$/.test(mail)) return hubMsg("Gmail manzilini to‘g‘ri yozing, masalan ismingiz@gmail.com", true);
+      if (hubBusy) return; hubBusy = true; b.disabled = true; b.textContent = "Kod tayyorlanmoqda…";
+      fetch("/api/kod", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: mail }) }).then(r => r.json().catch(() => ({})).then(j => ({ r, j }))).then(({ r, j }) => {
+        hubBusy = false;
+        if (r.ok && j.ok) { try { localStorage.setItem("nozi_kod", j.code); } catch (e) {} drawHub(); }
+        else { b.disabled = false; b.textContent = "Sharh yozdim, kod olish"; hubMsg(j.error || "Kod olib bo‘lmadi. Birozdan keyin urinib ko‘ring.", true); }
+      }).catch(() => { hubBusy = false; b.disabled = false; b.textContent = "Sharh yozdim, kod olish"; hubMsg("Internet yo‘q yoki server javob bermadi.", true); });
+    }
+  });
+  hubEl.addEventListener("submit", e => {
+    if (e.target.id !== "hubForm") return;
+    e.preventDefault();
+    const text = hubEl.querySelector("#hubTxt").value.trim(), hp = hubEl.querySelector("#hubHp").value;
+    if (text.length < 5) return hubMsg("Fikr juda qisqa. Bir-ikki gap yozing.", true);
+    if (hubBusy) return; hubBusy = true;
+    const btn = e.target.querySelector("button[type=submit]"); btn.disabled = true; btn.textContent = "Yuborilmoqda…";
+    fetch("/api/fikr", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, website: hp }) })
+      .then(r => r.json().catch(() => ({})).then(j => ({ r, j }))).then(({ r, j }) => {
+        hubBusy = false;
+        if (r.ok && j.ok) { hubView = "fikrok"; drawHub(); }
+        else { btn.disabled = false; btn.textContent = "Yuborish"; hubMsg(j.error || "Yuborib bo‘lmadi. Birozdan keyin urinib ko‘ring.", true); }
+      }).catch(() => { hubBusy = false; btn.disabled = false; btn.textContent = "Yuborish"; hubMsg("Internet yo‘q yoki server javob bermadi.", true); });
+  });
 
   // ---------- loop ----------
   function loop(now) {
@@ -3493,7 +3898,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
   const deep = (location.hash || "").replace("#", "");
   if (TITLES[deep]) {
     film.muted = true;
-    const openDeep = () => enter(["menyu", "reklamalar", "banket"].indexOf(deep), deep);
+    const openDeep = () => { if (deep === "qr") openHub(); else enter(["menyu", "reklamalar", "banket"].indexOf(deep), deep); };
     let settled = false, logoDone = deep === "reklamalar" || deep === "kartochka" || reduce;   // adverts already begin with the logo
     const tryOpen = () => { if (settled && logoDone) openDeep(); };
     const go = () => toEnd(() => { rest(UI_END + 0.1); settled = true; tryOpen(); });
@@ -3509,7 +3914,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
         setTimeout(() => { lf.pause(); li.hidden = true; }, 750);
         tryOpen();
       };
-      $("liSkip").textContent = deep === "banket" ? "Banketga o‘tish" : "Menyuga o‘tish";
+      $("liSkip").textContent = deep === "banket" ? "Banketga o‘tish" : deep === "qr" ? "Davom etish" : "Menyuga o‘tish";
       $("liSkip").addEventListener("click", finish);
       $("liSound").addEventListener("click", () => {
         lf.muted = !lf.muted;
