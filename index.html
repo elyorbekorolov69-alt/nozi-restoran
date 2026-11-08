@@ -2292,6 +2292,8 @@ if (typeof module !== "undefined") module.exports = makeQR;
   $("wave").style.display = "none";
 
   // ---------- section windows ----------
+  // Stol raqami: QR kartochka manzili ...?t=5#qr bo'lsa, shu seans davomida eslab qolinadi
+  const TABLE = (() => { try { const v = parseInt(new URLSearchParams(location.search).get("t"), 10); if (v >= 1 && v <= 99) { sessionStorage.setItem("nozi_stol", String(v)); return v; } return parseInt(sessionStorage.getItem("nozi_stol"), 10) || 0; } catch (e) { return 0; } })();
   const TITLES = { menyu: "Menyu", reklamalar: "Reklamalar", banket: "Banket", kartochka: "Stol kartochkasi", admin: "Admin", qr: "NoZi" };
   // phone or tablet/computer layout: follows the screen width by itself, and the guest can switch it with a button
   const PH_ICON = `<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4.5" y="1.5" width="7" height="13" rx="1.6"/></svg>`;
@@ -3351,9 +3353,10 @@ if (typeof module !== "undefined") module.exports = makeQR;
       const lines = [
         `NoZi · ${bk.type === "toy" ? "To‘y" : "Banket"} so‘rovi`,
         `${bk.name}, ${bk.phone}`,
+      ].concat(TABLE ? [`Mehmon ${TABLE}-stoldan yozdi`] : []).concat([
         `${bk.date.split("-").reverse().join(".")} · ${bk.time}`,
         `${h.name} · ${bk.guests} kishi · ${tableText()}`,
-      ].concat(dishLines).concat([`Jami (${SERVICE_PCT} xizmat bilan): ${fmt(food * (1 + SERVICE))} so‘m${unpriced().length ? " + narxi aniqlanmoqda bo‘lganlar" : ""}`])
+      ]).concat(dishLines).concat([`Jami (${SERVICE_PCT} xizmat bilan): ${fmt(food * (1 + SERVICE))} so‘m${unpriced().length ? " + narxi aniqlanmoqda bo‘lganlar" : ""}`])
         .concat(bk.note.trim() ? [`Izoh: ${bk.note.trim()}`] : []);
       bk.text = lines.join("\n");
       if (!bk.posted) {
@@ -3525,9 +3528,9 @@ if (typeof module !== "undefined") module.exports = makeQR;
 
   // ----- Stol kartochkasi: a printable card with the QR code (staff tool, opened from the menu or #kartochka) -----
   const SITE_DEFAULT = "https://nozi-restoran.pages.dev/";
-  let cardSite = SITE_DEFAULT;
+  let cardSite = SITE_DEFAULT, cardN = 10;
   const emblemImg = new Image(); emblemImg.src = "nozi-emblem.png";
-  function drawCard(url) {
+  function drawCard(url, label, fmtJpg) {
     const Wc = 1200, Hc = 1800, c = document.createElement("canvas");
     c.width = Wc; c.height = Hc;
     const g = c.getContext("2d");
@@ -3561,8 +3564,13 @@ if (typeof module !== "undefined") module.exports = makeQR;
     g.save(); g.letterSpacing = "30px"; g.fillText("NoZi", cx + 15, 470); g.restore();
     g.fillStyle = "rgba(220,228,255,0.78)"; g.font = '400 29px Jost, sans-serif';
     g.save(); g.letterSpacing = "9px"; g.fillText("RESTAURANT · SAMARQAND", cx + 4, 522); g.restore();
-    g.fillStyle = "#f6f7fb"; g.font = 'italic 600 68px "Cormorant Garamond", Garamond, serif';
-    g.fillText("Menyu, Wi-Fi va sovg‘a", cx, 612);
+    if (label) {
+      g.fillStyle = goldG(cx - 200, 0, cx + 200, 0); g.font = 'italic 700 96px "Cormorant Garamond", Garamond, serif';
+      g.fillText(label, cx, 622);
+    } else {
+      g.fillStyle = "#f6f7fb"; g.font = 'italic 600 68px "Cormorant Garamond", Garamond, serif';
+      g.fillText("Menyu, Wi-Fi va sovg‘a", cx, 612);
+    }
     // QR on a cream tile inside a ring of pearls
     const M = makeQR(url), n = M.length, q = 3, tile = 600, cell = Math.floor(tile / (n + q * 2)), side = cell * (n + q * 2);
     const x0 = Math.round((Wc - side) / 2), y0 = 728;
@@ -3596,8 +3604,8 @@ if (typeof module !== "undefined") module.exports = makeQR;
     g.fillStyle = goldG(cx - 300, 0, cx + 300, 0); g.font = 'italic 600 44px "Cormorant Garamond", serif';
     g.fillText("Sharh qoldiring: 1% chegirma kodi sizga ★", cx, ty + 178);
     g.fillStyle = "rgba(220,228,255,0.6)"; g.font = '400 28px Jost, sans-serif';
-    g.fillText("Termiz yo‘li, Samarqand", cx, Hc - 92);
-    return c.toDataURL("image/png");
+    g.fillText(label ? "Menyu · Wi-Fi · sovg‘a  |  Termiz yo‘li, Samarqand" : "Termiz yo‘li, Samarqand", cx, Hc - 92);
+    return fmtJpg ? c.toDataURL("image/jpeg", 0.92) : c.toDataURL("image/png");
   }
   function viewCard(body) {
     body.classList.remove("split");
@@ -3609,6 +3617,12 @@ if (typeof module !== "undefined") module.exports = makeQR;
         <img id="cardImg" alt="NoZi stol kartochkasi: menyu uchun QR kod" style="width:min(100%,340px);border-radius:12px;border:1px solid var(--line2)">
         <p class="note" style="margin:0;text-align:center">Rasmni bosib turing (telefonda) yoki sichqonchaning o‘ng tugmasini bosing va “Rasmni saqlash”ni tanlang. 10×15 sm qilib chop eting.</p>
       </div>
+      <h3 class="sub">Har bir stol uchun alohida kartochka</h3>
+      <p class="bk-p" style="margin-top:8px">Har bir stolga o‘z raqami yozilgan kartochka. Mehmon skanerlasa, sayt qaysi stoldan kirganini biladi va sharh kodi, anonim fikr, banket so‘rovi xabarida “5-stol” deb ko‘rinadi.</p>
+      <div class="field"><label for="cardN">Nechta stol bor?</label><input id="cardN" type="text" inputmode="numeric" value="${cardN}" maxlength="2" autocomplete="off"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn primary" type="button" id="cardPrint">Hammasini chop etish (PDF qilib saqlash)</button></div>
+      <p class="note" id="cardTinfo"></p>
+      <div id="cardList" style="display:grid;gap:6px;margin-top:8px"></div>
       <h3 class="sub">NFC belgi</h3>
       <p class="bk-p" style="margin-top:8px">NTAG213 yoki NTAG215 NFC stikerini kartochka orqasiga yopishtiring. Telefonga “NFC Tools” yoki “NXP TagWriter” ilovasini o‘rnating, “URL” yozuvini tanlab yuqoridagi manzilni <b>#qr</b> bilan yozing va telefonni stikerga tekkizing.</p>`;
     const inp = body.querySelector("#cardUrl"), img = body.querySelector("#cardImg"), info = body.querySelector("#cardInfo");
@@ -3624,6 +3638,37 @@ if (typeof module !== "undefined") module.exports = makeQR;
     inp.addEventListener("change", render);
     inp.addEventListener("input", () => { clearTimeout(inp._t); inp._t = setTimeout(render, 400); });
     render();
+    // ---- stollar bo'yicha kartochkalar ----
+    const nIn = body.querySelector("#cardN"), list = body.querySelector("#cardList"), tinfo = body.querySelector("#cardTinfo");
+    const tUrl = k => cardSite.replace(/\/?$/, "/") + "?t=" + k + "#qr";
+    const nCount = () => Math.max(1, Math.min(60, parseInt(nIn.value, 10) || 1));
+    const fontsReady = async () => { try { await document.fonts.load('400 150px Italiana'); await document.fonts.load('italic 700 96px "Cormorant Garamond"'); await document.fonts.load('400 30px Jost'); await emblemImg.decode(); } catch (e) {} };
+    const drawList = () => {
+      cardN = nCount(); list.innerHTML = "";
+      for (let k = 1; k <= cardN; k++) {
+        const r = document.createElement("div"); r.className = "adm-row";
+        r.innerHTML = `<span><b>${k}-stol</b></span><button class="btn" type="button" data-dl="${k}">Rasmni yuklab olish</button>`;
+        list.appendChild(r);
+      }
+      tinfo.textContent = `Masalan 5-stol manzili: ${tUrl(5)}`;
+    };
+    nIn.addEventListener("input", () => { clearTimeout(nIn._t); nIn._t = setTimeout(drawList, 300); });
+    list.addEventListener("click", async e => {
+      const b = e.target.closest("[data-dl]"); if (!b) return;
+      const k = +b.dataset.dl; await fontsReady();
+      const a = document.createElement("a"); a.download = `nozi-${k}-stol.png`; a.href = drawCard(tUrl(k), `${k}-stol`);
+      document.body.appendChild(a); a.click(); a.remove();
+    });
+    body.querySelector("#cardPrint").addEventListener("click", async e => {
+      const b = e.currentTarget, w = window.open("", "_blank");
+      if (!w) { tinfo.textContent = "Brauzer yangi oynani to‘sdi. Manzil satridagi belgidan ruxsat bering va qayta bosing."; return; }
+      b.disabled = true; b.textContent = "Tayyorlanmoqda…"; await fontsReady();
+      const n = nCount(); let imgs = "";
+      for (let k = 1; k <= n; k++) { imgs += `<img src="${drawCard(tUrl(k), `${k}-stol`, true)}">`; await new Promise(r => setTimeout(r, 0)); }
+      w.document.write(`<!doctype html><meta charset="utf-8"><title>NoZi stol kartochkalari</title><style>@page{size:100mm 150mm;margin:0}html,body{margin:0;background:#fff}img{display:block;width:100mm;height:150mm;page-break-after:always;break-after:page}@media screen{img{margin:10px auto;box-shadow:0 2px 12px #0004}}</style>${imgs}<script>onload=function(){setTimeout(function(){print()},400)}<\/script>`);
+      w.document.close(); b.disabled = false; b.textContent = "Hammasini chop etish (PDF qilib saqlash)";
+    });
+    drawList();
   }
 
   // ---------- a window grows out of its petal and shrinks back into it ----------
@@ -3774,7 +3819,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
     const h = hcfg(), disc = h.discount != null ? h.discount : 1;
     if (hubView === "main") return `
       <div class="hub-top"><img src="nozi-emblem.png" alt=""><b>NoZi</b><small>Restaurant · Samarqand</small></div>
-      <p class="hub-hi">Xush kelibsiz! Nima kerak?</p>
+      <p class="hub-hi">Xush kelibsiz!${TABLE ? ` <b>${TABLE}-stol.</b>` : ""} Nima kerak?</p>
       <div class="hub-list">
         ${hubRow("menu", "menu", "Menyu", "Taomlar, narxlar va 3D ko‘rinish")}
         ${hubRow("kod", "star", "Google’da sharh qoldiring", `Sovg‘a kodi oling: ${disc}% chegirma`, "gift")}
@@ -3850,7 +3895,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
       const mail = ((hubEl.querySelector("#hubMail") || {}).value || "").trim().toLowerCase();
       if (!/^[a-z0-9._+-]{3,64}@gmail\.com$/.test(mail)) return hubMsg("Gmail manzilini to‘g‘ri yozing, masalan ismingiz@gmail.com", true);
       if (hubBusy) return; hubBusy = true; b.disabled = true; b.textContent = "Kod tayyorlanmoqda…";
-      fetch("/api/kod", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: mail }) }).then(r => r.json().catch(() => ({})).then(j => ({ r, j }))).then(({ r, j }) => {
+      fetch("/api/kod", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: mail, stol: TABLE }) }).then(r => r.json().catch(() => ({})).then(j => ({ r, j }))).then(({ r, j }) => {
         hubBusy = false;
         if (r.ok && j.ok) { try { localStorage.setItem("nozi_kod", j.code); } catch (e) {} drawHub(); }
         else { b.disabled = false; b.textContent = "Sharh yozdim, kod olish"; hubMsg(j.error || "Kod olib bo‘lmadi. Birozdan keyin urinib ko‘ring.", true); }
@@ -3864,7 +3909,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
     if (text.length < 5) return hubMsg("Fikr juda qisqa. Bir-ikki gap yozing.", true);
     if (hubBusy) return; hubBusy = true;
     const btn = e.target.querySelector("button[type=submit]"); btn.disabled = true; btn.textContent = "Yuborilmoqda…";
-    fetch("/api/fikr", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, website: hp }) })
+    fetch("/api/fikr", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, website: hp, stol: TABLE }) })
       .then(r => r.json().catch(() => ({})).then(j => ({ r, j }))).then(({ r, j }) => {
         hubBusy = false;
         if (r.ok && j.ok) { hubView = "fikrok"; drawHub(); }
