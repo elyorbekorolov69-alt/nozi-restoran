@@ -3527,7 +3527,8 @@ if (typeof module !== "undefined") module.exports = makeQR;
   }
 
   // ----- Stol kartochkasi: a printable card with the QR code (staff tool, opened from the menu or #kartochka) -----
-  const SITE_DEFAULT = "https://nozi-restoran.pages.dev/";
+  // Kartochka manzili: sayt qaysi domendan ochilgan bo'lsa, shu (masalan restorannozi.uz); aks holda pages.dev
+  const SITE_DEFAULT = (/^https:\/\/[^/]+\.[a-z]+$/i.test(location.origin) && !/localhost|127\./.test(location.origin)) ? location.origin + "/" : "https://nozi-restoran.pages.dev/";
   let cardSite = SITE_DEFAULT, cardN = 10;
   const emblemImg = new Image(); emblemImg.src = "nozi-emblem.png";
   function drawCard(url, label, fmtJpg) {
@@ -3630,7 +3631,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
       cardSite = inp.value.trim().replace(/#.*$/, "") || SITE_DEFAULT;
       const url = cardSite.replace(/\/?$/, "/") + "#qr";
       info.textContent = cardSite === SITE_DEFAULT
-        ? `QR kod ochadigan manzil: ${url}. Sayt o‘z domeniga (masalan restorannozi.uz) chiqqach, shu yerga yangi manzilni yozing va kartochkani qayta chop eting.`
+        ? `QR kod ochadigan manzil: ${url}. Saytni yangi domendan (masalan restorannozi.uz) ochsangiz, manzil shu domen bilan avtomatik chiqadi. Kartochkani qayta chop eting.`
         : `QR kod ochadigan manzil: ${url}`;
       try { await document.fonts.load('400 150px Italiana'); await document.fonts.load('italic 600 78px "Cormorant Garamond"'); await document.fonts.load('400 30px Jost'); await emblemImg.decode(); } catch (e) {}
       try { img.src = drawCard(url); } catch (e) { info.textContent = "Manzil juda uzun, qisqaroq manzil kiriting."; }
