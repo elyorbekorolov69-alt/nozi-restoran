@@ -22,6 +22,7 @@ export async function onRequestPost({ request, env }) {
   let p; try { p = await request.json(); } catch (e) { p = {}; }
   const email = gmail(p.email);
   if (!email) return json(400, { ok: false, error: "Gmail manzilini to‘g‘ri yozing, masalan ismingiz@gmail.com" });
+  const stol = Math.min(99, parseInt(p.stol, 10) || 0);
   const { base, H } = sb(env);
   // shu Gmail ga kod avval berilgan bo'lsa, yangisini bermaymiz: o'sha kodni qaytaramiz
   const ex = await fetch(`${base}/kodlar?select=code,used&email=eq.${encodeURIComponent(email)}&limit=1`, { headers: H });
@@ -39,7 +40,7 @@ export async function onRequestPost({ request, env }) {
     const r = await fetch(`${base}/kodlar`, { method: "POST", headers: { ...H, Prefer: "return=minimal" }, body: JSON.stringify({ code: c, email, created: Date.now() / 1000, used: false }) });
     if (r.ok) {
       // xodimlar guruhiga xabar: kassir sharhni tekshirib qo'yishi uchun
-      try { await toStaff(env, `⭐ <b>Sharh qoldirdim deb kod oldi</b>
+      try { await toStaff(env, `⭐ <b>Sharh qoldirdim deb kod oldi</b>${stol ? ` · <b>${stol}-stol</b>` : ""}
 
 Gmail: ${esc(email)}
 Kod: <b>${pretty(c)}</b>

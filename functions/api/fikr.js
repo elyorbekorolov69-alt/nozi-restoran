@@ -11,6 +11,7 @@ export async function onRequestPost({ request, env }) {
   if (await limited(env, request, "fikr", 4, 3600)) return json(429, { ok: false, error: "juda ko‘p yuborildi, keyinroq urinib ko‘ring" });
   const { base, H } = sb(env);
   fetch(`${base}/fikr`, { method: "POST", headers: H, body: JSON.stringify({ text, created: Date.now() / 1000 }) }).catch(() => {});
-  const ok = await toStaff(env, `💬 <b>Anonim fikr</b>\n\n${esc(text)}`);
+  const stol = Math.min(99, parseInt(p.stol, 10) || 0);
+  const ok = await toStaff(env, `💬 <b>Anonim fikr</b>${stol ? ` · ${stol}-stol` : ""}\n\n${esc(text)}`);
   return ok ? json(200, { ok: true }) : json(502, { ok: false, error: "yuborib bo‘lmadi" });
 }
