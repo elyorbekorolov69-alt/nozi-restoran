@@ -2,6 +2,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>NoZi Kadupul</title>
 <meta name="claude:viewport-fit-sides" content="cover">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Italiana&family=Jost:wght@400;500&display=swap">
@@ -268,6 +269,17 @@ body {
 .d-photos { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(150px, 46%); gap: 10px; overflow-x: auto; padding-bottom: 4px; }
 .d-photos img { width: 100%; max-width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 12px; display: block; }
 
+/* 3D hall viewer */
+.hall3d { position: fixed; inset: 0; z-index: 100000; background: #0b0f1d; touch-action: none; }
+.hall3d canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.hall3d .h-top { position: absolute; left: 0; right: 0; top: 0; display: flex; align-items: center; gap: 10px; padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left)); background: linear-gradient(rgba(5,8,18,0.7), transparent); color: #fff; font-family: var(--font-ui); }
+.hall3d .h-top b { flex: 1; font-weight: 500; font-size: 15px; }
+.hall3d .h-x { border: 1px solid var(--line2); background: rgba(5,8,18,0.55); color: #fff; border-radius: 10px; padding: 8px 14px; font: inherit; font-size: 14px; cursor: pointer; }
+.hall3d .h-msg { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--mist); font-family: var(--font-ui); padding: 24px; }
+.hall3d .h-pad { position: absolute; bottom: max(14px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); display: flex; gap: 8px; }
+.hall3d .h-pad button { min-width: 58px; height: 48px; border: 1px solid var(--line2); background: rgba(5,8,18,0.55); color: #fff; border-radius: 12px; font-size: 20px; cursor: pointer; touch-action: none; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.hall3d .h-pad button:active { background: rgba(214,170,82,0.35); }
+.hall3d .h-hint { position: absolute; bottom: calc(max(14px, env(safe-area-inset-bottom)) + 58px); left: 0; right: 0; text-align: center; color: var(--mist); font: 13px var(--font-ui); pointer-events: none; padding: 0 16px; }
 /* adverts */
 .fs {
   position: absolute; right: 8px; bottom: 8px; z-index: 3; width: 40px; height: 40px; padding: 0; display: grid; place-items: center;
@@ -497,7 +509,7 @@ body {
 .split > .col-r { min-height: 0; min-width: 0; display: flex; flex-direction: column; gap: 12px; padding-bottom: 16px; }
 #mnv { overflow: auto; overscroll-behavior: contain; }
 #mnv .d3 { height: min(46vh, 420px); flex: none; }
-.col-r .r-top { flex: 2 1 0; min-height: 0; display: flex; flex-direction: column; }
+.col-r .r-top { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
 .col-r .r-bot { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
 .col-r .vt3-wrap { position: static; margin: 0; padding: 0; border: 0; background: none; flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .col-r .vt3 { height: auto; flex: 1; min-height: 0; }
@@ -556,6 +568,7 @@ body {
 .hub-step { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 12px; align-items: start; }
 .hub-step i { font-style: normal; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--gold-soft); color: var(--ink); font: 700 14px/1 var(--font-ui); }
 .hub-code { text-align: center; font: 600 40px/1.1 var(--font-menu); letter-spacing: 0.12em; padding-left: 0.12em; color: var(--gold-soft); padding: 16px 8px; border-radius: 16px; border: 1px dashed rgba(240, 211, 154, 0.7); background: rgba(0, 0, 0, 0.25); user-select: all; }
+.hub-foot { justify-self: center; background: none; border: 0; color: var(--mist); font: 12.5px/1.4 var(--font-ui); padding: 10px 8px; margin-top: 6px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; opacity: .8; }
 .hub-kv { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: rgba(0, 0, 0, 0.25); }
 .hub-kv span { color: var(--mist); font-size: 13px; }
 .hub-kv b { font-weight: 500; font-size: 18px; word-break: break-all; text-align: right; }
@@ -654,7 +667,7 @@ function Table3D(canvas, opts) {
     #endif
     varying vec3 vN; varying vec3 vW; varying vec3 vL; varying vec4 vC; varying vec4 vM;
     uniform vec3 uEye, uLP, uLC, uTint, uSk1, uSk2;
-    uniform float uAm, uSun, uTM, uAO;
+    uniform float uAm, uSun, uTM, uAO; uniform sampler2D uTex;
     float hh(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
     float ell(vec2 p, vec2 c, vec2 ab, float an){ vec2 d = p - c; float ca = cos(an), sa = sin(an); return step(length(vec2((d.x * ca + d.y * sa) / ab.x, (-d.x * sa + d.y * ca) / ab.y)), 1.0); }
     float rng(vec2 p, vec2 c, float r, float w){ return step(abs(length(p - c) - r), w); }
@@ -668,8 +681,8 @@ function Table3D(canvas, opts) {
     void main(){
       vec3 N = normalize(vN); vec3 V = normalize(uEye - vW);
       vec3 base = vC.rgb; float alpha = vC.a;
-      float uS = vM.x, uSh = vM.y * 128.0 + 1.0, uE = vM.z, uP = floor(vM.w * 255.0 / 15.0 + 0.5);
-      bool inner = (uP > 6.5 && uP < 8.5) || (uP > 10.5 && uP < 12.5) || uP > 15.5;
+      float uS = vM.x, uSh = vM.y * 128.0 + 1.0, uE = vM.z, uP = floor(vM.w * 255.0 / 10.0 + 0.5);
+      bool inner = (uP > 6.5 && uP < 8.5) || (uP > 10.5 && uP < 12.5) || (uP > 15.5 && uP < 17.5);
       if (inner && dot(N, V) < 0.0) discard;
       if (uP > 8.5 && uP < 9.5) {
         vec3 dr = normalize(vW - uEye);
@@ -763,7 +776,11 @@ function Table3D(canvas, opts) {
         vec3 wall = base * (0.9 + 0.12 * rel);
         base = (N.y > -0.5 && y < 1.1) ? wood : wall;
         if (N.y > -0.5 && abs(y - 1.1) < 0.025) base = vec3(0.72, 0.56, 0.26);
-      } else if (uP > 16.5) {
+      } else if (uP > 17.5 && uP < 18.5) {
+        vec2 q = vL.xz; float r = length(q) * 2.0;
+        vec3 tc = texture2D(uTex, vec2(q.x + 0.5, 0.5 - q.y)).rgb;
+        base = mix(tc, vec3(0.93, 0.92, 0.9), smoothstep(0.94, 1.0, r));
+      } else if (uP > 16.5 && uP < 17.5) {
         vec2 p = vW.xz; vec2 q = vec2(p.x + p.y, p.x - p.y) * 0.7071;
         vec2 t = floor(q / 0.6); float par = mod(t.x + t.y, 2.0); vec2 lc = fract(q / 0.6); if (par > 0.5) lc = lc.yx;
         float pl = floor(lc.y * 6.0), sm = smoothstep(0.0, 0.04, fract(lc.y * 6.0)) * smoothstep(0.0, 0.012, lc.x);
@@ -791,9 +808,36 @@ function Table3D(canvas, opts) {
   gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS));
   gl.linkProgram(prog); gl.useProgram(prog);
   const A = {}; ["aP", "aN", "aL", "aC", "aM"].forEach(k => A[k] = gl.getAttribLocation(prog, k));
-  const U = {}; ["uPV", "uEye", "uLP", "uLC", "uTint", "uSk1", "uSk2", "uAm", "uSun", "uTM", "uAO"].forEach(k => U[k] = gl.getUniformLocation(prog, k));
+  const U = {}; ["uPV", "uEye", "uLP", "uLC", "uTint", "uSk1", "uSk2", "uAm", "uSun", "uTM", "uAO", "uTex"].forEach(k => U[k] = gl.getUniformLocation(prog, k));
   gl.enable(gl.DEPTH_TEST);
   gl.disable(gl.CULL_FACE);
+  // the real photo of a dish, laid on the plate (texture unit 0; a plain plate colour until the photo arrives)
+  const photoTex = gl.createTexture();
+  function texPixel() { gl.bindTexture(gl.TEXTURE_2D, photoTex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([235, 232, 226, 255])); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR); }
+  texPixel();
+  gl.activeTexture(gl.TEXTURE0); gl.uniform1i(U.uTex, 0);
+  let photoUrl = "", photoGen = 0;
+  function setPhoto(url, crop = 1) {
+    if (url + crop === photoUrl) return;
+    photoUrl = url + crop; const gen = ++photoGen;
+    if (!url) { texPixel(); return; }
+    texPixel();
+    const im = new Image(); im.crossOrigin = "anonymous";
+    im.onload = () => {
+      if (gen !== photoGen || !alive) return;
+      try {
+        const S = 512, c = document.createElement("canvas"); c.width = c.height = S;
+        const sw = Math.min(im.naturalWidth, im.naturalHeight) * crop, sh2 = sw;   // crop < 1 cuts away the dark plate round a sample photo
+        c.getContext("2d").drawImage(im, (im.naturalWidth - sw) / 2, (im.naturalHeight - sh2) / 2, sw, sh2, 0, 0, S, S);
+        gl.bindTexture(gl.TEXTURE_2D, photoTex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, c);
+        gl.generateMipmap(gl.TEXTURE_2D);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+        draw();
+      } catch (e) { /* a photo that cannot be read leaves the plain plate */ }
+    };
+    im.src = url;
+  }
 
   // ---------- geometry, kept on the CPU and baked into shared buffers ----------
   const geo = (pos, nor, idx) => ({ pos: new Float32Array(pos), nor: new Float32Array(nor), idx: new Uint16Array(idx), n: pos.length / 3 });
@@ -886,6 +930,7 @@ function Table3D(canvas, opts) {
     ballLo: lathe(sphere(7), 10),
     cyl: lathe([[0, 0], [0.5, 0], [0.5, 1], [0, 1]], 20),
     disc: lathe([[0, 0], [0.5, 0], [0.5, 0.02], [0, 0.02]], 32),
+    band: lathe([[0.5, 0], [0.5, 1], [0.44, 1], [0.44, 0]], 20),
     plate: lathe([[0, 0], [0.32, 0], [0.36, 0.012], [0.44, 0.03], [0.5, 0.045], [0.49, 0.05], [0.42, 0.035], [0.34, 0.02], [0, 0.02]], 32),
     bowl: lathe([[0, 0], [0.22, 0], [0.24, 0.02], [0.4, 0.2], [0.5, 0.45], [0.48, 0.46], [0.38, 0.22], [0.2, 0.06], [0, 0.06]], 24),
     goblet: lathe([[0, 0], [0.32, 0], [0.3, 0.03], [0.05, 0.06], [0.04, 0.38], [0.2, 0.45], [0.3, 0.62], [0.32, 1.0], [0.3, 1.0], [0.28, 0.64], [0.05, 0.5], [0, 0.5]], 20),
@@ -951,7 +996,7 @@ function Table3D(canvas, opts) {
       let v = 0, ii = 0;
       for (const it of ch.list) {
         const g = it.g, m = it.M.m, n = it.M.n;
-        const mat = [Math.round(Math.min(1, it.s) * 255), Math.round(Math.min(1, it.sh / 128) * 255), Math.round(Math.min(1, it.e) * 255), it.p * 15];
+        const mat = [Math.round(Math.min(1, it.s) * 255), Math.round(Math.min(1, it.sh / 128) * 255), Math.round(Math.min(1, it.e) * 255), it.p * 10];
         const ca = Math.round(it.a * 255);
         for (let k = 0; k < g.idx.length; k++) I[ii++] = g.idx[k] + v;
         for (let k = 0; k < g.n; k++, v++) {
@@ -979,7 +1024,7 @@ function Table3D(canvas, opts) {
 
   const C = {
     gold: "#c9a256", white: "#f6f5f7", plate: "#fbfbfd", silver: "#c9ccd4", glass: "#dfeaf3",
-    cloth: "#eee0dc", floor: "#2a2e3c", cushion: "#c3c4c8", chair: "#f6f6f7", runner: "#05402d", longCloth: "#f4f3ef",
+    cloth: "#f5f3ef", floor: "#2a2e3c", cushion: "#c3c4c8", chair: "#f6f6f7", runner: "#05402d", longCloth: "#f4f3ef",
     charger: "#d4c39b", parquet: "#4a3022", carpet: "#b8b2ad", legs: "#1d1e22", wood: "#6b4426",
   };
 
@@ -1119,6 +1164,7 @@ function Table3D(canvas, opts) {
     const sx = Math.cos(face), sz = -Math.sin(face);    // the guest's right
     const fx = -Math.sin(face), fz = -Math.cos(face);   // towards the middle of the table
     const at = (a, b) => [x + sx * a * k + fx * b * k, z + sz * a * k + fz * b * k];
+    put("plate", C.gold, x, top - 0.003, z, face, 0.292 * k, 0.4, 0.292 * k, GOLD);   // thin gold rim
     put("plate", C.plate, x, top, z, face, 0.28 * k, 0.4, 0.28 * k, { s: 0.3, sh: 40, p: 1 });
     if (!course1) put("bowl", "#f4f2ee", x, top + 0.067, z, 0, 0.115 * k, -0.1, 0.115 * k, { s: 0.45, sh: 60, p: 14 });
     const [nx, nz] = at(0, -0.105);
@@ -1135,6 +1181,7 @@ function Table3D(canvas, opts) {
     put("ball", C.silver, ux, top + 0.006, uz, face + PI / 2, 0.03, 0.007, 0.042, { s: 0.9, sh: 70 });
     const [gx, gz] = at(0.15, 0.15);
     put("goblet", C.glass, gx, top, gz, 0, 0.085, 0.17, 0.085, { a: 0.3, s: 0.9, sh: 90, p: 3 });
+    put("band", "#101114", gx, top + 0.152, gz, 0, 0.054, 0.018, 0.054, { s: 0.6, sh: 60 });   // black rim of the glass
   }
 
   // the restaurant's carved white chair: egg-shaped open back with carved leaves, grey velvet seat, cabriole front legs
@@ -1443,6 +1490,8 @@ function Table3D(canvas, opts) {
       placeSetting(cx + ca * 0.76, cz + sa * 0.76, -a - PI / 2 + PI, top, served, 0.9);
       seatsAt.push([cx + ca * 0.76, cz + sa * 0.76]);
     }
+    // green velvet mat under the dishes, as on the restaurant's decorated table
+    put("disc", "#0c5a3d", cx, top, cz, 0, 1.1, 0.12, 1.1, { s: 0.1, sh: 14, p: 4 });
     centrepiece(cx, cz, top, 7 + Math.round(cx + cz * 5));
     const spots = [];
     [{ r: 0.45, n: 10 }, { r: 0.27, n: 6 }, { r: 0.58, n: 12 }].forEach((g, gi) => {
@@ -1464,6 +1513,7 @@ function Table3D(canvas, opts) {
     return { kind: "round", lo: LO, list, size: Math.max(cols, rowsN) * sp, room };
   }
 
+  let alive = true;
   let target = [0, 0.75, 0], minDist = 1.6, maxDist = 6, dist = 3.2, yaw = 0.6, pitch = 0.62;
   let staticKey = "", staticB = [[], []], dynB = [[], []], layout = null, lastCam = "", lastHall = "", cam = null;
   function setStatic(list) { free(staticB[0]); free(staticB[1]); staticB = split(list).map(bake); }
@@ -1478,7 +1528,16 @@ function Table3D(canvas, opts) {
       // one dish on the same laid round table as in the banquet view (cloth, chairs, place settings), to turn around and look at closely
       LO = false; items = []; curHall = "dish"; cam = null; lastHall = "";
       const tbl = roundTable(0, 0, 6, false), sp = tbl.spots[0];
-      vis.slice(0, 1).forEach(x => { const [k, col] = kindOf(x.d); dish(k, col, sp[0], sp[1], sp[2], tbl.top, x.d); });
+      const D0 = vis[0] && vis[0].d, real = D0 && ((D0.img && D0.img[0]) || D0.th || ""), pic = D0 ? (real || D0.pic || "") : "";
+      setPhoto(pic, real ? 1 : 0.66);
+      vis.slice(0, 1).forEach(x => {
+        if (pic) {
+          // the dish's own photo, laid on a plate on the restaurant's serving stand
+          const h = goldStand(sp[0], sp[1], tbl.top, 0.3);
+          put("plate", C.plate, sp[0], h, sp[1], sp[2], 0.25, 0.4, 0.25, { s: 0.3, sh: 40, p: 6 });
+          put("disc", "#ffffff", sp[0], h + 0.012, sp[1], sp[2], 0.225, 1, 0.225, { s: 0.35, sh: 60, e: 0.1, p: 18 });
+        } else { const [k, col] = kindOf(x.d); dish(k, col, sp[0], sp[1], sp[2], tbl.top, x.d); }
+      });
       target = [sp[0] * 0.55, tbl.top, sp[1] * 0.55]; minDist = 0.8; maxDist = 4.6; dist = 2.7; pitch = 0.74;
       setStatic(items); setDyn([]); staticKey = ""; lastCam = "";
       draw();
@@ -1555,7 +1614,7 @@ function Table3D(canvas, opts) {
   }
 
   // ---------- camera & interaction ----------
-  let lastUser = 0, raf = 0, alive = true, lastDraw = 0;
+  let lastUser = 0, raf = 0, lastDraw = 0;
   ["aP", "aN", "aL", "aC", "aM"].forEach(k => gl.enableVertexAttribArray(A[k]));
   function drawBatch(b) {
     gl.bindBuffer(gl.ARRAY_BUFFER, b.fb);
@@ -2900,6 +2959,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
             ${f("hbAd", "Manzil", h.address, "Termiz yo‘li, Samarqand")}
             ${f("hbHo", "Ish vaqti", h.hours, "har kuni 10:00 dan 23:00 gacha")}
             ${f("hbDi", "Sharh uchun chegirma, foizda", h.discount != null ? h.discount : 1, "1", "number")}
+            <label>NoZi haqida (mehmon “Sayt haqida” oynasida ko‘radi)<textarea id="hbAb" rows="5" maxlength="1200" placeholder="Restoran tarixi, oshxonasi, nimasi bilan o‘zgacha…" style="width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line2,#999);font:inherit">${esc(h.about || "")}</textarea></label>
             <p id="admMsg" role="status" class="adm-ok"></p>
             <button class="pill gold" type="submit">Saqlash</button></form>
           <p class="bk-sub">Stol QR kodlari</p>
@@ -3042,7 +3102,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
         const v = id => box.querySelector("#" + id).value.trim();
         const d = parseFloat(v("hbDi").replace(",", "."));
         if (!(d >= 0 && d <= 100)) return msg("Chegirma 0 dan 100 gacha bo‘lsin.", true);
-        const val = { wifi: { name: v("hbWn"), pass: v("hbWp") }, phone: v("hbPh"), address: v("hbAd"), hours: v("hbHo"), discount: d };
+        const val = { wifi: { name: v("hbWn"), pass: v("hbWp") }, phone: v("hbPh"), address: v("hbAd"), hours: v("hbHo"), discount: d, about: v("hbAb") };
         msg("Saqlanmoqda…");
         const r = await admSave("hub", val);
         msg(r.ok ? "Saqlandi. QR oynasida darrov ko‘rinadi." : failMsg(r), !r.ok);
@@ -3151,6 +3211,47 @@ if (typeof module !== "undefined") module.exports = makeQR;
     const rows = rowsNow();
     return rows > 1 ? `To‘rtburchak, uchma-uch: ${rows} qator, har birida ${Math.ceil(g / rows)} kishigacha` : `To‘rtburchak, uchma-uch: bitta uzun qator, ${g} kishi`;
   };
+
+  // ----- 3D halls: Three.js and the hall file load only when a guest opens one -----
+  const HALL3D = { terrasa: "terrasa", mayda: "kichik", toyxona: "katta" };
+  let hallView = null;
+  function openHall3D(h) {
+    const key = HALL3D[h.id];
+    if (!key || hallView) return;
+    const box = document.createElement("div");
+    box.className = "hall3d";
+    box.setAttribute("role", "dialog"); box.setAttribute("aria-label", h.name + " zalining 3D ko‘rinishi");
+    box.innerHTML = `<canvas></canvas><div class="h-top"><b>${h.name}</b><button class="h-x" type="button">Yopish</button></div>
+      <div class="h-msg"><span>Zal yuklanmoqda…</span></div>`;
+    document.body.appendChild(box);
+    const msg = box.querySelector(".h-msg span"), canvas = box.querySelector("canvas");
+    let api = null, closed = false;
+    const close = () => {
+      closed = true; if (api) api.dispose();
+      removeEventListener("keydown", onEsc); box.remove(); hallView = null;
+    };
+    const onEsc = e => { if (e.key === "Escape") close(); };
+    addEventListener("keydown", onEsc);
+    box.querySelector(".h-x").addEventListener("click", close);
+    hallView = box;
+    import("./zal/viewer.js").then(m => m.start({ canvas, id: key, url: "./zal/" + key + ".bin", onProgress: p => { msg.textContent = "Zal yuklanmoqda… " + Math.round(p * 100) + "%"; } }))
+      .then(a => {
+        if (closed) { a.dispose(); return; }
+        api = a;
+        box.querySelector(".h-msg").remove();
+        const pad = document.createElement("div");
+        pad.className = "h-pad";
+        pad.innerHTML = [["◀", 0, -1], ["▲", 1, 0], ["▼", -1, 0], ["▶", 0, 1]].map(([t, f, s]) => `<button type="button" data-f="${f}" data-s="${s}" aria-label="${t}">${t}</button>`).join("");
+        box.appendChild(pad);
+        box.insertAdjacentHTML("beforeend", `<div class="h-hint">Barmoq bilan suring: atrofga qarash · tugmalar: yurish</div>`);
+        pad.querySelectorAll("button").forEach(b => {
+          const go = () => api.hold(Number(b.dataset.f), Number(b.dataset.s)), stop = () => api.hold(0, 0);
+          b.addEventListener("pointerdown", e => { e.preventDefault(); go(); });
+          ["pointerup", "pointerleave", "pointercancel"].forEach(ev => b.addEventListener(ev, stop));
+        });
+      })
+      .catch(() => { if (!closed) box.querySelector(".h-msg").innerHTML = `<span>Bu qurilmada zalni ko‘rsatib bo‘lmadi.</span>`; });
+  }
 
   // one 3D table, created once and moved between steps
   let t3d = null;
@@ -3264,6 +3365,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
           ${bk.type === "toy" && bk.guests >= 50 ? `<p class="pk-note">Katta to‘y zalni kun bo‘yi band qiladi.</p>` : ""}
           <p class="pk-note">${sh === "round" ? (bk.type === "toy" ? "To‘ylarda dumaloq stol qo‘yiladi." : "12–14 kishiga bitta dumaloq stol to‘g‘ri keladi.") + (tablesNow() > 1 ? ` ${tablesNow()} ta stolning hammasi ${isTab() ? "o‘ngda" : "pastda"} ko‘rinadi.` : "") : "To‘rtburchak stollar uchma-uch qo‘yilib, mehmon soniga qarab uzayadi."}</p>
         </div>
+        ${HALL3D[h.id] ? `<div class="field"><button class="btn" type="button" id="bkhall3">Zalni 3D ko‘rish</button></div>` : ""}
         ${needRest() ? restBlock() : ""}
         ${sh === "long" && bk.guests > 20 ? `<p class="bk-sub">Stollar necha qator bo‘lsin?</p>
         <div class="opts">
@@ -3394,12 +3496,10 @@ if (typeof module !== "undefined") module.exports = makeQR;
     }
     const tab = isTab() && bk.step > 0;   // the first step (Tadbir) has no table or dishes to show yet
     body.classList.toggle("split", tab);
-    if (tab) html = `<div class="col-l">${html}</div><div class="col-r"><div class="r-top">${view3DHTML(metaText())}</div>
-      <div class="r-bot"><div class="d3" id="bkd3"><span class="hint">Taom nomini yoki + ni bosing: 3D ko‘rinishi shu yerda</span><button class="fs" type="button" data-fs="" aria-label="To‘liq ekran" aria-pressed="false"></button></div><p class="vt-meta" id="bkd3c"></p></div></div>`;
+    if (tab) html = `<div class="col-l">${html}</div><div class="col-r"><div class="r-top">${view3DHTML(metaText())}</div></div>`;
     body.innerHTML = html;
     const host = body.querySelector("#vt3");
     if (host) mount3D(host);
-    if (tab) showMini(body);
     wireBanket(body);
   }
 
@@ -3452,6 +3552,8 @@ if (typeof module !== "undefined") module.exports = makeQR;
       const nx = body.querySelector("[data-go='1']");
       if (nx && bk.step === 0) nx.disabled = !(bk.date && bk.guests >= 1);
     }
+    const h3 = body.querySelector("#bkhall3");
+    if (h3) h3.addEventListener("click", () => openHall3D(hallNow()));
     const ch = body.querySelector("#bkch");
     if (ch) ch.addEventListener("click", () => { bk.change = !bk.change; rerender(); });
     body.querySelectorAll("[data-hall]").forEach(b => b.addEventListener("click", () => { bk.hall = b.dataset.hall; rerender(); }));
@@ -3854,6 +3956,8 @@ if (typeof module !== "undefined") module.exports = makeQR;
     pin: '<svg viewBox="0 0 24 24"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg>',
     go: '<svg class="go" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>'
   };
+  // Sayt yaratuvchisi ma‘lumotlari: bo‘sh qoldirilgan maydon ko‘rinmaydi
+  const SAYT = { year: 2026, opened: "2026-yil noyabr", updated: "14.11.2026", name: "", telegram: "", phone: "" };
   const hubRow = (act, ic, t, sub, extra = "") =>
     `<button class="hub-row ${extra}" type="button" data-hub="${act}"><span class="ic">${IC[ic]}</span><span><b>${t}</b><small>${sub}</small></span>${IC.go}</button>`;
   function hubHTML() {
@@ -3870,7 +3974,8 @@ if (typeof module !== "undefined") module.exports = makeQR;
         <a class="hub-row" href="${IG_URL}" target="_blank" rel="noopener"><span class="ic">${IC.ig}</span><span><b>Instagram</b><small>Yangiliklar va suratlar</small></span>${IC.go}</a>
         ${hubRow("aloqa", "pin", "Telefon va manzil", "Qayerdamiz, qanday bog‘lanasiz")}
       </div>
-      <div class="hub-bar" style="justify-content:center"><button class="btn" type="button" data-hub="site">Saytni to‘liq ochish</button></div>`;
+      <div class="hub-bar" style="justify-content:center"><button class="btn" type="button" data-hub="site">Saytni to‘liq ochish</button></div>
+      <button class="hub-foot" type="button" data-hub="about">© ${SAYT.year} NoZi Restaurant · Sayt haqida</button>`;
     const bar = t => `<div class="hub-bar"><h3>${t}</h3><button class="ctl back" type="button" data-hub="home" style="position:static">← Orqaga</button></div>`;
     if (hubView === "kod") {
       const have = hubCode(), open = s1Open();
@@ -3907,6 +4012,23 @@ if (typeof module !== "undefined") module.exports = makeQR;
         ${h.hours ? `<div class="hub-kv"><span>Ish vaqti</span><b>${esc(h.hours)}</b></div>` : ""}
         ${tel ? `<div class="hub-kv"><span>Telefon</span><b>${esc(tel)}</b></div><a class="btn primary" href="tel:${esc(tel.replace(/[^\d+]/g, ""))}" style="justify-content:center">Qo‘ng‘iroq qilish</a>` : `<p class="muted">Telefon raqami tez orada qo‘shiladi.</p>`}
         <a class="btn" href="${MAP_URL}" target="_blank" rel="noopener" style="justify-content:center">Xaritada ochish</a></div>`;
+    }
+    if (hubView === "about") {
+      const S = SAYT, tg = S.telegram.replace(/^@/, ""), tel = S.phone.trim();
+      return bar("Sayt haqida") + `
+        ${h.about ? `<div class="hub-card"><p class="hub-lbl">NoZi haqida</p><p>${esc(h.about).replace(/\n/g, "<br>")}</p></div>` : ""}
+        <div class="hub-card">
+          <p class="hub-lbl">Sayt ma‘lumotlari</p>
+          <div class="hub-kv"><span>Mualliflik huquqi</span><b>© ${S.year} NoZi</b></div>
+          <div class="hub-kv"><span>Sayt ochilgan</span><b>${esc(S.opened)}</b></div>
+          <div class="hub-kv"><span>Oxirgi yangilanish</span><b>${esc(S.updated)}</b></div>
+          ${S.name ? `<div class="hub-kv"><span>Yaratuvchi</span><b>${esc(S.name)}</b></div>` : ""}
+        </div>
+        <div class="hub-card">
+          <p><b>Sizga ham shunday sayt kerak bo‘lsa, bizga yozing.</b></p>
+          ${tg ? `<a class="btn primary" href="https://t.me/${esc(tg)}" target="_blank" rel="noopener" style="justify-content:center">Telegram: @${esc(tg)}</a>` : ""}
+          ${tel ? `<div class="hub-kv"><span>Telefon</span><b>${esc(tel)}</b></div><a class="btn" href="tel:${esc(tel.replace(/[^\d+]/g, ""))}" style="justify-content:center">Qo‘ng‘iroq qilish</a>` : ""}
+        </div>`;
     }
     return "";
   }
@@ -3947,7 +4069,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
     if (a === "ads") return closeHub(() => enter(1, "reklamalar"));
     if (a === "site") { hubMode = false; return closeHub(); }
     if (a === "home") { hubView = "main"; return drawHub(); }
-    if (["kod", "wifi", "fikr", "aloqa"].includes(a)) { hubView = a; return drawHub(); }
+    if (["kod", "wifi", "fikr", "aloqa", "about"].includes(a)) { hubView = a; return drawHub(); }
     if (a === "copy" || a === "copypass") {
       const t = (hubEl.querySelector(a === "copy" ? "#hubCode" : "#hubPass") || {}).textContent || "";
       (navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => say("Nusxalandi"), () => say("Nusxalab bo‘lmadi, qo‘lda yozib oling"));
