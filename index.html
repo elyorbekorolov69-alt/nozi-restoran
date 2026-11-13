@@ -1475,11 +1475,11 @@ function Table3D(canvas, opts) {
     const vis = spec.items.filter(isVis);
 
     if (spec.shape === "dish") {
-      // one dish on its own, to turn around and look at closely
+      // one dish on the same laid round table as in the banquet view (cloth, chairs, place settings), to turn around and look at closely
       LO = false; items = []; curHall = "dish"; cam = null; lastHall = "";
-      target = [0, 0.1, 0]; minDist = 0.3; maxDist = 1.2; dist = 0.58;
-      put("disc", "#123c32", 0, -0.02, 0, 0, 1.4, 1, 1.4, { s: 0.15, sh: 14, p: 4 });
-      vis.slice(0, 1).forEach(x => { const [k, col] = kindOf(x.d); dish(k, col, 0, 0, 0.5, 0, x.d); });
+      const tbl = roundTable(0, 0, 6, false), sp = tbl.spots[0];
+      vis.slice(0, 1).forEach(x => { const [k, col] = kindOf(x.d); dish(k, col, sp[0], sp[1], sp[2], tbl.top, x.d); });
+      target = [sp[0] * 0.55, tbl.top, sp[1] * 0.55]; minDist = 0.8; maxDist = 4.6; dist = 2.7; pitch = 0.74;
       setStatic(items); setDyn([]); staticKey = ""; lastCam = "";
       draw();
       return;
@@ -2293,7 +2293,18 @@ if (typeof module !== "undefined") module.exports = makeQR;
 
   // ---------- section windows ----------
   // Stol raqami: QR kartochka manzili ...?t=5#qr bo'lsa, shu seans davomida eslab qolinadi
-  const TABLE = (() => { try { const v = parseInt(new URLSearchParams(location.search).get("t"), 10); if (v >= 1 && v <= 99) { sessionStorage.setItem("nozi_stol", String(v)); return v; } return parseInt(sessionStorage.getItem("nozi_stol"), 10) || 0; } catch (e) { return 0; } })();
+  const PLACES = { terrasa: { name: "Terrasa", n: 10 }, kichik: { name: "Kichik zal", n: 18 }, toyxona: { name: "To‘yxona", n: 0 } };
+  const LOC = (() => {
+    try {
+      const sp = new URLSearchParams(location.search), t = parseInt(sp.get("t"), 10), z = sp.get("z");
+      const tv = t >= 1 && t <= 99 ? t : 0, zv = z && PLACES[z] ? z : "";
+      if (tv || zv) { sessionStorage.setItem("nozi_stol", String(tv)); sessionStorage.setItem("nozi_zal", zv); return { t: tv, z: zv }; }
+      const st = parseInt(sessionStorage.getItem("nozi_stol"), 10) || 0, sz = sessionStorage.getItem("nozi_zal") || "";
+      return { t: st, z: PLACES[sz] ? sz : "" };
+    } catch (e) { return { t: 0, z: "" }; }
+  })();
+  const TABLE = LOC.t, ZONE = LOC.z;
+  const WHERE = [ZONE ? PLACES[ZONE].name : "", TABLE ? TABLE + "-stol" : ""].filter(Boolean).join(", ");
   const TITLES = { menyu: "Menyu", reklamalar: "Reklamalar", banket: "Banket", kartochka: "Stol kartochkasi", admin: "Admin", qr: "NoZi" };
   // phone or tablet/computer layout: follows the screen width by itself, and the guest can switch it with a button
   const PH_ICON = `<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4.5" y="1.5" width="7" height="13" rx="1.6"/></svg>`;
@@ -2493,7 +2504,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
       if (dishView) {
         requestAnimationFrame(() => {
           dishView.build({ shape: "dish", course: "dasturxon", items: [{ d: t, q: 1, course: "dasturxon" }] });
-          dishView.view(0.5, 0.72, 0.58);
+          dishView.view(0.5, 0.74, 2.4);
         });
       } else host.insertAdjacentHTML("beforeend", `<p class="hint">Bu qurilmada 3D ko‘rinish ishlamadi.</p>`);
     }
@@ -2516,7 +2527,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
     if (!dishView) { host.insertAdjacentHTML("beforeend", `<p class="hint">Bu qurilmada 3D ko‘rinish ishlamadi.</p>`); return; }
     requestAnimationFrame(() => {
       dishView.build({ shape: "dish", course: "dasturxon", items: [{ d: t, q: 1, course: "dasturxon" }] });
-      dishView.view(0.5, 0.72, 0.58);
+      dishView.view(0.5, 0.74, 2.4);
     });
   }
   // tablet menu: the dish picked on the left is shown on the right, in 3D, with its photos and video
@@ -2908,10 +2919,10 @@ if (typeof module !== "undefined") module.exports = makeQR;
       },
       video() {
         return `<p class="note" style="margin:0 0 10px">Haqiqiy bezatilgan stolning qisqa videosini tanlang. AI uni ko‘rib dasturxonni tavsiflab beradi (keyingi bosqichda).</p>
-          <input type="file" id="admVid" accept="video/*">
+          <label class="pill adm-up">Videoni tanlash<input type="file" id="admVid" accept="video/*" hidden></label>
           <video class="adm-vid" id="admPrev" controls playsinline hidden></video>
-          <p id="admVinfo" class="note"></p>
-          <button class="pill gold" type="button" id="admSend" disabled>AI’ga yuborish</button>
+          <p id="admVinfo" class="note">Fayl tanlanmagan</p>
+          <button class="pill gold" type="button" id="admSend" disabled>AI’ga yuborish (AI ulangach ishlaydi)</button>
           <p class="note">Tugma AI ulangach ishlaydi. Yaxshi video uchun: yorug‘likda, 30 soniya atrofida, stol atrofida sekin aylaning, likopcha va qadahlarga yaqinlashing.</p>`;
       },
       qoshiq() {
@@ -3016,7 +3027,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
       if (t.id === "admVid") {
         const f = t.files && t.files[0], pv = box.querySelector("#admPrev");
         if (adm.vurl) URL.revokeObjectURL(adm.vurl);
-        if (!f) { pv.hidden = true; box.querySelector("#admVinfo").textContent = ""; box.querySelector("#admSend").disabled = true; return; }
+        if (!f) { pv.hidden = true; box.querySelector("#admVinfo").textContent = "Fayl tanlanmagan"; box.querySelector("#admSend").disabled = true; return; }
         adm.vurl = URL.createObjectURL(f); pv.src = adm.vurl; pv.hidden = false;
         box.querySelector("#admVinfo").textContent = `${f.name} · ${(f.size / 1048576).toFixed(1)} MB`;
         box.querySelector("#admSend").disabled = true;
@@ -3353,7 +3364,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
       const lines = [
         `NoZi · ${bk.type === "toy" ? "To‘y" : "Banket"} so‘rovi`,
         `${bk.name}, ${bk.phone}`,
-      ].concat(TABLE ? [`Mehmon ${TABLE}-stoldan yozdi`] : []).concat([
+      ].concat(WHERE ? [`Mehmon joyi: ${WHERE}`] : []).concat([
         `${bk.date.split("-").reverse().join(".")} · ${bk.time}`,
         `${h.name} · ${bk.guests} kishi · ${tableText()}`,
       ]).concat(dishLines).concat([`Jami (${SERVICE_PCT} xizmat bilan): ${fmt(food * (1 + SERVICE))} so‘m${unpriced().length ? " + narxi aniqlanmoqda bo‘lganlar" : ""}`])
@@ -3531,7 +3542,8 @@ if (typeof module !== "undefined") module.exports = makeQR;
   const SITE_DEFAULT = (/^https:\/\/[^/]+\.[a-z]+$/i.test(location.origin) && !/localhost|127\./.test(location.origin)) ? location.origin + "/" : "https://nozi-restoran.pages.dev/";
   let cardSite = SITE_DEFAULT, cardN = 10;
   const emblemImg = new Image(); emblemImg.src = "nozi-emblem.png";
-  function drawCard(url, label, fmtJpg) {
+  const gulImg = new Image(); gulImg.src = "nozi-gul.png";
+  function drawCard(url, label, fmtJpg, qstyle) {
     const Wc = 1200, Hc = 1800, c = document.createElement("canvas");
     c.width = Wc; c.height = Hc;
     const g = c.getContext("2d");
@@ -3567,6 +3579,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
     g.save(); g.letterSpacing = "9px"; g.fillText("RESTAURANT · SAMARQAND", cx + 4, 522); g.restore();
     if (label) {
       g.fillStyle = goldG(cx - 200, 0, cx + 200, 0); g.font = 'italic 700 96px "Cormorant Garamond", Garamond, serif';
+      { let fs = 96; g.font = `italic 700 ${fs}px "Cormorant Garamond", Garamond, serif`; while (g.measureText(label).width > 760 && fs > 48) { fs -= 4; g.font = `italic 700 ${fs}px "Cormorant Garamond", Garamond, serif`; } }
       g.fillText(label, cx, 622);
     } else {
       g.fillStyle = "#f6f7fb"; g.font = 'italic 600 68px "Cormorant Garamond", Garamond, serif';
@@ -3581,20 +3594,49 @@ if (typeof module !== "undefined") module.exports = makeQR;
     const o = 44, px0 = rx - o, py0 = ry - o, px1 = rx + rw + o, py1 = ry + rh + o;
     chain(px0, py0, px1, py0, 38, 11); chain(px0, py1, px1, py1, 38, 11); chain(px0, py0 + 38, px0, py1 - 38, 38, 11); chain(px1, py0 + 38, px1, py1 - 38, 38, 11);
     for (const [x, y] of [[px0, py0], [px1, py0], [px0, py1], [px1, py1]]) pearl(x, y, 19);
-    // modules: dark navy to deep green, slightly rounded
-    const mg = g.createLinearGradient(x0, y0, x0 + side, y0 + side); mg.addColorStop(0, "#0a1030"); mg.addColorStop(1, "#06341f");
+    // modules: uslublar: classic (to'q ko'k-yashil, kvadrat), gold (oltin dumaloq), logo (markazda NoZi), pearl (marvarid nuqtalar)
+    const qs0 = qstyle || "goldlogo", qs = qs0 === "goldlogo" ? "gold" : qs0, withLogo = qs0 === "logo" || qs0 === "goldlogo";
+    const mg = g.createLinearGradient(x0, y0, x0 + side, y0 + side);
+    if (qs === "gold") { mg.addColorStop(0, "#6b4a10"); mg.addColorStop(0.5, "#a77a22"); mg.addColorStop(1, "#5d3f0c"); }
+    else { mg.addColorStop(0, "#0a1030"); mg.addColorStop(1, "#06341f"); }
     g.fillStyle = mg;
     const isEye = (x, y) => (x < 7 && y < 7) || (x >= n - 7 && y < 7) || (x < 7 && y >= n - 7);
+    const mid = (n - 1) / 2, skipC = (x, y) => withLogo && Math.abs(x - mid) <= 3 && Math.abs(y - mid) <= 3;
     const rr = cell * 0.12;
     for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
-      if (!M[y][x] || isEye(x, y)) continue;
-      g.beginPath(); g.roundRect(x0 + (x + q) * cell - 0.4, y0 + (y + q) * cell - 0.4, cell + 0.8, cell + 0.8, rr); g.fill();
+      if (!M[y][x] || isEye(x, y) || skipC(x, y)) continue;
+      const mx = x0 + (x + q) * cell, my = y0 + (y + q) * cell;
+      if (qs === "gold") { g.beginPath(); g.arc(mx + cell / 2, my + cell / 2, cell * 0.5, 0, 7); g.fill(); }
+      else if (qs === "pearl") {
+        const cxm = mx + cell / 2, cym = my + cell / 2, R = cell * 0.5;
+        const pg = g.createRadialGradient(cxm - R * 0.35, cym - R * 0.35, R * 0.05, cxm, cym, R);
+        pg.addColorStop(0, "#8d9bd0"); pg.addColorStop(0.35, "#27356b"); pg.addColorStop(1, "#070c24");
+        g.fillStyle = pg; g.beginPath(); g.arc(cxm, cym, R, 0, 7); g.fill();
+      } else { g.fillStyle = mg; g.beginPath(); g.roundRect(mx - 0.4, my - 0.4, cell + 0.8, cell + 0.8, rr); g.fill(); }
     }
-    // finder eyes: rounded ring + solid centre, same dark colour so every scanner reads them
+    g.fillStyle = mg;
+    // finder eyes: rounded ring + solid centre
     for (const [ex, ey] of [[0, 0], [n - 7, 0], [0, n - 7]]) {
       const X = x0 + (ex + q) * cell, Y = y0 + (ey + q) * cell;
+      if (qs === "pearl") g.fillStyle = "#0a1030";
       g.beginPath(); g.roundRect(X, Y, 7 * cell, 7 * cell, cell * 1.6); g.roundRect(X + cell, Y + cell, 5 * cell, 5 * cell, cell * 1.0); g.fill("evenodd");
       g.beginPath(); g.roundRect(X + 2 * cell, Y + 2 * cell, 3 * cell, 3 * cell, cell * 0.8); g.fill();
+      if (qs === "pearl") { g.strokeStyle = goldG(X, Y, X + 7 * cell, Y + 7 * cell); g.lineWidth = cell * 0.22; g.beginPath(); g.roundRect(X - cell * 0.1, Y - cell * 0.1, 7 * cell + cell * 0.2, 7 * cell + cell * 0.2, cell * 1.7); g.stroke(); }
+    }
+    if (withLogo) {
+      const lc = x0 + (mid + q + 0.5) * cell, lcy = y0 + (mid + q + 0.5) * cell, lr = cell * 3.45;
+      g.fillStyle = "#fbf7ee"; g.beginPath(); g.arc(lc, lcy, lr, 0, 7); g.fill();
+      g.strokeStyle = goldG(lc - lr, lcy - lr, lc + lr, lcy + lr); g.lineWidth = cell * 0.28; g.beginPath(); g.arc(lc, lcy, lr - cell * 0.1, 0, 7); g.stroke();
+      if (emblemImg.complete && emblemImg.naturalWidth) { const d = lr * 1.62; g.drawImage(emblemImg, lc - d / 2, lcy - d / 2 * emblemImg.naturalHeight / emblemImg.naturalWidth, d, d * emblemImg.naturalHeight / emblemImg.naturalWidth); }
+    }
+    if (qs0 === "goldlogo" && gulImg.complete && gulImg.naturalWidth) {
+      // bitta kadupul guli: QR ning pastki o'ng burchagida, to'q ko'k nishon ichida
+      const bx = x0 + (n + q) * cell + cell * 2.3, by = y0 + (n + q) * cell + cell * 2.3, br = cell * 3.6;
+      g.save(); g.shadowColor = "rgba(0,0,0,0.4)"; g.shadowBlur = cell * 0.7; g.shadowOffsetY = cell * 0.2;
+      const bgG = g.createRadialGradient(bx, by - br * 0.3, br * 0.1, bx, by, br); bgG.addColorStop(0, "#1a2660"); bgG.addColorStop(1, "#070c24");
+      g.fillStyle = bgG; g.beginPath(); g.arc(bx, by, br, 0, 7); g.fill(); g.restore();
+      g.strokeStyle = goldG(bx - br, by - br, bx + br, by + br); g.lineWidth = cell * 0.28; g.beginPath(); g.arc(bx, by, br - cell * 0.1, 0, 7); g.stroke();
+      const fw = br * 1.7, fh = fw * gulImg.naturalHeight / gulImg.naturalWidth; g.drawImage(gulImg, bx - fw / 2, by - fh / 2 + br * 0.05, fw, fh);
     }
     const ty = ry + rh + 112;
     g.fillStyle = "#f6f7fb"; g.font = '500 42px Jost, sans-serif';
@@ -3618,9 +3660,8 @@ if (typeof module !== "undefined") module.exports = makeQR;
         <img id="cardImg" alt="NoZi stol kartochkasi: menyu uchun QR kod" style="width:min(100%,340px);border-radius:12px;border:1px solid var(--line2)">
         <p class="note" style="margin:0;text-align:center">Rasmni bosib turing (telefonda) yoki sichqonchaning o‘ng tugmasini bosing va “Rasmni saqlash”ni tanlang. 10×15 sm qilib chop eting.</p>
       </div>
-      <h3 class="sub">Har bir stol uchun alohida kartochka</h3>
-      <p class="bk-p" style="margin-top:8px">Har bir stolga o‘z raqami yozilgan kartochka. Mehmon skanerlasa, sayt qaysi stoldan kirganini biladi va sharh kodi, anonim fikr, banket so‘rovi xabarida “5-stol” deb ko‘rinadi.</p>
-      <div class="field"><label for="cardN">Nechta stol bor?</label><input id="cardN" type="text" inputmode="numeric" value="${cardN}" maxlength="2" autocomplete="off"></div>
+      <h3 class="sub">Har bir joy va stol uchun alohida kartochka</h3>
+      <p class="bk-p" style="margin-top:8px">Terrasa (10 stol), Kichik zal (18 stol) va To‘yxona (stolsiz, bitta kartochka). Mehmon skanerlasa, sayt qaysi joy va stoldan kirganini biladi, sharh kodi, anonim fikr va banket so‘rovi xabarida “Terrasa, 3-stol” deb ko‘rinadi.</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn primary" type="button" id="cardPrint">Hammasini chop etish (PDF qilib saqlash)</button></div>
       <p class="note" id="cardTinfo"></p>
       <div id="cardList" style="display:grid;gap:6px;margin-top:8px"></div>
@@ -3633,39 +3674,38 @@ if (typeof module !== "undefined") module.exports = makeQR;
       info.textContent = cardSite === SITE_DEFAULT
         ? `QR kod ochadigan manzil: ${url}. Saytni yangi domendan (masalan restorannozi.uz) ochsangiz, manzil shu domen bilan avtomatik chiqadi. Kartochkani qayta chop eting.`
         : `QR kod ochadigan manzil: ${url}`;
-      try { await document.fonts.load('400 150px Italiana'); await document.fonts.load('italic 600 78px "Cormorant Garamond"'); await document.fonts.load('400 30px Jost'); await emblemImg.decode(); } catch (e) {}
+      try { await document.fonts.load('400 150px Italiana'); await document.fonts.load('italic 600 78px "Cormorant Garamond"'); await document.fonts.load('400 30px Jost'); await emblemImg.decode(); await gulImg.decode(); } catch (e) {}
       try { img.src = drawCard(url); } catch (e) { info.textContent = "Manzil juda uzun, qisqaroq manzil kiriting."; }
     };
     inp.addEventListener("change", render);
     inp.addEventListener("input", () => { clearTimeout(inp._t); inp._t = setTimeout(render, 400); });
     render();
     // ---- stollar bo'yicha kartochkalar ----
-    const nIn = body.querySelector("#cardN"), list = body.querySelector("#cardList"), tinfo = body.querySelector("#cardTinfo");
-    const tUrl = k => cardSite.replace(/\/?$/, "/") + "?t=" + k + "#qr";
-    const nCount = () => Math.max(1, Math.min(60, parseInt(nIn.value, 10) || 1));
-    const fontsReady = async () => { try { await document.fonts.load('400 150px Italiana'); await document.fonts.load('italic 700 96px "Cormorant Garamond"'); await document.fonts.load('400 30px Jost'); await emblemImg.decode(); } catch (e) {} };
+    const list = body.querySelector("#cardList"), tinfo = body.querySelector("#cardTinfo");
+    const base = () => cardSite.replace(/\/?$/, "/");
+    const cardsAll = () => { const o = []; for (const [id, P] of Object.entries(PLACES)) { if (!P.n) o.push({ id: id + "", label: P.name, url: base() + "?z=" + id + "#qr", file: "nozi-" + id }); else for (let k = 1; k <= P.n; k++) o.push({ id: id + "-" + k, label: P.name + " · " + k + "-stol", url: base() + "?z=" + id + "&t=" + k + "#qr", file: "nozi-" + id + "-" + k + "-stol" }); } return o; };
+    const fontsReady = async () => { try { await document.fonts.load('400 150px Italiana'); await document.fonts.load('italic 700 96px "Cormorant Garamond"'); await document.fonts.load('400 30px Jost'); await emblemImg.decode(); await gulImg.decode(); } catch (e) {} };
     const drawList = () => {
-      cardN = nCount(); list.innerHTML = "";
-      for (let k = 1; k <= cardN; k++) {
+      list.innerHTML = "";
+      for (const c of cardsAll()) {
         const r = document.createElement("div"); r.className = "adm-row";
-        r.innerHTML = `<span><b>${k}-stol</b></span><button class="btn" type="button" data-dl="${k}">Rasmni yuklab olish</button>`;
+        r.innerHTML = `<span><b>${esc(c.label)}</b></span><button class="btn" type="button" data-dl="${esc(c.id)}">Rasmni yuklab olish</button>`;
         list.appendChild(r);
       }
-      tinfo.textContent = `Masalan 5-stol manzili: ${tUrl(5)}`;
+      tinfo.textContent = `Masalan Terrasa 5-stol manzili: ${base()}?z=terrasa&t=5#qr`;
     };
-    nIn.addEventListener("input", () => { clearTimeout(nIn._t); nIn._t = setTimeout(drawList, 300); });
     list.addEventListener("click", async e => {
       const b = e.target.closest("[data-dl]"); if (!b) return;
-      const k = +b.dataset.dl; await fontsReady();
-      const a = document.createElement("a"); a.download = `nozi-${k}-stol.png`; a.href = drawCard(tUrl(k), `${k}-stol`);
+      const c = cardsAll().find(x => x.id === b.dataset.dl); if (!c) return; await fontsReady();
+      const a = document.createElement("a"); a.download = c.file + ".png"; a.href = drawCard(c.url, c.label);
       document.body.appendChild(a); a.click(); a.remove();
     });
     body.querySelector("#cardPrint").addEventListener("click", async e => {
       const b = e.currentTarget, w = window.open("", "_blank");
       if (!w) { tinfo.textContent = "Brauzer yangi oynani to‘sdi. Manzil satridagi belgidan ruxsat bering va qayta bosing."; return; }
       b.disabled = true; b.textContent = "Tayyorlanmoqda…"; await fontsReady();
-      const n = nCount(); let imgs = "";
-      for (let k = 1; k <= n; k++) { imgs += `<img src="${drawCard(tUrl(k), `${k}-stol`, true)}">`; await new Promise(r => setTimeout(r, 0)); }
+      let imgs = "";
+      for (const c of cardsAll()) { imgs += `<img src="${drawCard(c.url, c.label, true)}">`; await new Promise(r => setTimeout(r, 0)); }
       w.document.write(`<!doctype html><meta charset="utf-8"><title>NoZi stol kartochkalari</title><style>@page{size:100mm 150mm;margin:0}html,body{margin:0;background:#fff}img{display:block;width:100mm;height:150mm;page-break-after:always;break-after:page}@media screen{img{margin:10px auto;box-shadow:0 2px 12px #0004}}</style>${imgs}<script>onload=function(){setTimeout(function(){print()},400)}<\/script>`);
       w.document.close(); b.disabled = false; b.textContent = "Hammasini chop etish (PDF qilib saqlash)";
     });
@@ -3820,7 +3860,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
     const h = hcfg(), disc = h.discount != null ? h.discount : 1;
     if (hubView === "main") return `
       <div class="hub-top"><img src="nozi-emblem.png" alt=""><b>NoZi</b><small>Restaurant · Samarqand</small></div>
-      <p class="hub-hi">Xush kelibsiz!${TABLE ? ` <b>${TABLE}-stol.</b>` : ""} Nima kerak?</p>
+      <p class="hub-hi">Xush kelibsiz!${WHERE ? ` <b>${WHERE}.</b>` : ""} Nima kerak?</p>
       <div class="hub-list">
         ${hubRow("menu", "menu", "Menyu", "Taomlar, narxlar va 3D ko‘rinish")}
         ${hubRow("kod", "star", "Google’da sharh qoldiring", `Sovg‘a kodi oling: ${disc}% chegirma`, "gift")}
@@ -3833,12 +3873,14 @@ if (typeof module !== "undefined") module.exports = makeQR;
       <div class="hub-bar" style="justify-content:center"><button class="btn" type="button" data-hub="site">Saytni to‘liq ochish</button></div>`;
     const bar = t => `<div class="hub-bar"><h3>${t}</h3><button class="ctl back" type="button" data-hub="home" style="position:static">← Orqaga</button></div>`;
     if (hubView === "kod") {
-      const have = hubCode();
+      const have = hubCode(), open = s1Open();
+      if (!have && s1At && !open) s1Tick();
       return bar("Sovg‘a kodi") + `<div class="hub-card">
         <div class="hub-step"><i>1</i><p>Google xaritada NoZi haqida sharh yozing. Bir-ikki gap yetadi, yulduzcha qo‘ying.</p></div>
-        <a class="btn primary" href="${REVIEW_URL}" target="_blank" rel="noopener" style="justify-content:center">★ Google’da sharh yozish</a>
+        <a class="btn primary" data-hub="review" href="${REVIEW_URL}" target="_blank" rel="noopener" style="justify-content:center">★ Google’da sharh yozish</a>
         <div class="hub-step"><i>2</i><p>Sharh yozib bo‘lgach, shu yerga qaytib kodni oling.</p></div>
-        ${have ? `<div class="hub-code" id="hubCode">${esc(have)}</div><button class="btn" type="button" data-hub="copy" style="justify-content:center">Kodni nusxalash</button>` : `<label class="hub-lbl" for="hubMail">Gmail manzilingiz (majburiy, bir Gmail’ga bitta kod beriladi)</label><input type="email" id="hubMail" inputmode="email" autocomplete="email" placeholder="ismingiz@gmail.com" maxlength="80" style="width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--line2);background:rgba(255,255,255,.06);color:var(--petal);font:16px/1.4 var(--font-ui)"><button class="btn primary" type="button" data-hub="getcode" style="justify-content:center">Sharh yozdim, kod olish</button>`}
+        ${have ? `<div class="hub-code" id="hubCode">${esc(have)}</div><button class="btn" type="button" data-hub="copy" style="justify-content:center">Kodni nusxalash</button>` : `<div id="hubStep2" style="${open ? "" : "opacity:.45"}"><label class="hub-lbl" for="hubMail">Gmail manzilingiz (majburiy, bir Gmail’ga bitta kod beriladi)</label><input type="email" id="hubMail"${open ? "" : " disabled"} inputmode="email" autocomplete="email" placeholder="ismingiz@gmail.com" maxlength="80" style="width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--line2);background:rgba(255,255,255,.06);color:var(--petal);font:16px/1.4 var(--font-ui)"><button class="btn primary" type="button" data-hub="getcode"${open ? "" : " disabled"} style="justify-content:center">Sharh yozdim, kod olish</button></div>`}
+        ${have || open ? "" : `<p class="muted" id="hubLock">${s1At ? "Sharhni yozib, shu oynaga qayting. Kod olish tugmasi bir necha soniyadan keyin ochiladi." : "Avval 1-qadamdagi tugmani bosib, sharh yozing. Shundan keyin kod olish ochiladi."}</p>`}
         <p class="hub-err" id="hubMsg" role="alert" hidden></p>
         <div class="hub-step"><i>3</i><p>Kodni kassirga yoki ofitsiantga ko‘rsating. Sharhingiz tekshiriladi va hisobdan <b>${disc}% chegirma</b> beriladi.</p></div>
         <p class="muted">Kod bir marta ishlaydi, har bir Gmail’ga faqat bitta kod beriladi. Sharh topilmasa, chegirma berilmaydi.</p></div>`;
@@ -3868,6 +3910,24 @@ if (typeof module !== "undefined") module.exports = makeQR;
     }
     return "";
   }
+  // 2-qadam (Gmail va kod olish) faqat 1-qadamdagi tugma bosilib, mehmon sahifaga qaytgach ochiladi
+  const S1_WAIT = 25000;
+  let s1At = 0, s1Timer = 0;
+  try { s1At = parseInt(sessionStorage.getItem("nozi_s1"), 10) || 0; } catch (e) {}
+  const s1Open = () => s1At > 0 && Date.now() - s1At >= S1_WAIT && document.visibilityState === "visible";
+  function s1Tick() {
+    clearInterval(s1Timer); s1Timer = 0;
+    if (!s1At) return;
+    s1Timer = setInterval(() => {
+      if (hubEl.hidden || hubView !== "kod") { clearInterval(s1Timer); s1Timer = 0; return; }
+      if (s1Open()) { clearInterval(s1Timer); s1Timer = 0; const m = hubEl.querySelector("#hubMail"); if (!m || !m.value) drawHub(); else s1Apply(); }
+    }, 1000);
+  }
+  function s1Apply() {
+    const m = hubEl.querySelector("#hubMail"), g = hubEl.querySelector("[data-hub=getcode]"), box = hubEl.querySelector("#hubStep2"), note = hubEl.querySelector("#hubLock");
+    if (m) m.disabled = false; if (g) g.disabled = false; if (box) box.style.opacity = ""; if (note) note.hidden = true;
+  }
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && !hubEl.hidden && hubView === "kod" && s1Open() && hubEl.querySelector("#hubMail:disabled")) s1Apply(); });
   function hubCode() { try { return localStorage.getItem("nozi_kod") || ""; } catch (e) { return ""; } }
   function drawHub() { hubEl.innerHTML = `<div class="hub-in">${hubHTML()}</div>`; hubEl.scrollTop = 0; }
   function openHub() {
@@ -3883,6 +3943,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
     const b = e.target.closest("[data-hub]"); if (!b) return;
     const a = b.dataset.hub;
     if (a === "menu") return closeHub(() => enter(0, "menyu"));
+    if (a === "review") { s1At = Date.now(); try { sessionStorage.setItem("nozi_s1", String(s1At)); } catch (e) {} s1Tick(); const n = hubEl.querySelector("#hubLock"); if (n) n.textContent = "Sharhni yozib, shu oynaga qayting. Kod olish tugmasi bir necha soniyadan keyin ochiladi."; return; }
     if (a === "ads") return closeHub(() => enter(1, "reklamalar"));
     if (a === "site") { hubMode = false; return closeHub(); }
     if (a === "home") { hubView = "main"; return drawHub(); }
@@ -3896,7 +3957,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
       const mail = ((hubEl.querySelector("#hubMail") || {}).value || "").trim().toLowerCase();
       if (!/^[a-z0-9._+-]{3,64}@gmail\.com$/.test(mail)) return hubMsg("Gmail manzilini to‘g‘ri yozing, masalan ismingiz@gmail.com", true);
       if (hubBusy) return; hubBusy = true; b.disabled = true; b.textContent = "Kod tayyorlanmoqda…";
-      fetch("/api/kod", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: mail, stol: TABLE }) }).then(r => r.json().catch(() => ({})).then(j => ({ r, j }))).then(({ r, j }) => {
+      fetch("/api/kod", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: mail, stol: TABLE, joy: WHERE }) }).then(r => r.json().catch(() => ({})).then(j => ({ r, j }))).then(({ r, j }) => {
         hubBusy = false;
         if (r.ok && j.ok) { try { localStorage.setItem("nozi_kod", j.code); } catch (e) {} drawHub(); }
         else { b.disabled = false; b.textContent = "Sharh yozdim, kod olish"; hubMsg(j.error || "Kod olib bo‘lmadi. Birozdan keyin urinib ko‘ring.", true); }
@@ -3910,7 +3971,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
     if (text.length < 5) return hubMsg("Fikr juda qisqa. Bir-ikki gap yozing.", true);
     if (hubBusy) return; hubBusy = true;
     const btn = e.target.querySelector("button[type=submit]"); btn.disabled = true; btn.textContent = "Yuborilmoqda…";
-    fetch("/api/fikr", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, website: hp, stol: TABLE }) })
+    fetch("/api/fikr", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, website: hp, stol: TABLE, joy: WHERE }) })
       .then(r => r.json().catch(() => ({})).then(j => ({ r, j }))).then(({ r, j }) => {
         hubBusy = false;
         if (r.ok && j.ok) { hubView = "fikrok"; drawHub(); }
