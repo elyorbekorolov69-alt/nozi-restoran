@@ -19,7 +19,10 @@ function unpack(buf) {
   return { parts: out, cfg: head.cfg };
 }
 
-export async function start({ canvas, id, url, onProgress }) {
+// shell: faqat zalning o'zi (devor, pol, shift, chiroq). Stol-stullarni sayt o'zi chizadi, kamerani ham sayt beradi (api.render).
+const SHELL_HIDE = new Set(['Dasturxon', 'DasturxonChet', 'YashilYolak', 'QoraTemir', 'StulOq', 'StulKulrang', 'StulNaqsh']);
+
+export async function start({ canvas, id, url, onProgress, shell }) {
   const H = HALLS[id];
   if (!H) throw new Error('zal yo‘q');
   const res = await fetch(url);
@@ -108,13 +111,15 @@ export async function start({ canvas, id, url, onProgress }) {
     const hall = await glb('HALL'), lmH = await lightmap('LMH'), outd = await glb('OUT');
     convert(hall.scene, lmH); convert(outd.scene, null);
     scene.add(hall.scene); scene.add(outd.scene);
-    for (let gi = 0; gi < cfg.groups.length; gi++) {
+    for (let gi = 0; gi < (shell ? 0 : cfg.groups.length); gi++) {
       const g = cfg.groups[gi], gl = await glb('G' + gi + 'glb'), lm = await lightmap('G' + gi + 'lm');
       convert(gl.scene, lm); instance(gl.scene, g.pos, g.master);
     }
     scene.add(furn);
-    floorRefl = new Reflector(new THREE.PlaneGeometry(13.5, 11.3), { textureWidth: 1024, textureHeight: 1024, clipBias: 0.003, color: 0xb0b0b0 });
-    floorRefl.rotation.x = -Math.PI / 2; floorRefl.position.set(1.75, -0.004, -5.65); scene.add(floorRefl);
+    if (!shell) {
+      floorRefl = new Reflector(new THREE.PlaneGeometry(13.5, 11.3), { textureWidth: 1024, textureHeight: 1024, clipBias: 0.003, color: 0xb0b0b0 });
+      floorRefl.rotation.x = -Math.PI / 2; floorRefl.position.set(1.75, -0.004, -5.65); scene.add(floorRefl);
+    }
     mirrorFar = 60;
     limit = (x, y) => {
       if (y >= 0.95 && y <= 7.2 && x >= -4.6 && x <= (y > 2.5 ? 6.4 : 7.2)) return true;
@@ -124,9 +129,10 @@ export async function start({ canvas, id, url, onProgress }) {
       return false;
     };
   } else if (id === 'kichik') {
-    const hall = await glb('HALL'), fu = await glb('FURN'), setg = await glb('SET');
-    const lmH = await lightmap('LMH'), lmF = await lightmap('LMF'), lmS = await lightmap('LMS');
-    convert(hall.scene, lmH); convert(fu.scene, lmF); convert(setg.scene, lmS);
+    const hall = await glb('HALL'), fu = await glb('FURN'), setg = shell ? null : await glb('SET');
+    const lmH = await lightmap('LMH'), lmF = await lightmap('LMF'), lmS = shell ? null : await lightmap('LMS');
+    if (shell) fu.scene.traverse(o => { if (o.isMesh && SHELL_HIDE.has(o.material.name)) o.visible = false; });
+    convert(hall.scene, lmH); convert(fu.scene, lmF); if (setg) convert(setg.scene, lmS);
     scene.add(hall.scene); scene.add(fu.scene);
     const SET_YS = [8.282, 8.847, 9.412, 9.976, 10.541, 11.106, 11.671, 12.235, 12.800, 13.365, 13.929, 14.494, 15.059, 15.624, 16.188, 16.753, 17.318];
     const mirrored = g => {
@@ -134,28 +140,32 @@ export async function start({ canvas, id, url, onProgress }) {
       if (ix) for (let i = 0; i < ix.count; i += 3) { const b = ix.getX(i + 1), c = ix.getX(i + 2); ix.setX(i + 1, c); ix.setX(i + 2, b); }
       return g2;
     };
-    setg.scene.traverse(o => {
+    if (setg) setg.scene.traverse(o => {
       if (!o.isMesh) return;
       const mR = new THREE.InstancedMesh(o.geometry, o.material, SET_YS.length), mL = new THREE.InstancedMesh(mirrored(o.geometry), o.material, SET_YS.length);
       SET_YS.forEach((y, i) => { mat4.makeTranslation(0.36, 0, -y); mR.setMatrixAt(i, mat4); mat4.makeTranslation(-0.36, 0, -y); mL.setMatrixAt(i, mat4); });
       [mR, mL].forEach(m => { m.frustumCulled = false; if (o.material.transparent) m.renderOrder = 2; furn.add(m); });
     });
     fu.scene.add(furn);
-    floorRefl = new Reflector(new THREE.PlaneGeometry(6, 20), { textureWidth: 1024, textureHeight: 1024, clipBias: 0.003, color: 0xbcbcbc });
-    floorRefl.rotation.x = -Math.PI / 2; floorRefl.position.set(0, -0.004, -10); scene.add(floorRefl);
+    if (!shell) {
+      floorRefl = new Reflector(new THREE.PlaneGeometry(6, 20), { textureWidth: 1024, textureHeight: 1024, clipBias: 0.003, color: 0xbcbcbc });
+      floorRefl.rotation.x = -Math.PI / 2; floorRefl.position.set(0, -0.004, -10); scene.add(floorRefl);
+    }
     mirrorFar = 45;
     limit = (x, y) => Math.abs(x) <= 2.7 && y >= 0.3 && y <= 19.6;
     limit.xz = true;
   } else {
-    const hall = await glb('HALL'), grp = await glb('GRP'), lmH = await lightmap('LMH'), lmG = await lightmap('LMG');
-    convert(hall.scene, lmH); convert(grp.scene, lmG);
+    const hall = await glb('HALL'), grp = shell ? null : await glb('GRP'), lmH = await lightmap('LMH'), lmG = shell ? null : await lightmap('LMG');
+    convert(hall.scene, lmH); if (grp) convert(grp.scene, lmG);
     scene.add(hall.scene);
-    const POS = [-5.25, -2.15, 2.15, 5.25].flatMap(x => [4.5, 9.0, 13.5, 18.0, 22.5].map(y => [x, y]));
-    instance(grp.scene, POS, [2.15, 13.5]);
-    scene.add(furn);
-    ceilRefl = new Reflector(new THREE.PlaneGeometry(10.8, 30), { textureWidth: 1024, textureHeight: 1024, clipBias: 0.003, color: 0x6e7078 });
-    ceilRefl.rotation.x = Math.PI / 2; ceilRefl.position.set(0, 4.996, -15); scene.add(ceilRefl);
-    if (mirrorMesh) mirrorMesh.visible = false;
+    if (grp) {
+      const POS = [-5.25, -2.15, 2.15, 5.25].flatMap(x => [4.5, 9.0, 13.5, 18.0, 22.5].map(y => [x, y]));
+      instance(grp.scene, POS, [2.15, 13.5]);
+      scene.add(furn);
+      ceilRefl = new Reflector(new THREE.PlaneGeometry(10.8, 30), { textureWidth: 1024, textureHeight: 1024, clipBias: 0.003, color: 0x6e7078 });
+      ceilRefl.rotation.x = Math.PI / 2; ceilRefl.position.set(0, 4.996, -15); scene.add(ceilRefl);
+      if (mirrorMesh) mirrorMesh.visible = false;
+    }
     limit = (x, y) => {
       const niche = y > 15.5 && y < 18.8;
       return x >= (niche ? -9.0 : -6.5) && x <= 6.5 && y >= 0.5 && y <= 29;
@@ -196,6 +206,31 @@ export async function start({ canvas, id, url, onProgress }) {
     floorRefl.visible = fr; wallRefl.visible = true;
   }
   function setMirror(on) { if (wallRefl) { wallRefl.visible = on; mirrorMesh.visible = !on; } }
+
+  if (shell) {
+    // kamerani sayt beradi: ko'z, nishon, nisbat
+    if (floorMat) { floorMat.transparent = false; floorMat.opacity = 1; floorMat.needsUpdate = true; }
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    const eye = new THREE.Vector3(), tg = new THREE.Vector3();
+    let rw = 0, rh = 0, live = true;
+    return {
+      render(e, t, asp) {
+        if (!live) return;
+        const w = canvas.clientWidth, h = canvas.clientHeight;
+        if (!w || !h) return;
+        if (w !== rw || h !== rh) { rw = w; rh = h; renderer.setSize(w, h, false); }
+        camera.fov = 0.75 * 180 / Math.PI; camera.aspect = asp || w / h; camera.near = 0.1; camera.far = 300; camera.updateProjectionMatrix();
+        eye.set(e[0], e[1], e[2]); tg.set(t[0], t[1], t[2]);
+        camera.position.copy(eye); camera.up.set(0, 1, 0); camera.lookAt(tg);
+        renderer.render(scene, camera);
+      },
+      dispose() {
+        if (!live) return; live = false;
+        scene.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) { (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { if (m.map) m.map.dispose(); if (m.lightMap) m.lightMap.dispose(); m.dispose(); }); } });
+        renderer.dispose(); try { renderer.forceContextLoss(); } catch (_) {}
+      },
+    };
+  }
 
   // ---- harakat ----
   let yaw = H.yaw, pitch = H.pitch;
