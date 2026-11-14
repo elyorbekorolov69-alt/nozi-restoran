@@ -9,7 +9,6 @@ const HALLS = {
   katta: { bg: 0x0c0c0c, far: 90, speed: 4, cam: [0, 1.65, -1.6], yaw: 0, pitch: 0.04 },
 };
 const BASE = 1.2;
-const SPAN = (260 / 2) * Math.PI / 180;   // kamera jami 260 gradus aylanadi (boshlang'ich yo'nalishdan ±130)
 
 function unpack(buf) {
   const dv = new DataView(buf), hl = dv.getUint32(0, true);
@@ -207,11 +206,10 @@ export async function start({ canvas, id, url, onProgress }) {
   const onMove = e => {
     if (!dragging) return;
     yaw -= (e.clientX - lx) * 0.004; pitch -= (e.clientY - ly) * 0.004;
-    yaw = Math.max(H.yaw - SPAN, Math.min(H.yaw + SPAN, yaw));
     pitch = Math.max(-1.2, Math.min(1.2, pitch)); lx = e.clientX; ly = e.clientY;
   };
   const keys = {};
-  const onKD = e => { keys[e.code] = true; if (e.code.startsWith('Arrow')) e.preventDefault(); };
+  const onKD = e => { if (/^(INPUT|SELECT|TEXTAREA)$/.test((e.target && e.target.tagName) || '')) return; keys[e.code] = true; if (e.code.startsWith('Arrow')) e.preventDefault(); };
   const onKU = e => { keys[e.code] = false; };
   function moveBy(f, s) {
     const sin = Math.sin(yaw), cos = Math.cos(yaw);
