@@ -3240,7 +3240,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
     const me = hs = { key, id, canvas, api: null, dead: false };
     import("./zal/viewer.js").then(m => m.start({ canvas, id: key, url: "./zal/" + key + ".bin", shell: true }))
       .then(a => { if (me.dead) { a.dispose(); return; } me.api = a; rebuild3D(); })
-      .catch(() => { if (me.dead) return; hallFail[key] = true; disposeHall(); rebuild3D(); });
+      .catch(e => { if (me.dead) return; console.error("zal:", e); hallFail[key] = true; disposeHall(); rebuild3D(); say("Zal ochilmadi: " + String((e && e.message) || e).slice(0, 90), 15000); });
     // the window was closed or left: stop drawing
     hsTimer = setInterval(() => { if (hs !== me) clearInterval(hsTimer); else if (!canvas.isConnected) disposeHall(); }, 4000);
   }
@@ -3250,7 +3250,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
     const key = hallKey();
     if (!key) { disposeHall(); return; }
     if (hs && hs.key !== key) disposeHall();
-    if (!hs) startHall(key, hallNow().id);
+    if (!hs) { startHall(key, hallNow().id); say("Zal yuklanmoqda…", 4000); }
     host.prepend(hs.canvas);           // behind the table canvas
     const at = HALL_AT[hallNow().id], me = hs;
     t3d.setHook((eye, target, asp) => { if (me.api) me.api.render(toHall(eye, at), toHall(target, at), asp); });
@@ -3907,9 +3907,9 @@ if (typeof module !== "undefined") module.exports = makeQR;
 
   const toast = $("toast");
   let toastTimer = 0;
-  function say(msg) {
+  function say(msg, ms) {
     toast.textContent = msg; toast.classList.add("on");
-    clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove("on"), 2200);
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove("on"), ms || 2200);
   }
 
 
