@@ -914,8 +914,32 @@ function Table3D(canvas, opts) {
     path.forEach(([cx, cz, ox, oz], k) => { pos.push(cx + r * ox, 0, cz + r * oz); nor.push(0, 1, 0); if (k) idx.push(0, k, k + 1); });
     return geo(pos, nor, idx);
   }
+  // an open flower seen from outside: a cupped, lobed disc (hydrangea floret: 4 lobes; rose layer: 5 lobes), facing +y
+  function flowerG(lobes, cup, depth, rings = 3, per = 5) {
+    const N = lobes * per, pos = [0, 0, 0], nor = [0, 1, 0], idx = [];
+    for (let r = 1; r <= rings; r++) for (let i = 0; i < N; i++) {
+      const a = i / N * 2 * PI, edge = 0.5 * ((1 - depth) + depth * Math.abs(Math.cos(lobes * a / 2))), rr = edge * r / rings;
+      const sl = 4 * cup * rr, l = Math.hypot(sl, 1);
+      pos.push(rr * Math.cos(a), 2 * cup * rr * rr, rr * Math.sin(a)); nor.push(-sl * Math.cos(a) / l, 1 / l, -sl * Math.sin(a) / l);
+    }
+    const at = (r, i) => 1 + (r - 1) * N + (i % N);
+    for (let i = 0; i < N; i++) idx.push(0, at(1, i), at(1, i + 1));
+    for (let r = 1; r < rings; r++) for (let i = 0; i < N; i++) idx.push(at(r, i), at(r + 1, i), at(r + 1, i + 1), at(r, i), at(r + 1, i + 1), at(r, i + 1));
+    return geo(pos, nor, idx);
+  }
+  // a pointed leaf along +z with a folded midrib and a drooping tip
+  function leafG() {
+    const pos = [], nor = [], idx = [], S = 7;
+    for (let i = 0; i <= S; i++) {
+      const u = i / S, w = 0.5 * Math.sin(PI * Math.pow(u, 0.75)) * (1 - 0.15 * u), y = -0.2 * u * u;
+      [[-1, 0.5], [0, 0], [1, -0.5]].forEach(([k, nx]) => { pos.push(k * w, y + (k ? 0.07 * w * 2 : 0), u); nor.push(nx * 0.6, 1, 0.2 * u); });
+    }
+    for (let i = 0; i < S; i++) { const a = i * 3; idx.push(a, a + 3, a + 1, a + 1, a + 3, a + 4, a + 1, a + 4, a + 2, a + 2, a + 4, a + 5); }
+    return geo(pos, nor, idx);
+  }
   const G = {
     box: boxG(), quad: quadG(),
+    floret: flowerG(4, 0.6, 0.3), rose: flowerG(5, 0.95, 0.15), leaf: leafG(),
     leg: tubeG([[0, -0.05, 0.022], [0.025, -0.032, 0.028], [0.07, -0.004, 0.018], [0.15, 0.004, 0.016], [0.23, -0.02, 0.024], [0.31, -0.046, 0.034], [0.38, -0.03, 0.036], [0.42, 0, 0.034]]),
     ball: lathe(sphere(12), 18),
     ballLo: lathe(sphere(7), 10),
@@ -1204,40 +1228,44 @@ function Table3D(canvas, opts) {
     [-0.19, 0.19].forEach(a => { const [fx, fz] = at(a * 1.0, -0.215); put("ball", C.chair, fx, 0.02, fz, face, 0.05, 0.04, 0.07, W); });
   }
 
-  // tall gold candlestick with a crystal bead, a white vase, and a loose mass of
-  // hydrangea, peach carnations, pink roses, pink and white feather leaves, greenery
+  // tall gold candlestick with a crystal bead, a white vase, and a rounded bouquet like the restaurant's:
+  // a dome of white and pale-blue hydrangea florets, peach and pink roses (layered petals), pale feather leaves, dark green foliage
   function centrepiece(x, z, top, seed = 1) {
     let sd = seed * 9301 + 49297;
     const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
     put("column", C.gold, x, top, z, 0, 0.2, 0.56, 0.2, { s: 0.85, sh: 70 });
     put("ball", C.glass, x, top + 0.335, z, 0, 0.065, 0.065, 0.065, { a: 0.35, s: 1, sh: 90 });
     put("vase", "#f3f1ee", x, top + 0.555, z, 0, 0.17, 0.25, 0.17, { s: 0.55, sh: 60 });
-    const cy = top + 0.94, R = 0.3, NB = LO ? 40 : 96;
-    const blooms = ["#ffffff", "#fbf3e6", "#f6d9c2", "#ffffff", "#f9e6d4", "#fffdf9", "#f3c9d2"];
-    for (let k = 0; k < NB; k++) {
-      const yv = 1 - 1.6 * (k + 0.5) / NB, rr = Math.sqrt(Math.max(0, 1 - yv * yv)), th = k * 2.39996 + rnd() * 0.4;
-      const sz = 0.085 + rnd() * 0.06, out = 1.0 + (rnd() - 0.5) * 0.25;
-      put("ballLo", blooms[k % blooms.length], x + Math.cos(th) * rr * R * 1.15 * out, cy + yv * R * 0.72 * out, z + Math.sin(th) * rr * R * 1.15 * out,
-        th + rnd(), sz * (0.9 + rnd() * 0.4), sz * 0.6, sz, { t: (rnd() - 0.5) * 1.2, s: 0.08, p: 5 });
+    const vy = top + 0.79, cy = top + 0.95, R = 0.3;
+    // foliage first, so the flowers sit in front of it
+    const greens = ["#2f5b2b", "#3f7436", "#4c7a3a", "#356a3a"], NL = LO ? 8 : 15;
+    for (let k = 0; k < NL; k++) {
+      const th = k * 2.4 + rnd() * 0.5, len = 0.3 + rnd() * 0.16;
+      put("leaf", greens[k % greens.length], x + Math.cos(th) * 0.04, vy, z + Math.sin(th) * 0.04, PI / 2 - th, 0.13 + rnd() * 0.05, len * 0.9, len, { t: -0.75 + rnd() * 1.05, s: 0.18, sh: 30 });
     }
-    for (let k = 0; k < 6; k++) {
-      const th = k * 1.05 + rnd() * 0.5, d = 0.12 + rnd() * 0.08;
-      put("ballLo", k % 2 ? "#f2c3cd" : "#f3ede4", x + Math.cos(th) * d, cy + 0.17 + rnd() * 0.05, z + Math.sin(th) * d, PI / 2 - th,
-        0.075, 0.011, 0.25, { t: -0.5 - rnd() * 0.4, s: 0.1 });
+    // hydrangea: many small cupped florets over a dome, each turned to face outwards
+    const tints = ["#f7f6fa", "#ffffff", "#e9edf8", "#f5e8ee", "#dfe7f5", "#fbf7f2"], NF = LO ? 40 : 104;
+    const spot = (yv, th, out) => { const phi = Math.acos(yv), sp = Math.sin(phi); return { phi, th, p: [x + Math.cos(th) * sp * R * 1.1 * out, cy + yv * R * 0.78 * out, z + Math.sin(th) * sp * R * 1.1 * out], n: [Math.cos(th) * sp, yv, Math.sin(th) * sp] }; };
+    for (let k = 0; k < NF; k++) {
+      const q = spot(1 - 0.92 * (k + 0.5) / NF, k * 2.39996 + rnd() * 0.3, 1 + (rnd() - 0.5) * 0.1), sz = 0.07 + rnd() * 0.03;
+      put("floret", tints[k % tints.length], q.p[0], q.p[1], q.p[2], PI / 2 - q.th + rnd() * 0.6, sz, sz, sz, { t: q.phi * 0.92 + (rnd() - 0.5) * 0.25, s: 0.1, p: 0 });
     }
-    for (let k = 0; k < 6; k++) {
-      const th = k * 1.13 + 0.4, yv = 0.1 + rnd() * 0.6, rr = Math.sqrt(1 - yv * yv);
-      put("ballLo", "#efb3c1", x + Math.cos(th) * rr * R * 1.2, cy + yv * R * 0.75, z + Math.sin(th) * rr * R * 1.2, th, 0.065, 0.055, 0.065, { s: 0.15, p: 5 });
+    // roses: three stacked, turning layers and a bud in the middle, standing out of the dome
+    const roses = [["#f3b9a2", "#e8907f"], ["#f0a3b6", "#e0788f"], ["#f7dcc9", "#efb79e"], ["#f4b0a0", "#e68a7a"]], NR = LO ? 3 : 6;
+    for (let k = 0; k < NR; k++) {
+      const q = spot(0.18 + 0.7 * ((k * 0.618 + 0.1) % 1), k * 1.9 + 0.7, 1.08), [c1, c2] = roses[k % roses.length], f = 0.9 + rnd() * 0.25;
+      [[0.092, 0, c1], [0.07, 0.014, c1], [0.05, 0.026, c2], [0.032, 0.036, c2]].forEach(([d, h, col], i) => {
+        put("rose", col, q.p[0] + q.n[0] * h * f, q.p[1] + q.n[1] * h * f, q.p[2] + q.n[2] * h * f, PI / 2 - q.th + i * 0.62, d * f, d * f, d * f, { t: q.phi, s: 0.12, sh: 30 });
+      });
     }
-    for (let k = 0; k < 12; k++) {
-      const th = k * PI / 6 + rnd() * 0.3, d = 0.25 + rnd() * 0.04;
-      put("ballLo", k % 3 === 1 ? "#f2c3cd" : "#f3ede4", x + Math.cos(th) * d, cy - 0.1 - rnd() * 0.08, z + Math.sin(th) * d, PI / 2 - th,
-        0.085, 0.012, 0.27 + rnd() * 0.05, { t: 0.45 + rnd() * 0.35, s: 0.1 });
+    // pale feather leaves rising at the top, a few dark leaves drooping at the sides
+    for (let k = 0; k < (LO ? 3 : 6); k++) {
+      const th = k * 1.05 + rnd() * 0.5, len = 0.27 + rnd() * 0.1;
+      put("leaf", k % 2 ? "#f2c3cd" : "#f3ede4", x + Math.cos(th) * 0.12, cy + R * 0.55, z + Math.sin(th) * 0.12, PI / 2 - th, 0.1, len * 0.9, len, { t: -0.95 - rnd() * 0.3, s: 0.1 });
     }
-    for (let k = 0; k < 9; k++) {
-      const th = k * 0.7 + rnd(), d = 0.22 + rnd() * 0.06;
-      put("ballLo", k % 2 ? "#4c7a3a" : "#2f5b2b", x + Math.cos(th) * d, cy - 0.02 + (rnd() - 0.5) * 0.18, z + Math.sin(th) * d, PI / 2 - th,
-        0.05, 0.01, 0.16, { t: 0.2 + rnd() * 0.5, s: 0.15 });
+    if (!LO) for (let k = 0; k < 6; k++) {
+      const th = k * 1.13 + 0.4 + rnd() * 0.3, len = 0.26 + rnd() * 0.08;
+      put("leaf", greens[k % greens.length], x + Math.cos(th) * R * 0.95, cy - 0.12, z + Math.sin(th) * R * 0.95, PI / 2 - th, 0.12, len * 0.9, len, { t: 0.1 + rnd() * 0.4, s: 0.18, sh: 30 });
     }
   }
 
