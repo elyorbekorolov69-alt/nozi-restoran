@@ -276,7 +276,11 @@ body {
 .vt3 .hv-pad { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; }
 .vt3 .hv-pad button { min-width: 48px; height: 42px; border: 1px solid var(--line2); background: rgba(5,8,18,0.55); color: #fff; border-radius: 12px; font-size: 18px; cursor: pointer; touch-action: none; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
 .vt3 .hv-pad button:active { background: rgba(214,170,82,0.35); }
-.vt3.hall .hint { bottom: auto; top: 8px; }
+.vt3.hall .hint { bottom: auto; top: 8px; max-width: calc(100% - 150px); }
+.vt3 .psw { position: absolute; right: 8px; top: 6px; z-index: 3; display: flex; gap: 6px; }
+.vt3 .psw .chip { background: rgba(5, 8, 18, 0.55); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); padding: 7px 11px; font-size: 12px; }
+.vt3 .psw .chip[aria-pressed="true"] { background: var(--gold-soft); }
+.vt3.hasp .courses { right: 150px; }
 /* adverts */
 .fs {
   position: absolute; right: 8px; bottom: 8px; z-index: 3; width: 40px; height: 40px; padding: 0; display: grid; place-items: center;
@@ -3222,7 +3226,9 @@ if (typeof module !== "undefined") module.exports = makeQR;
   // ----- 3D halls: Three.js and the hall file load only when a guest opens one -----
   const HALL3D = { terrasa: "terrasa", mayda: "kichik", toyxona: "katta" };
   const hallFail = {};
-  const hallKey = () => { const k = HALL3D[hallNow().id]; return k && !hallFail[k] ? k : null; };
+  const hallAvail = () => { const k = HALL3D[hallNow().id]; return k && !hallFail[k] ? k : null; };
+  // the real hall is shown only when the guest asks for it; the table scene (which follows every choice) is the default
+  const hallKey = () => (bk.pane === "zal" ? hallAvail() : null);
   let hv = null, hvTimer = 0;
   function disposeHall() {
     if (!hv) return;
@@ -3259,6 +3265,18 @@ if (typeof module !== "undefined") module.exports = makeQR;
   function mount3D(host) {
     const hk = hallKey();
     host.classList.toggle("hall", !!hk);
+    host.querySelectorAll(".psw").forEach(x => x.remove());
+    if (hallAvail()) {
+      host.classList.add("hasp");
+      host.insertAdjacentHTML("beforeend", `<div class="psw" role="toolbar" aria-label="Ko‘rinish"><button class="chip" type="button" data-pane="stol" aria-pressed="${!hk}">Stol</button><button class="chip" type="button" data-pane="zal" aria-pressed="${!!hk}">Zal 3D</button></div>`);
+      host.querySelectorAll("[data-pane]").forEach(b => b.addEventListener("click", () => {
+        if ((b.dataset.pane === "zal") === !!hk) return;
+        bk.pane = b.dataset.pane;
+        const c = winBody.querySelector(".col-l"), y = c ? c.scrollTop : winBody.scrollTop;
+        viewBanket(winBody);
+        const c2 = winBody.querySelector(".col-l"); if (c2) c2.scrollTop = y; else winBody.scrollTop = y;
+      }));
+    }
     if (hk) {
       // the real hall replaces the table scene; the chosen dishes stay in the list below
       const c = host.querySelector(".courses"); if (c) c.remove();
