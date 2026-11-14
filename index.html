@@ -270,16 +270,13 @@ body {
 .d-photos img { width: 100%; max-width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 12px; display: block; }
 
 /* 3D hall viewer */
-.hall3d { position: fixed; inset: 0; z-index: 100000; background: #0b0f1d; touch-action: none; }
-.hall3d canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-.hall3d .h-top { position: absolute; left: 0; right: 0; top: 0; display: flex; align-items: center; gap: 10px; padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left)); background: linear-gradient(rgba(5,8,18,0.7), transparent); color: #fff; font-family: var(--font-ui); }
-.hall3d .h-top b { flex: 1; font-weight: 500; font-size: 15px; }
-.hall3d .h-x { border: 1px solid var(--line2); background: rgba(5,8,18,0.55); color: #fff; border-radius: 10px; padding: 8px 14px; font: inherit; font-size: 14px; cursor: pointer; }
-.hall3d .h-msg { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--mist); font-family: var(--font-ui); padding: 24px; }
-.hall3d .h-pad { position: absolute; bottom: max(14px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); display: flex; gap: 8px; }
-.hall3d .h-pad button { min-width: 58px; height: 48px; border: 1px solid var(--line2); background: rgba(5,8,18,0.55); color: #fff; border-radius: 12px; font-size: 20px; cursor: pointer; touch-action: none; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
-.hall3d .h-pad button:active { background: rgba(214,170,82,0.35); }
-.hall3d .h-hint { position: absolute; bottom: calc(max(14px, env(safe-area-inset-bottom)) + 58px); left: 0; right: 0; text-align: center; color: var(--mist); font: 13px var(--font-ui); pointer-events: none; padding: 0 16px; }
+.vt3 .hv { position: absolute; inset: 0; }
+.vt3 .hv canvas { touch-action: none; }
+.vt3 .hv-msg { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--mist); font-family: var(--font-ui); font-size: 14px; padding: 24px; pointer-events: none; }
+.vt3 .hv-pad { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; }
+.vt3 .hv-pad button { min-width: 48px; height: 42px; border: 1px solid var(--line2); background: rgba(5,8,18,0.55); color: #fff; border-radius: 12px; font-size: 18px; cursor: pointer; touch-action: none; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.vt3 .hv-pad button:active { background: rgba(214,170,82,0.35); }
+.vt3.hall .hint { bottom: auto; top: 8px; }
 /* adverts */
 .fs {
   position: absolute; right: 8px; bottom: 8px; z-index: 3; width: 40px; height: 40px; padding: 0; display: grid; place-items: center;
@@ -2929,7 +2926,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
             <input type="text" data-ed="${d.id}" data-f="uz" value="${esc(d.uz)}" aria-label="Nomi">
             <input type="number" min="0" inputmode="numeric" data-ed="${d.id}" data-f="n" value="${d.n == null ? "" : d.n}" placeholder="narxi" aria-label="Narxi">
             <input type="text" class="adm-k" data-ed="${d.id}" data-f="k" value="${esc(d.k || "")}" placeholder="Tarkibi" aria-label="Tarkibi">
-            <span class="adm-acts">${fileBtn("pic", d.id, "Rasm qo‘shish", "image/jpeg,image/png,image/webp")}${fileBtn("vid", d.id, d.vid ? "Videoni almashtirish" : "Video qo‘shish", "video/mp4,video/webm")}</span></div>`).join("")}
+            <span class="adm-acts">${fileBtn("pic", d.id, "Rasm qo‘shish", "image/jpeg,image/png,image/webp")}${fileBtn("vid", d.id, d.vid ? "Videoni almashtirish" : "Video qo‘shish", "video/mp4,video/webm")}${d._b && d.pic !== d._b.pic ? `<button class="pill adm-up" type="button" data-rm="pic" data-id="${d.id}">Rasmni olib tashlash</button>` : ""}${d._b && d.vid !== d._b.vid ? `<button class="pill adm-up" type="button" data-rm="vid" data-id="${d.id}">Videoni olib tashlash</button>` : ""}</span></div>`).join("")}
           <p id="admMsg" class="adm-ok" role="status"></p>`;
       },
       reklama() {
@@ -3031,6 +3028,16 @@ if (typeof module !== "undefined") module.exports = makeQR;
         const r = await Promise.all([admSave("ads", ADS.slice()), admSave("gal", GAL.map(g => ({ src: g.src, cap: g.cap })))]);
         draw(); msg(r.every(x => x.ok) ? "Saqlandi" : (failMsg(r.find(x => !x.ok)) || ""), !r.every(x => x.ok)); return;
       }
+      const rm = e.target.closest("[data-rm]");
+      if (rm) {
+        const d = byId[rm.dataset.id]; if (!d) return;
+        const b = baseOf(d); let patch;
+        if (rm.dataset.rm === "pic") { d.pic = b.pic; d.ai = b.ai; patch = { pic: "", ai: b.ai }; }
+        else { d.vid = b.vid; d.th = b.th; patch = { vid: "", th: b.th || "" }; }
+        msg("Saqlanmoqda…");
+        const r = await menuPatch(d.id, patch);
+        draw(); msg(r.ok ? "Olib tashlandi" : failMsg(r), !r.ok); return;
+      }
       const use = e.target.closest("[data-use]");
       if (use) {
         use.disabled = true;
@@ -3068,8 +3075,8 @@ if (typeof module !== "undefined") module.exports = makeQR;
         if (!r.ok) return msg(r.status === 401 ? (out(), "") : (r.j && r.j.error) || "Yuklanmadi", true);
         const url = r.j.url;
         let sv;
-        if (act === "pic") { const d = byId[id]; d.pic = url; d.ai = 0; sv = await menuPatch(id, { pic: url, ai: 0 }); }
-        else if (act === "vid") { const d = byId[id]; d.vid = url; d.th = ""; sv = await menuPatch(id, { vid: url, th: "" }); }
+        if (act === "pic") { const d = byId[id]; baseOf(d); d.pic = url; d.ai = 0; sv = await menuPatch(id, { pic: url, ai: 0 }); }
+        else if (act === "vid") { const d = byId[id]; baseOf(d); d.vid = url; d.th = ""; sv = await menuPatch(id, { vid: url, th: "" }); }
         else if (act === "ad") { ADS.unshift(url); sv = await admSave("ads", ADS.slice()); }
         else { GAL.push({ src: url, cap: "Yangi rasm" }); sv = await admSave("gal", GAL.map(g => ({ src: g.src, cap: g.cap }))); }
         draw(); msg(sv.ok ? "Yuklandi va saqlandi" : failMsg(sv), !sv.ok);
@@ -3214,43 +3221,35 @@ if (typeof module !== "undefined") module.exports = makeQR;
 
   // ----- 3D halls: Three.js and the hall file load only when a guest opens one -----
   const HALL3D = { terrasa: "terrasa", mayda: "kichik", toyxona: "katta" };
-  let hallView = null;
-  function openHall3D(h) {
-    const key = HALL3D[h.id];
-    if (!key || hallView) return;
+  const hallFail = {};
+  const hallKey = () => { const k = HALL3D[hallNow().id]; return k && !hallFail[k] ? k : null; };
+  let hv = null, hvTimer = 0;
+  function disposeHall() {
+    if (!hv) return;
+    hv.dead = true; if (hv.api) hv.api.dispose();
+    hv.box.remove(); hv = null; clearInterval(hvTimer);
+  }
+  function startHall(key) {
     const box = document.createElement("div");
-    box.className = "hall3d";
-    box.setAttribute("role", "dialog"); box.setAttribute("aria-label", h.name + " zalining 3D ko‘rinishi");
-    box.innerHTML = `<canvas></canvas><div class="h-top"><b>${h.name}</b><button class="h-x" type="button">Yopish</button></div>
-      <div class="h-msg"><span>Zal yuklanmoqda…</span></div>`;
-    document.body.appendChild(box);
-    const msg = box.querySelector(".h-msg span"), canvas = box.querySelector("canvas");
-    let api = null, closed = false;
-    const close = () => {
-      closed = true; if (api) api.dispose();
-      removeEventListener("keydown", onEsc); box.remove(); hallView = null;
-    };
-    const onEsc = e => { if (e.key === "Escape") close(); };
-    addEventListener("keydown", onEsc);
-    box.querySelector(".h-x").addEventListener("click", close);
-    hallView = box;
-    import("./zal/viewer.js").then(m => m.start({ canvas, id: key, url: "./zal/" + key + ".bin", onProgress: p => { msg.textContent = "Zal yuklanmoqda… " + Math.round(p * 100) + "%"; } }))
-      .then(a => {
-        if (closed) { a.dispose(); return; }
-        api = a;
-        box.querySelector(".h-msg").remove();
-        const pad = document.createElement("div");
-        pad.className = "h-pad";
-        pad.innerHTML = [["◀", 0, -1], ["▲", 1, 0], ["▼", -1, 0], ["▶", 0, 1]].map(([t, f, s]) => `<button type="button" data-f="${f}" data-s="${s}" aria-label="${t}">${t}</button>`).join("");
-        box.appendChild(pad);
-        box.insertAdjacentHTML("beforeend", `<div class="h-hint">Barmoq bilan suring: atrofga qarash · tugmalar: yurish</div>`);
-        pad.querySelectorAll("button").forEach(b => {
-          const go = () => api.hold(Number(b.dataset.f), Number(b.dataset.s)), stop = () => api.hold(0, 0);
-          b.addEventListener("pointerdown", e => { e.preventDefault(); go(); });
-          ["pointerup", "pointerleave", "pointercancel"].forEach(ev => b.addEventListener(ev, stop));
-        });
-      })
-      .catch(() => { if (!closed) box.querySelector(".h-msg").innerHTML = `<span>Bu qurilmada zalni ko‘rsatib bo‘lmadi.</span>`; });
+    box.className = "hv";
+    box.innerHTML = `<canvas aria-label="Zalning 3D ko‘rinishi. Atrofga qarash uchun suring."></canvas><div class="hv-msg"><span>Zal yuklanmoqda…</span></div>
+      <div class="hv-pad">${[["◀", 0, -1], ["▲", 1, 0], ["▼", -1, 0], ["▶", 0, 1]].map(([t, f, s]) => `<button type="button" data-f="${f}" data-s="${s}" aria-label="${t}">${t}</button>`).join("")}</div>`;
+    const me = hv = { key, box, api: null, dead: false };
+    const msg = box.querySelector(".hv-msg span");
+    box.querySelectorAll(".hv-pad button").forEach(b => {
+      const go = () => { if (me.api) me.api.hold(Number(b.dataset.f), Number(b.dataset.s)); }, stop = () => { if (me.api) me.api.hold(0, 0); };
+      b.addEventListener("pointerdown", e => { e.preventDefault(); go(); });
+      ["pointerup", "pointerleave", "pointercancel"].forEach(ev => b.addEventListener(ev, stop));
+    });
+    import("./zal/viewer.js").then(m => m.start({ canvas: box.querySelector("canvas"), id: key, url: "./zal/" + key + ".bin", onProgress: p => { msg.textContent = "Zal yuklanmoqda… " + Math.round(p * 100) + "%"; } }))
+      .then(a => { if (me.dead) { a.dispose(); return; } me.api = a; box.querySelector(".hv-msg").remove(); })
+      .catch(() => {
+        if (me.dead) return;
+        hallFail[key] = true; disposeHall();     // this device cannot show the hall: fall back to the table view
+        if (winKey === "banket" && winBody.isConnected) viewBanket(winBody);
+      });
+    // the window was closed or left: stop drawing
+    hvTimer = setInterval(() => { if (hv !== me) clearInterval(hvTimer); else if (!box.isConnected) disposeHall(); }, 4000);
   }
 
   // one 3D table, created once and moved between steps
@@ -3258,13 +3257,25 @@ if (typeof module !== "undefined") module.exports = makeQR;
   const t3dCanvas = document.createElement("canvas");
   t3dCanvas.setAttribute("aria-label", "Dasturxonning 3D ko‘rinishi. Aylantirish uchun suring.");
   function mount3D(host) {
+    const hk = hallKey();
+    host.classList.toggle("hall", !!hk);
+    if (hk) {
+      // the real hall replaces the table scene; the chosen dishes stay in the list below
+      const c = host.querySelector(".courses"); if (c) c.remove();
+      const hi = host.querySelector(".hint"); if (hi) hi.textContent = "Barmoq bilan suring: atrofga qarash · pastdagi tugmalar: yurish";
+      if (hv && hv.key !== hk) disposeHall();
+      if (!hv) startHall(hk);
+      host.prepend(hv.box);
+      return;
+    }
+    disposeHall();
     host.prepend(t3dCanvas);
     if (!t3d) t3d = typeof Table3D === "function" ? Table3D(t3dCanvas) : null;
     if (!t3d) { host.insertAdjacentHTML("beforeend", `<p class="hint">Bu qurilmada 3D ko‘rinish ishlamadi.</p>`); return; }
     rebuild3D();
   }
   function rebuild3D() {
-    if (!t3d) return;
+    if (!t3d || hallKey()) return;
     const round = shapeNow() === "round";
     const cap = x => ({ d: x.d, q: Math.min(x.q, x.course === "c1" ? 40 : 6), course: x.course });
     const tv = tviewNow();
@@ -3286,13 +3297,13 @@ if (typeof module !== "undefined") module.exports = makeQR;
     return `<div class="vt3-wrap"><div class="vt3" id="vt3">
         <div class="chips courses" role="toolbar" aria-label="Qaysi payt">${COURSES.map(([k, n]) => `<button class="chip" type="button" data-view="${k}" aria-pressed="${bk.view === k}">${n}</button>`).join("")}</div>
         <span class="hint">Barmoq bilan suring: aylantirish · ikki barmoq: yaqinlashtirish</span><button class="fs" type="button" data-fs="" aria-label="To‘liq ekran" aria-pressed="false"></button></div>
-        ${tablesNow() > 1 || isTab() ? tableChips() : ""}
+        ${(tablesNow() > 1 && !hallKey()) || isTab() ? tableChips() : ""}
         <p class="vt-meta" id="vtm">${extra}</p></div>`;
   }
   function tableChips() {
     const U = tablesNow(), tv = tviewNow(), tab = isTab();
     const minT = shapeNow() === "round" ? Math.max(1, Math.ceil(bk.guests / ROUND_SEATS)) : 1;
-    return `<div class="chips tbls" role="toolbar" aria-label="Qaysi stol">${U > 1 ? `<button class="chip" type="button" data-tbl="all" aria-pressed="${tv === "all"}">Hammasi</button>${units().map((u, i) => `<button class="chip" type="button" data-tbl="${i}" aria-pressed="${tv === i}">${i + 1}-${tblWord()}</button>`).join("")}` : ""}${tab ? `<button class="chip add" type="button" data-addt="1">+ ${tblWord()} qo‘shish</button>${U > minT ? `<button class="chip add" type="button" data-addt="-1">− olib tashlash</button>` : ""}` : ""}</div>`;
+    return `<div class="chips tbls" role="toolbar" aria-label="Qaysi stol">${U > 1 && !hallKey() ? `<button class="chip" type="button" data-tbl="all" aria-pressed="${tv === "all"}">Hammasi</button>${units().map((u, i) => `<button class="chip" type="button" data-tbl="${i}" aria-pressed="${tv === i}">${i + 1}-${tblWord()}</button>`).join("")}` : ""}${tab ? `<button class="chip add" type="button" data-addt="1">+ ${tblWord()} qo‘shish</button>${U > minT ? `<button class="chip add" type="button" data-addt="-1">− olib tashlash</button>` : ""}` : ""}</div>`;
   }
   function metaText() {
     const items = chosenItems(), U = tablesNow(), unk = unpriced().length ? " + narxi aniqlanmoqda" : "";
@@ -3365,7 +3376,6 @@ if (typeof module !== "undefined") module.exports = makeQR;
           ${bk.type === "toy" && bk.guests >= 50 ? `<p class="pk-note">Katta to‘y zalni kun bo‘yi band qiladi.</p>` : ""}
           <p class="pk-note">${sh === "round" ? (bk.type === "toy" ? "To‘ylarda dumaloq stol qo‘yiladi." : "12–14 kishiga bitta dumaloq stol to‘g‘ri keladi.") + (tablesNow() > 1 ? ` ${tablesNow()} ta stolning hammasi ${isTab() ? "o‘ngda" : "pastda"} ko‘rinadi.` : "") : "To‘rtburchak stollar uchma-uch qo‘yilib, mehmon soniga qarab uzayadi."}</p>
         </div>
-        ${HALL3D[h.id] ? `<div class="field"><button class="btn" type="button" id="bkhall3">Zalni 3D ko‘rish</button></div>` : ""}
         ${needRest() ? restBlock() : ""}
         ${sh === "long" && bk.guests > 20 ? `<p class="bk-sub">Stollar necha qator bo‘lsin?</p>
         <div class="opts">
@@ -3381,8 +3391,8 @@ if (typeof module !== "undefined") module.exports = makeQR;
         ` + nav("Orqaga", "Taomlarni tanlash", !needRest() || !!bk.rest);
     } else if (bk.step === 2) {
       html += `<h3 class="bk-h">Taomlarni tanlang</h3>
-        <p class="bk-todo"><span><b>Nima qilish kerak:</b> pastdagi bo‘limni tanlang (masalan, Salatlar), keyin taom yonidagi <b>+</b> tugmasi bilan qo‘shing. Tanlaganingiz stolda ko‘rinadi. Hammasini tanlab bo‘lgach, “Tartibni ko‘rish” ni bosing.</span></p>
-        <p class="bk-p">Taomdan tortib suvgacha ${setWord()} qanchadan qo‘yilishini tanlang. ${tablesNow() > 1 ? `Taomlar ${tablesNow()} ta ${tblWord()}ga navbat bilan taqsimlanadi: 1-taom 1-${tblWord()}ga, 2-taom 2-${tblWord()}ga va hokazo. Har bir ${tblWord()} faqat o‘z taomlari uchun hisoblanadi.` : `Tanlaganingiz stolda paydo bo‘ladi${n > 1 ? `, soni ${n} ta qismga o‘zi ko‘paytiriladi` : ""}.`}</p>
+        <p class="bk-todo"><span><b>Nima qilish kerak:</b> pastdagi bo‘limni tanlang (masalan, Salatlar), keyin taom yonidagi <b>+</b> tugmasi bilan qo‘shing. ${hallKey() ? "Zalni aylanib ko‘rishingiz mumkin, tanlaganingiz esa hisobda saqlanadi." : "Tanlaganingiz stolda ko‘rinadi."} Hammasini tanlab bo‘lgach, “Tartibni ko‘rish” ni bosing.</span></p>
+        <p class="bk-p">Taomdan tortib suvgacha ${setWord()} qanchadan qo‘yilishini tanlang. ${tablesNow() > 1 ? `Taomlar ${tablesNow()} ta ${tblWord()}ga navbat bilan taqsimlanadi: 1-taom 1-${tblWord()}ga, 2-taom 2-${tblWord()}ga va hokazo. Har bir ${tblWord()} faqat o‘z taomlari uchun hisoblanadi.` : `${hallKey() ? "Tanlaganingiz pastdagi ro‘yxatda ko‘rinadi" : "Tanlaganingiz stolda paydo bo‘ladi"}${n > 1 ? `, soni ${n} ta qismga o‘zi ko‘paytiriladi` : ""}.`}</p>
         ${isTab() ? "" : view3DHTML(metaText())}
         <div class="chips" role="toolbar" aria-label="Bo‘limlar">
           ${MENU.map(s => `<button class="chip" type="button" data-sec="${s.id}" aria-pressed="${(bk.sec || MENU[0].id) === s.id}">${esc(s.uz)}</button>`).join("")}
@@ -3393,7 +3403,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
       html += `<h3 class="bk-h">Taomlar qachon chiqadi</h3>
         <p class="bk-todo"><span><b>Nima qilish kerak:</b> taomlar qaysi paytda tortilishini tekshiring. Hammasi to‘g‘ri bo‘lsa, “Hisobni ko‘rish” ga o‘ting. O‘zgartirmoqchi bo‘lsangiz, taom yonidagi ro‘yxatdan boshqa paytni tanlang.</span></p>
         <p class="bk-p">Qaysi taom qachon tortilishini o‘zimiz ajratdik: sovuq gazak, salat, non va ichimliklar mehmonlar kelguncha dasturxonda turadi, sho‘rva 1-taom, issiq taomlar 2-taom, shashlik 3-taom. Kerak bo‘lsa o‘zgartiring.</p>
-        ${isTab() ? "" : view3DHTML("Yuqoridagi tugmalar bilan har bir payt dasturxonini ko‘ring")}
+        ${isTab() ? "" : view3DHTML(hallKey() ? "Zalni aylanib ko‘ring" : "Yuqoridagi tugmalar bilan har bir payt dasturxonini ko‘ring")}
         ${warns.map(w => `<p class="warn">${w}</p>`).join("")}
         ${COURSES.map(([k, name]) => {
           const g = items.filter(x => x.course === k);
@@ -3499,7 +3509,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
     if (tab) html = `<div class="col-l">${html}</div><div class="col-r"><div class="r-top">${view3DHTML(metaText())}</div></div>`;
     body.innerHTML = html;
     const host = body.querySelector("#vt3");
-    if (host) mount3D(host);
+    if (host) mount3D(host); else disposeHall();
     wireBanket(body);
   }
 
@@ -3552,8 +3562,6 @@ if (typeof module !== "undefined") module.exports = makeQR;
       const nx = body.querySelector("[data-go='1']");
       if (nx && bk.step === 0) nx.disabled = !(bk.date && bk.guests >= 1);
     }
-    const h3 = body.querySelector("#bkhall3");
-    if (h3) h3.addEventListener("click", () => openHall3D(hallNow()));
     const ch = body.querySelector("#bkch");
     if (ch) ch.addEventListener("click", () => { bk.change = !bk.change; rerender(); });
     body.querySelectorAll("[data-hall]").forEach(b => b.addEventListener("click", () => { bk.hall = b.dataset.hall; rerender(); }));
@@ -3915,6 +3923,8 @@ if (typeof module !== "undefined") module.exports = makeQR;
   let CFG = {};
   const cfg = (k, d) => (CFG[k] !== undefined && CFG[k] !== null ? CFG[k] : d);
   const CONTENT_API = "/api/content";
+  // what a dish had before the admin changed it, so a picture or video can be taken away again
+  const baseOf = d => d._b || (d._b = { pic: d.pic, ai: d.ai, vid: d.vid, th: d.th });
   function applyCfg() {
     const m = cfg("menu", {});
     Object.keys(m).forEach(id => {
@@ -3923,10 +3933,11 @@ if (typeof module !== "undefined") module.exports = makeQR;
       if (o.uz != null && o.uz !== "") d.uz = o.uz;
       if ("n" in o) d.n = o.n;
       if (o.k != null) d.k = o.k;
-      if (o.pic) d.pic = o.pic;
+      const b = baseOf(d);
+      if ("pic" in o) { if (o.pic) d.pic = o.pic; else { d.pic = b.pic; d.ai = b.ai; } }
       if (Array.isArray(o.img) && o.img.length) d.img = o.img;
-      if (o.vid) { d.vid = o.vid; d.th = o.th || ""; }
-      if ("ai" in o) d.ai = o.ai;
+      if ("vid" in o) { if (o.vid) { d.vid = o.vid; d.th = o.th || ""; } else { d.vid = b.vid; d.th = b.th; } }
+      if (o.pic && "ai" in o) d.ai = o.ai;
     });
     const ads = cfg("ads", null), gal = cfg("gal", null), hl = cfg("halls", {});
     if (Array.isArray(ads) && ads.length) ADS.splice(0, ADS.length, ...ads.filter(u => typeof u === "string"));
