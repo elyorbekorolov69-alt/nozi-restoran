@@ -251,6 +251,10 @@ body {
 .sheet-body { flex: 1; min-height: 0; overflow: auto; padding: 14px 22px 26px; }
 .d3 { position: relative; height: min(46vh, 380px); border-radius: 16px; overflow: hidden; background: radial-gradient(ellipse at 50% 40%, #1b2136, #0b0f1d 75%); }
 .d3 canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; }
+.d3 .glb-poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; pointer-events: none; transition: opacity .4s; }
+.d3 .glb-poster.off { opacity: 0; }
+.d3 .glb-state { position: absolute; left: 0; right: 0; top: 10px; z-index: 2; text-align: center; color: #fff; font-size: 12px; text-shadow: 0 1px 3px #000; pointer-events: none; }
+.d3 .fs { z-index: 3; }
 .d3 .hint { position: absolute; left: 10px; bottom: 8px; color: var(--mist); font-size: 11.5px; pointer-events: none; }
 .d-info { margin-top: 14px; }
 .d-info .ln { display: flex; align-items: baseline; gap: 8px; }
@@ -432,6 +436,12 @@ body {
 .adm-dish { display: grid; grid-template-columns: 64px minmax(0, 1fr) 130px; gap: 8px; padding: 12px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); align-items: center; }
 .adm-dish .adm-thw { grid-row: 1 / 3; align-self: start; }
 .adm-dish .adm-k { grid-column: 2 / -1; font-size: 14px; }
+.adm-dish .adm-kg { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 10px; font-size: 12.5px; color: var(--mist); }
+.adm-dish .adm-kg label { display: flex; align-items: center; gap: 6px; }
+.adm-dish .adm-kg input { width: 130px; }
+.adm-new { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.7fr); gap: 8px; max-width: 560px; }
+.adm-new input { min-width: 0; }
+.adm-new input:nth-child(3), .adm-new button { grid-column: 1 / -1; }
 .adm-dish .adm-acts { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
 .adm-dish.hall { grid-template-columns: minmax(0, 1fr); }
 .adm-dish.hall .adm-k { grid-column: 1; }
@@ -2422,6 +2432,23 @@ if (typeof module !== "undefined") module.exports = makeQR;
   const DISHES = [];
   MENU.forEach(s => s.t.forEach((t, i) => { t.id = s.id + "-" + i; t.sec = s.id; DISHES.push(t); }));
   const byId = Object.fromEntries(DISHES.map(d => [d.id, d]));
+  // real 3D models (Tripo + Blender), loaded only when the dish is opened: dish id -> file name in /taom
+  const MODEL3D = { "issiq-3": "baliq", "sovuq-8": "pishloq", "meva-0": "meva" };   // kroket: menyudagi taomi aytilgach shu yerga qo‘shiladi
+  const m3 = t => MODEL3D[t.id] ? { glb: "taom/" + MODEL3D[t.id] + ".glb", img: "taom/" + MODEL3D[t.id] + ".jpg" } : null;
+  let glbView = null, glbToken = 0;
+  function disposeGLB() { glbToken++; if (glbView) { try { glbView.dispose(); } catch (e) {} glbView = null; } }
+  function mountGLB(host, t) {
+    disposeGLB();
+    const m = m3(t), tok = glbToken;
+    const poster = document.createElement("img"); poster.className = "glb-poster"; poster.src = m.img; poster.alt = t.uz;
+    const st = document.createElement("span"); st.className = "glb-state"; st.textContent = "3D yuklanmoqda…";
+    host.prepend(poster); host.appendChild(st);
+    const fail = () => { if (tok === glbToken) st.textContent = "3D ko‘rinish yuklanmadi, rasm ko‘rsatilmoqda"; };
+    import("./taom/viewer.js").then(v => {
+      if (tok !== glbToken || !host.isConnected) return;
+      glbView = v.show({ host, url: m.glb, onReady() { if (tok !== glbToken) return; poster.classList.add("off"); st.remove(); }, onFail: fail });
+    }).catch(fail);
+  }
   const priceText = t => t.n == null ? "aniqlanmoqda" : fmt(t.n);
   const reviewBlock = text => `<div class="review"><p>${text}</p>
     <div class="pills"><a class="pill gold" href="${REVIEW_URL}" target="_blank" rel="noopener">★ Google’da sharh qoldirish</a>
@@ -2552,12 +2579,12 @@ if (typeof module !== "undefined") module.exports = makeQR;
       `<div class="dish-act">${stepper(t.id)}</div>`;
     // a sample photo on a round plate (AI-made until the restaurant's own photo arrives)
     if (t.pic) return `<div class="dish has-plate" data-row="${t.id}"><span class="plate"><img src="${t.pic}" alt="${esc(t.uz)}"></span><div class="dm">${text}</div></div>`;
-    if (!t.img && !t.vid) return `<div class="dish" data-row="${t.id}">${text}</div>`;
+    if (!t.img && !t.vid && !m3(t)) return `<div class="dish" data-row="${t.id}">${text}</div>`;
     // the restaurant's own photos, video or a 3D model, opened in a sheet
-    const what = [t.vid && "video", t.img && "rasmlar", t.v && "3D ko‘rinish"].filter(Boolean);
+    const what = [t.vid && "video", t.img && "rasmlar", (t.v || m3(t)) && "3D ko‘rinish"].filter(Boolean);
     const label = what.length > 1 ? what.slice(0, -1).join(", ") + " va " + what[what.length - 1] : what[0];
     return `<div class="dish has-pic" data-row="${t.id}"><button class="pic" type="button" data-dish="${t.id}" aria-label="${esc(t.uz)}: ${label}">` +
-      `${(t.th || t.pic || (t.img && t.img[0])) ? `<img src="${t.th || t.pic || t.img[0]}" alt="">` : `<video src="${t.vid}#t=0.5" preload="metadata" muted playsinline aria-hidden="true"></video>`}<span class="b3d">${t.vid ? "▶ Video" : "3D"}</span></button><div class="dm">${text}` +
+      `${(t.th || t.pic || (t.img && t.img[0]) || m3(t)) ? `<img src="${t.th || t.pic || (t.img && t.img[0]) || m3(t).img}" alt="">` : `<video src="${t.vid}#t=0.5" preload="metadata" muted playsinline aria-hidden="true"></video>`}<span class="b3d">${t.vid ? "▶ Video" : "3D"}</span></button><div class="dm">${text}` +
       `<button class="see3d" type="button" data-dish="${t.id}">${t.vid ? "▶ Videoni ko‘rish" : "3D ko‘rish va rasmlar"}</button></div></div>`;
   }
 
@@ -2578,21 +2605,23 @@ if (typeof module !== "undefined") module.exports = makeQR;
       <div class="sheet-head"><h3>${esc(t.uz)}</h3><button class="ctl back" type="button" id="dishClose">✕ Yopish</button></div>
       <div class="sheet-body">
         ${t.vid ? `<div class="d-vid"><video src="${t.vid}" poster="${t.th}" muted loop playsinline autoplay aria-label="${esc(t.uz)}: NoZi’da olingan video"></video></div>` : ""}
-        ${t.v ? `<div class="d3" id="d3"${t.vid ? ' style="margin-top:14px"' : ""}><span class="hint">Barmoq bilan aylantiring · ikki barmoq bilan yaqinlashtiring</span><button class="fs" type="button" data-fs="" aria-label="To‘liq ekran" aria-pressed="false"></button></div>` : ""}
+        ${(t.v || m3(t)) ? `<div class="d3" id="d3"${t.vid ? ' style="margin-top:14px"' : ""}><span class="hint">Barmoq bilan aylantiring · ikki barmoq bilan yaqinlashtiring</span><button class="fs" type="button" data-fs="" aria-label="To‘liq ekran" aria-pressed="false"></button></div>` : ""}
         <div class="d-info"><div class="ln"><b>${esc(t.uz)}</b><span class="lead" aria-hidden="true"></span><span class="p">${priceText(t)}<small>so‘m</small></span></div>
           <div class="sub2"><span>${esc(t.ru)}</span>${t.o ? `<span class="o">${esc(t.o)}</span>` : ""}</div>
           ${t.k ? `<p class="k">${esc(t.k)}</p>` : ""}</div>
         <div class="d-act">${stepper(t.id)}</div>
         ${t.img ? `<p class="bk-sub">Haqiqiy rasmlar</p>
         <div class="d-photos">${t.img.map((src, i) => `<img src="${src}" alt="${esc(t.uz)}, ${i + 1}-rasm" loading="lazy">`).join("")}</div>` : ""}
-        ${t.v ? `<p class="note">3D ko‘rinish rasmlar asosida yasalgan model.</p>` : ""}
+        ${(t.v || m3(t)) ? `<p class="note">3D ko‘rinish rasmlar asosida yasalgan model.</p>` : ""}
       </div>`;
     sheet.hidden = false;
     requestAnimationFrame(() => sheet.classList.add("on"));
     const vid = sheet.querySelector(".d-vid video");
     if (vid) vid.play().catch(() => {});
     const host = sheet.querySelector("#d3");
-    if (host) {
+    if (host && m3(t)) mountGLB(host, t);
+    else if (host) {
+      disposeGLB();
       host.prepend(dishCanvas);
       if (!dishView && typeof Table3D === "function") dishView = Table3D(dishCanvas);
       if (dishView) {
@@ -2610,12 +2639,15 @@ if (typeof module !== "undefined") module.exports = makeQR;
     if (!sheet || sheet.hidden) return false;
     const vid = sheet.querySelector(".d-vid video");
     if (vid) vid.pause();
+    disposeGLB();
     sheet.classList.remove("on");
     setTimeout(() => { sheet.hidden = true; }, 260);
     return true;
   }
   // one dish in a 3D view on a given frame: shared by the menu's right pane and the banquet's lower pane
   function mountDish(host, t) {
+    if (m3(t)) { mountGLB(host, t); return; }
+    disposeGLB();
     host.prepend(dishCanvas);
     if (!dishView && typeof Table3D === "function") dishView = Table3D(dishCanvas);
     if (!dishView) { host.insertAdjacentHTML("beforeend", `<p class="hint">Bu qurilmada 3D ko‘rinish ishlamadi.</p>`); return; }
@@ -2885,7 +2917,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
   new MutationObserver(paintFS).observe(document.body, { childList: true, subtree: true });
   // ----- Admin: haqiqiy kirish (parol serverda tekshiriladi), o'zgarishlar bazaga yoziladi, rasm va video Supabase Storage'ga yuklanadi -----
   const adm = { on: false, pw: "", tab: "menyu", sec: "sovuq", queue: [], vurl: "", codes: null, found: null };
-  const ADM_TABS = [["menyu", "Menyu"], ["reklama", "Reklamalar"], ["banket", "Banket zallari"], ["qr", "QR oynasi"], ["kodlar", "Sovg‘a kodlari"], ["video", "Stol videosi"], ["qoshiq", "Qo‘shiq navbati"], ["parol", "Parol"]];
+  const ADM_TABS = [["menyu", "Menyu"], ["reklama", "Televizor reklamalari"], ["banket", "Banket zallari"], ["qr", "QR oynasi"], ["kodlar", "Sovg‘a kodlari"], ["video", "Stol videosi"], ["qoshiq", "Qo‘shiq navbati"], ["parol", "Parol"]];
   const admStore = { get() { try { return sessionStorage.getItem("nozi_adm") || ""; } catch (e) { return ""; } }, set(v) { try { v ? sessionStorage.setItem("nozi_adm", v) : sessionStorage.removeItem("nozi_adm"); } catch (e) {} } };
   // one call to the server; a wrong or expired password sends the admin back to the login form
   async function admApi(method, path, body, headers) {
@@ -2964,15 +2996,23 @@ if (typeof module !== "undefined") module.exports = makeQR;
             <input type="text" data-ed="${d.id}" data-f="uz" value="${esc(d.uz)}" aria-label="Nomi">
             <input type="number" min="0" inputmode="numeric" data-ed="${d.id}" data-f="n" value="${d.n == null ? "" : d.n}" placeholder="narxi" aria-label="Narxi">
             <input type="text" class="adm-k" data-ed="${d.id}" data-f="k" value="${esc(d.k || "")}" placeholder="Tarkibi" aria-label="Tarkibi">
-            <span class="adm-acts">${fileBtn("pic", d.id, "Rasm qo‘shish", "image/jpeg,image/png,image/webp")}${fileBtn("vid", d.id, d.vid ? "Videoni almashtirish" : "Video qo‘shish", "video/mp4,video/webm")}${d._b && d.pic !== d._b.pic ? `<button class="pill adm-up" type="button" data-rm="pic" data-id="${d.id}">Rasmni olib tashlash</button>` : ""}${d._b && d.vid !== d._b.vid ? `<button class="pill adm-up" type="button" data-rm="vid" data-id="${d.id}">Videoni olib tashlash</button>` : ""}</span></div>`).join("")}
+            <span class="adm-kg"><label>Banket: 1 kg narxi <input type="number" min="0" inputmode="numeric" data-ed="${d.id}" data-f="bp" value="${d.bp > 0 ? d.bp : ""}" placeholder="${kgInfo(d) ? kgInfo(d).price + " (menyudan)" : "kg bilan emas"}"></label>
+              <label>Kishiga gramm <input type="number" min="0" inputmode="numeric" data-ed="${d.id}" data-f="bg" value="${d.bg > 0 ? d.bg : ""}" placeholder="100"></label></span>
+            <span class="adm-acts">${fileBtn("pic", d.id, "Rasm qo‘shish", "image/jpeg,image/png,image/webp")}${fileBtn("vid", d.id, d.vid ? "Videoni almashtirish" : "Video qo‘shish", "video/mp4,video/webm")}${d._b && d.pic !== d._b.pic ? `<button class="pill adm-up" type="button" data-rm="pic" data-id="${d.id}">Rasmni olib tashlash</button>` : ""}${d._b && d.vid !== d._b.vid ? `<button class="pill adm-up" type="button" data-rm="vid" data-id="${d.id}">Videoni olib tashlash</button>` : ""}<button class="pill adm-up adm-del" type="button" data-del="${d.id}">Taomni olib tashlash</button></span></div>`).join("")}
+          <p class="bk-sub">Yangi taom qo‘shish (“${esc(s.uz)}” bo‘limiga)</p>
+          <div class="adm-new"><input type="text" id="nwName" maxlength="60" placeholder="Taom nomi" aria-label="Yangi taom nomi">
+            <input type="number" min="0" inputmode="numeric" id="nwPrice" placeholder="Narxi" aria-label="Yangi taom narxi">
+            <input type="text" id="nwK" maxlength="160" placeholder="Tarkibi (ixtiyoriy)" aria-label="Yangi taom tarkibi">
+            <button class="pill gold" type="button" id="nwAdd">Taom qo‘shish</button></div>
+          ${GONE.some(g => g.d.sec === s.id) ? `<p class="bk-sub">Olib tashlangan taomlar</p>${GONE.filter(g => g.d.sec === s.id).map(g => `<div class="adm-row"><span>${esc(g.d.uz)}</span><button class="pill" type="button" data-undel="${g.d.id}">Qaytarish</button></div>`).join("")}` : ""}
           <p id="admMsg" class="adm-ok" role="status"></p>`;
       },
       reklama() {
         const L = ADS.map((u, i) => `<div class="adm-row"><span class="adm-name">${i + 1}. ${esc(String(u).split("/").pop())}</span>
           <button class="pill" type="button" data-adup="${i}" aria-label="Yuqoriga">↑</button><button class="pill" type="button" data-addn="${i}" aria-label="Pastga">↓</button><button class="pill" type="button" data-addel="${i}" aria-label="Olib tashlash">✕</button></div>`).join("");
         const G = GAL.map((g, i) => `<div class="adm-row"><img class="adm-th" src="${esc(g.src)}" alt=""><input type="text" data-gcap="${i}" value="${esc(g.cap)}" aria-label="Rasm izohi"><button class="pill" type="button" data-gdel="${i}" aria-label="Olib tashlash">✕</button></div>`).join("");
-        return `<p class="bk-sub" style="margin-top:0">Restoran videolari (tartib bilan aylanadi)</p>${L || `<p class="note">Video yo‘q.</p>`}
-          <div style="margin-top:10px">${fileBtn("ad", "new", "Video qo‘shish", "video/mp4,video/webm")}</div>
+        return `<p class="bk-sub" style="margin-top:0">Televizor uchun videolar (katta ekranda va Reklamalar oynasida tartib bilan aylanadi)</p>${L || `<p class="note">Video yo‘q.</p>`}
+          <div style="margin-top:10px">${fileBtn("ad", "new", "Televizorga video qo‘shish", "video/mp4,video/webm")}</div>
           <p class="bk-sub">Zal va dasturxon rasmlari (galereya)</p>${G || `<p class="note">Rasm yo‘q.</p>`}
           <div style="margin-top:10px">${fileBtn("gal", "new", "Rasm qo‘shish", "image/jpeg,image/png,image/webp")}</div>
           <p id="admMsg" class="adm-ok" role="status"></p>
@@ -3066,6 +3106,34 @@ if (typeof module !== "undefined") module.exports = makeQR;
         const r = await Promise.all([admSave("ads", ADS.slice()), admSave("gal", GAL.map(g => ({ src: g.src, cap: g.cap })))]);
         draw(); msg(r.every(x => x.ok) ? "Saqlandi" : (failMsg(r.find(x => !x.ok)) || ""), !r.every(x => x.ok)); return;
       }
+      const dl = e.target.closest("[data-del]");
+      if (dl) {
+        const d = byId[dl.dataset.del]; if (!d) return;
+        if (!confirm("“" + d.uz + "” menyudan olib tashlansinmi?")) return;
+        msg("Saqlanmoqda…");
+        removeDish(d);
+        let r;
+        if (d.added) { const g = GONE.findIndex(x => x.d === d); if (g >= 0) GONE.splice(g, 1); r = await admSave("dishes", (cfg("dishes", []) || []).filter(a => a.id !== d.id)); }
+        else r = await menuPatch(d.id, { del: 1 });
+        draw(); msg(r.ok ? "Olib tashlandi: " + d.uz : failMsg(r), !r.ok); return;
+      }
+      const ud = e.target.closest("[data-undel]");
+      if (ud) {
+        const d = byId[ud.dataset.undel]; if (!d) return;
+        restoreDish(d); const r = await menuPatch(d.id, { del: 0 });
+        draw(); msg(r.ok ? "Qaytarildi: " + d.uz : failMsg(r), !r.ok); return;
+      }
+      if (e.target.closest("#nwAdd")) {
+        const nm = box.querySelector("#nwName").value.trim();
+        if (!nm) return msg("Taom nomini yozing", true);
+        const pr = box.querySelector("#nwPrice").value, n = pr === "" ? null : Math.max(0, parseInt(pr, 10) || 0), k = box.querySelector("#nwK").value.trim();
+        const sc = MENU.find(x => x.id === adm.sec) || MENU[0], id = "x" + Date.now().toString(36);
+        const d = { id, sec: sc.id, uz: nm, ru: nm, n, k, added: 1 };
+        sc.t.push(d); byId[id] = d;
+        const r = await admSave("dishes", (cfg("dishes", []) || []).concat([{ id, sec: sc.id, uz: nm, n, k }]));
+        if (!r.ok) { sc.t.pop(); delete byId[id]; return msg(failMsg(r), true); }
+        draw(); msg("Qo‘shildi: " + nm); return;
+      }
       const rm = e.target.closest("[data-rm]");
       if (rm) {
         const d = byId[rm.dataset.id]; if (!d) return;
@@ -3096,6 +3164,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
         if (!d) return;
         const patch = {};
         if (f === "n") { d.n = ed.value === "" ? null : Math.max(0, parseInt(ed.value, 10) || 0); patch.n = d.n; }
+        else if (f === "bp" || f === "bg") { const v = ed.value === "" ? 0 : Math.max(0, parseInt(ed.value, 10) || 0); d[f] = v; d.bx = 0; patch[f] = v; patch.bx = 0; }
         else if (f === "uz") { if (!ed.value.trim()) { ed.value = d.uz; return; } d.uz = ed.value.trim(); patch.uz = d.uz; }
         else { d.k = ed.value.trim(); patch.k = d.k; }
         msg("Saqlanmoqda…");
@@ -3192,8 +3261,23 @@ if (typeof module !== "undefined") module.exports = makeQR;
   const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   const bk = { step: 0, type: "banket", guests: 30, date: "", time: "18:00", hall: null, shape: null, rows: null, change: false,
     items: {}, order: [], course: {}, sec: "", view: "dasturxon", name: "", phone: "", note: "", sent: false, posted: "", link: "",
-    rest: null, tcount: null, tview: null, lastDish: null };
+    rest: null, tcount: null, tview: null, lastDish: null, plates: {} };
 
+  // ----- kilogramm bilan hisoblanadigan taomlar: kishiga gramm, stol va tarelkalarga bo‘linadi -----
+  const KG_STEP = 50, PLATE_PER = 5, PLATE_STEP = 5;     // jami 50 g gacha yuqoriga; har 5 kishiga 1 tarelka
+  const ceilTo = (v, st) => Math.ceil(v / st - 1e-9) * st;
+  // adminda "banket 1 kg narxi" kiritilgan bo‘lsa shu; bo‘lmasa menyudagi og‘irlikdan ("1 kg", "100 g") 1 kg narxi hisoblanadi
+  const kgInfo = d => {
+    if (d.bx) return null;
+    if (d.bp > 0) return { price: d.bp, gpp: d.bg > 0 ? d.bg : 100 };
+    const m = d.o && /^([\d.,]+)\s*(kg|g)$/i.exec(String(d.o).trim());
+    if (m && d.n > 0) { const w = parseFloat(m[1].replace(",", ".")) * (m[2].toLowerCase() === "kg" ? 1000 : 1); if (w > 0) return { price: Math.round(d.n / w * 1000), gpp: 100 }; }
+    return null;
+  };
+  const platesOf = (g, d) => Math.max(1, Math.ceil(g / PLATE_PER) + ((bk.plates && bk.plates[d.id]) || 0));
+  const splitPlates = (grams, n) => { const out = []; let left = grams; for (let i = 0; i < n; i++) { const g = i === n - 1 ? left : Math.min(left, ceilTo(left / (n - i), PLATE_STEP)); out.push(g); left -= g; } return out; };
+  const fmtG = g => g >= 1000 ? String(g / 1000).replace(".", ",") + " kg" : g + " g";
+  const plateText = a => { const c = {}; a.forEach(g => { c[g] = (c[g] || 0) + 1; }); return Object.keys(c).map(g => c[g] + " × " + fmtG(+g)).join(", "); };
   const autoShape = () => (bk.type === "toy" || (bk.guests >= 12 && bk.guests <= 14)) ? "round" : "long";
   const shapeNow = () => bk.shape || autoShape();
   const hallCap = h => h.cap || h.max;
@@ -3229,9 +3313,15 @@ if (typeof module !== "undefined") module.exports = makeQR;
       const r = rowsNow(), per = Math.ceil(bk.guests / r);
       list = Array.from({ length: r }, (_, i) => { const g = i < r - 1 ? per : bk.guests - per * (r - 1); return { guests: g, sets: Math.max(1, Math.ceil(g / LONG_SET)) }; });
     }
-    list.forEach(u => { u.items = []; });
-    chosenItems().forEach((x, k) => list[k % list.length].items.push(x));
-    list.forEach(u => { u.one = u.items.reduce((s, x) => s + (x.d.n || 0) * x.q, 0); u.cost = u.one * u.sets; });
+    list.forEach(u => { u.items = []; u.kgs = []; });
+    const all = chosenItems();
+    all.filter(x => !kgInfo(x.d)).forEach((x, k) => list[k % list.length].items.push(x));
+    // kilogrammli taom hamma stolga boradi, har stolga o‘z mehmonlari soniga qarab
+    all.filter(x => kgInfo(x.d)).forEach(x => {
+      const ki = kgInfo(x.d);
+      list.forEach(u => { const grams = ceilTo(u.guests * ki.gpp, KG_STEP); u.kgs.push({ d: x.d, course: x.course, price: ki.price, grams, plates: splitPlates(grams, platesOf(u.guests, x.d)), cost: Math.round(grams / 1000 * ki.price) }); });
+    });
+    list.forEach(u => { u.one = u.items.reduce((s, x) => s + (x.d.n || 0) * x.q, 0); u.kgCost = u.kgs.reduce((s, k) => s + k.cost, 0); u.cost = u.one * u.sets + u.kgCost; });
     return list;
   };
   const sets = () => units().reduce((s, u) => s + u.sets, 0);
@@ -3245,7 +3335,8 @@ if (typeof module !== "undefined") module.exports = makeQR;
   };
   const setWord = () => shapeNow() === "round" ? "bitta stolga" : `har ${LONG_SET} kishiga`;
   const courseOf = id => bk.course[id] || AUTO_COURSE[byId[id].sec] || "c2";
-  const tableOf = id => { const i = chosenItems().findIndex(x => x.d.id === id); return i < 0 ? 0 : i % tablesNow(); };
+  const tableOf = id => { const i = chosenItems().filter(x => !kgInfo(x.d)).findIndex(x => x.d.id === id); return i < 0 ? 0 : i % tablesNow(); };
+  const emptyTable = () => tablesNow() > 1 && units().some(u => !u.items.length && !u.kgs.length);
   const unpriced = () => chosenItems().filter(x => x.d.n == null);
   const tableText = () => {
     const g = bk.guests;
@@ -3322,7 +3413,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
       focusIdx: tv === "all" ? 0 : tv,
       course: bk.view,
       items: chosenItems().map(cap),
-      perTable: units().map(u => u.items.map(cap)),
+      perTable: units().map(u => u.items.concat(u.kgs.map(k => ({ d: k.d, q: 1, course: k.course }))).map(cap)),
     });
   }
   function view3DHTML(extra) {
@@ -3342,10 +3433,10 @@ if (typeof module !== "undefined") module.exports = makeQR;
     if (!items.length) return "Stol hozircha bo‘sh";
     if (U < 2) return `${setWord()[0].toUpperCase() + setWord().slice(1)} ${items.length} xil taom · ${fmt(foodTotal())} so‘m${unk}`;
     const us = units(), tv = tviewNow();
-    const empty = items.length < U ? ` · diqqat: ${items.length + 1}-${tblWord()}dan boshlab taom tushmadi` : "";
+    const empty = emptyTable() ? ` · diqqat: ba’zi ${tblWord()}ga taom tushmadi` : "";
     if (tv === "all") return `${U} ta ${tblWord()}, taomlar navbat bilan taqsimlangan · jami ${fmt(foodTotal())} so‘m${unk}${empty}`;
     const u = us[tv];
-    return `${tv + 1}-${tblWord()} (${u.guests} kishi) · ${u.items.length} xil taom · ${fmt(u.cost)} so‘m${unk}${empty}`;
+    return `${tv + 1}-${tblWord()} (${u.guests} kishi) · ${u.items.length + u.kgs.length} xil taom · ${fmt(u.cost)} so‘m${unk}${empty}`;
   }
 
   function stepsBar() {
@@ -3364,7 +3455,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
     const hot = items.filter(x => ["c2", "c3"].includes(x.course));
     if (!hot.length && items.length) w.push("Issiq taom (2-taom yoki 3-taom) tanlanmagan.");
     if (items.some(x => x.course === "dasturxon" && ["birinchi", "ikkinchi", "steyk"].includes(x.d.sec))) w.push("Issiq taom dasturxonga qo‘yilgan. U mehmonlar kelguncha sovib qoladi.");
-    if (tablesNow() > 1 && items.length < tablesNow()) w.push(`${tablesNow()} ta ${tblWord()} bor, taom esa ${items.length} xil. ${items.length + 1}-${tblWord()}dan boshlab taom tushmadi, yana taom qo‘shing.`);
+    if (emptyTable()) w.push(`${tablesNow()} ta ${tblWord()} bor, ba’zi ${tblWord()}ga taom tushmadi. Yana taom qo‘shing.`);
     return w;
   }
 
@@ -3446,6 +3537,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
       ` + nav("Orqaga", "Hisobni ko‘rish");
     } else if (bk.step === 4) {
       const items = chosenItems(), us = units(), food = foodTotal(), fee = food * SERVICE, unk = unpriced(), multi = us.length > 1;
+      const kgRow = k => `<tr><td>${esc(k.d.uz)} <small class="muted">${k.plates.length} tarelka: ${plateText(k.plates)}</small></td><td>${fmtG(k.grams)}</td><td>${fmt(k.price)} / kg</td><td>${fmt(k.cost)}</td></tr>`;
       const dishRow = x => `<tr><td>${esc(x.d.uz)}${x.d.s ? ` <span class="tag">taxminiy</span>` : ""}</td><td>${x.q}</td><td>${x.d.n == null ? `<span class="muted">aniqlanmoqda</span>` : fmt(x.d.n)}</td><td>${x.d.n == null ? "—" : fmt(x.d.n * x.q)}</td></tr>`;
       const colName = shapeNow() === "round" ? "Stolga" : "10 kishiga";
       let rows;
@@ -3453,26 +3545,27 @@ if (typeof module !== "undefined") module.exports = makeQR;
         const u = us[0];
         rows = `<tbody>${COURSES.map(([k, name]) => {
           const g = items.filter(x => x.course === k);
-          return g.length ? `<tr><td colspan="4" class="muted">${name}</td></tr>` + g.map(dishRow).join("") : "";
+          return g.length ? `<tr><td colspan="4" class="muted">${name}</td></tr>` + g.map(x => kgInfo(x.d) ? kgRow(us[0].kgs.find(kk => kk.d === x.d)) : dishRow(x)).join("") : "";
         }).join("")}</tbody>
           <tbody>
-            <tr class="sum"><td colspan="3">${shapeNow() === "round" ? "Bitta stol" : "Har 10 kishi"}</td><td>${fmt(u.one)}</td></tr>
-            <tr class="sum"><td colspan="3">${shapeNow() === "round" ? "Stollar soni" : "Qismlar soni"}</td><td>× ${u.sets}</td></tr>
+            ${u.one > 0 ? `<tr class="sum"><td colspan="3">${shapeNow() === "round" ? "Bitta stol" : "Har 10 kishi"}</td><td>${fmt(u.one)}</td></tr>
+            <tr class="sum"><td colspan="3">${shapeNow() === "round" ? "Stollar soni" : "Qismlar soni"}</td><td>× ${u.sets}</td></tr>` : ""}
+            ${u.kgCost > 0 ? `<tr class="sum"><td colspan="3">Kilogrammli taomlar</td><td>${fmt(u.kgCost)}</td></tr>` : ""}
             <tr class="sum"><td colspan="3">Taomlar jami</td><td>${fmt(food)}</td></tr>`;
       } else {
         rows = us.map((u, i) => `<tbody><tr><td colspan="4" class="muted"><b>${i + 1}-${tblWord()}</b> · ${u.guests} kishi</td></tr>` +
-          (u.items.length ? u.items.map(dishRow).join("") : `<tr><td colspan="4"><span class="muted">Bu ${tblWord()}ga taom tushmadi</span></td></tr>`) +
-          `<tr class="sum"><td colspan="3">${i + 1}-${tblWord()} jami${u.sets > 1 ? ` (${fmt(u.one)} × ${u.sets})` : ""}</td><td>${fmt(u.cost)}</td></tr></tbody>`).join("") +
+          (u.items.length || u.kgs.length ? u.items.map(dishRow).join("") + u.kgs.map(kgRow).join("") : `<tr><td colspan="4"><span class="muted">Bu ${tblWord()}ga taom tushmadi</span></td></tr>`) +
+          `<tr class="sum"><td colspan="3">${i + 1}-${tblWord()} jami${u.sets > 1 && u.one > 0 ? ` (${fmt(u.one)} × ${u.sets})` : ""}</td><td>${fmt(u.cost)}</td></tr></tbody>`).join("") +
           `<tbody><tr class="sum"><td colspan="3">Taomlar jami</td><td>${fmt(food)}</td></tr>`;
       }
       const tabMulti = multi && isTab();
       const tabBill = !tabMulti ? "" : `<div class="bill-grid">${us.map((u, i) => `<div class="bill-wrap"><table class="bill">
           <thead><tr><th colspan="4">${i + 1}-${tblWord()} · ${u.guests} kishi</th></tr><tr><th>Taom</th><th>${colName}</th><th>Narx</th><th>Jami</th></tr></thead>
-          <tbody>${u.items.length ? u.items.map(dishRow).join("") : `<tr><td colspan="4"><span class="muted">Bu ${tblWord()}ga taom tushmadi</span></td></tr>`}
-          <tr class="sum"><td colspan="3">${i + 1}-${tblWord()} jami${u.sets > 1 ? ` (${fmt(u.one)} × ${u.sets})` : ""}</td><td>${fmt(u.cost)}</td></tr></tbody></table></div>`).join("")}</div>
+          <tbody>${u.items.length || u.kgs.length ? u.items.map(dishRow).join("") + u.kgs.map(kgRow).join("") : `<tr><td colspan="4"><span class="muted">Bu ${tblWord()}ga taom tushmadi</span></td></tr>`}
+          <tr class="sum"><td colspan="3">${i + 1}-${tblWord()} jami${u.sets > 1 && u.one > 0 ? ` (${fmt(u.one)} × ${u.sets})` : ""}</td><td>${fmt(u.cost)}</td></tr></tbody></table></div>`).join("")}</div>
         <div class="bill-wrap bill-wide"><table class="bill">
           <thead><tr><th>${tblWord()[0].toUpperCase() + tblWord().slice(1)}</th><th>Kishi</th><th>Taom</th><th>Summa</th></tr></thead>
-          <tbody>${us.map((u, i) => `<tr><td>${i + 1}-${tblWord()}</td><td>${u.guests}</td><td>${u.items.length} xil</td><td>${fmt(u.cost)}</td></tr>`).join("")}</tbody>
+          <tbody>${us.map((u, i) => `<tr><td>${i + 1}-${tblWord()}</td><td>${u.guests}</td><td>${u.items.length + u.kgs.length} xil</td><td>${fmt(u.cost)}</td></tr>`).join("")}</tbody>
           <tbody><tr class="sum"><td colspan="3">Taomlar jami</td><td>${fmt(food)}</td></tr>
             <tr class="sum"><td colspan="3">Ofitsiantlar xizmati, ${SERVICE_PCT}</td><td>${fmt(fee)}</td></tr>
             <tr class="total"><td colspan="3">Jami</td><td>${fmt(food + fee)} so‘m</td></tr></tbody></table></div>`;
@@ -3485,7 +3578,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
             <tr class="sum"><td colspan="3">Ofitsiantlar xizmati, ${SERVICE_PCT}</td><td>${fmt(fee)}</td></tr>
             <tr class="total"><td colspan="3">Jami</td><td>${fmt(food + fee)} so‘m</td></tr>
           </tbody></table></div>`}
-        ${multi && items.length < us.length ? `<p class="warn">${us.length} ta ${tblWord()} bor, taom esa ${items.length} xil. ${items.length + 1}-${tblWord()}dan boshlab taom tushmadi.</p>` : ""}
+        ${multi && emptyTable() ? `<p class="warn">${us.length} ta ${tblWord()} bor, ba’zi ${tblWord()}ga taom tushmadi.</p>` : ""}
         ${unk.length ? `<p class="note">${unk.map(x => esc(x.d.uz)).join(", ")} narxi hali kiritilmagan, jami summaga qo‘shilmadi.</p>` : ""}
         ${items.some(x => x.d.s) ? `<p class="note"><span class="tag">taxminiy</span> belgili narxlar restoran bilan tasdiqlanmoqda.</p>` : ""}
       ` + nav("Orqaga", "So‘rov qoldirish");
@@ -3502,9 +3595,10 @@ if (typeof module !== "undefined") module.exports = makeQR;
         const g = arr.filter(x => x.course === k);
         return g.length ? `${pre}${name}: ${g.map(x => `${x.d.uz} × ${x.q}`).join(", ")}` : null;
       }).filter(Boolean);
+      const kgLines = (u, pre) => u.kgs.map(k => `${pre}${k.d.uz}: ${fmtG(k.grams)}, ${k.plates.length} tarelka (${plateText(k.plates)}), ${fmt(k.cost)} so‘m`);
       const dishLines = us.length > 1
-        ? us.flatMap((u, i) => [`${i + 1}-${tblWord()} (${u.guests} kishi) · ${fmt(u.cost)} so‘m:`].concat(u.items.length ? courseLines(u.items, "  ") : ["  taom yo‘q"]))
-        : courseLines(chosenItems(), "").map((l, i, a) => l + ` (${setWord()})`);
+        ? us.flatMap((u, i) => [`${i + 1}-${tblWord()} (${u.guests} kishi) · ${fmt(u.cost)} so‘m:`].concat(u.items.length || u.kgs.length ? courseLines(u.items, "  ").concat(kgLines(u, "  ")) : ["  taom yo‘q"]))
+        : courseLines(chosenItems().filter(x => !kgInfo(x.d)), "").map((l, i, a) => l + ` (${setWord()})`).concat(kgLines(us[0], ""));
       const lines = [
         `NoZi · ${bk.type === "toy" ? "To‘y" : "Banket"} so‘rovi`,
         `${bk.name}, ${bk.phone}`,
@@ -3559,10 +3653,17 @@ if (typeof module !== "undefined") module.exports = makeQR;
   function pickList() {
     const sec = MENU.find(s => s.id === (bk.sec || MENU[0].id));
     return sec.t.map(t => {
-      const q = bk.items[t.id] || 0;
-      return `<div class="pk-dish"><div data-show="${t.id}"><b>${esc(t.uz)}</b><span class="pp">${t.n == null ? "narxi aniqlanmoqda" : fmt(t.n) + " so‘m"}${t.o ? " · " + esc(t.o) : ""}${t.s ? " · taxminiy" : ""}${q && tablesNow() > 1 ? ` · ${tableOf(t.id) + 1}-${tblWord()}ga` : ""}</span></div>
+      const q = bk.items[t.id] || 0, ki = kgInfo(t);
+      const kgLine = !ki ? "" : (() => {
+        const us = q ? units() : null, ks = us ? us.map(u => u.kgs.find(k => k.d === t)).filter(Boolean) : [];
+        const tot = ks.reduce((s, k) => s + k.grams, 0), pl = ks.reduce((s, k) => s + k.plates.length, 0);
+        return q ? `<span class="pp">${fmtG(tot)} · ${pl} tarelka · ${fmt(ks.reduce((s, k) => s + k.cost, 0))} so‘m</span>
+          <span class="pp"><button class="qb sm" type="button" data-pl="-1" data-id="${t.id}" aria-label="${esc(t.uz)}: tarelka kamaytirish">−</button> tarelka <button class="qb sm" type="button" data-pl="1" data-id="${t.id}" aria-label="${esc(t.uz)}: tarelka qo‘shish">+</button></span>`
+          : `<span class="pp">Kishiga ${ki.gpp} g hisoblanadi</span>`;
+      })();
+      return `<div class="pk-dish"><div data-show="${t.id}"><b>${esc(t.uz)}</b><span class="pp">${ki ? fmt(ki.price) + " so‘m / kg" : t.n == null ? "narxi aniqlanmoqda" : fmt(t.n) + " so‘m"}${!ki && t.o ? " · " + esc(t.o) : ""}${t.s ? " · taxminiy" : ""}${!ki && q && tablesNow() > 1 ? ` · ${tableOf(t.id) + 1}-${tblWord()}ga` : ""}</span>${kgLine}</div>
         <div class="qty"><button class="qb sm" type="button" data-q="-1" data-id="${t.id}" aria-label="${esc(t.uz)}: kamaytirish" ${q ? "" : "disabled"}>−</button>
-        <output id="q-${t.id}">${q}</output>
+        <output id="q-${t.id}">${ki ? (q ? "✓" : "0") : q}</output>
         <button class="qb sm plus" type="button" data-q="1" data-id="${t.id}" aria-label="${esc(t.uz)}: qo‘shish">+</button></div></div>`;
     }).join("");
   }
@@ -3626,12 +3727,17 @@ if (typeof module !== "undefined") module.exports = makeQR;
       rerender();
     }));
     if (pkl) pkl.addEventListener("click", e => {
+      const pb = e.target.closest("[data-pl]");
+      if (pb) {
+        const pid = pb.dataset.id; bk.plates[pid] = Math.max(-20, Math.min(40, (bk.plates[pid] || 0) + Number(pb.dataset.pl)));
+        pkl.innerHTML = pickList(); rebuild3D(); body.querySelector("#vtm").textContent = metaText(); return;
+      }
       const sh = e.target.closest("[data-show]");
       if (sh && isTab()) { bk.lastDish = sh.dataset.show; showMini(body); return; }
       const b = e.target.closest("[data-q]");
       if (!b) return;
       const id = b.dataset.id, dq = Number(b.dataset.q);
-      bk.items[id] = Math.max(0, Math.min(40, (bk.items[id] || 0) + dq));
+      bk.items[id] = Math.max(0, Math.min(kgInfo(byId[id]) ? 1 : 40, (bk.items[id] || 0) + dq));
       bk.order = bk.order.filter(x => x !== id);
       if (bk.items[id] > 0) bk.order.push(id);
       if (dq > 0) { bk.lastDish = id; if (isTab()) showMini(body); }
@@ -3674,7 +3780,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
     });
     const nw = body.querySelector("#bknew");
     if (nw) nw.addEventListener("click", () => {
-      Object.assign(bk, { step: 0, hall: null, shape: null, rows: null, change: false, items: {}, order: [], course: {}, sent: false, posted: "", link: "", note: "", view: "dasturxon", rest: null, tcount: null, tview: null, lastDish: null });
+      Object.assign(bk, { step: 0, hall: null, shape: null, rows: null, change: false, items: {}, order: [], course: {}, sent: false, posted: "", link: "", note: "", view: "dasturxon", rest: null, tcount: null, tview: null, lastDish: null, plates: {} });
       viewBanket(body); body.scrollTop = 0;
     });
   }
@@ -3956,8 +4062,19 @@ if (typeof module !== "undefined") module.exports = makeQR;
   const cfg = (k, d) => (CFG[k] !== undefined && CFG[k] !== null ? CFG[k] : d);
   const CONTENT_API = "/api/content";
   // what a dish had before the admin changed it, so a picture or video can be taken away again
+  // olib tashlangan taomlar (admin qaytarishi mumkin)
+  const GONE = [];
+  function removeDish(d) { const s = MENU.find(x => x.id === d.sec); if (!s) return; const i = s.t.indexOf(d); if (i < 0) return; s.t.splice(i, 1); GONE.push({ d, idx: i }); }
+  function restoreDish(d) { const s = MENU.find(x => x.id === d.sec), g = GONE.findIndex(x => x.d === d); if (!s || g < 0) return; const i = GONE[g].idx; GONE.splice(g, 1); s.t.splice(Math.min(i, s.t.length), 0, d); }
   const baseOf = d => d._b || (d._b = { pic: d.pic, ai: d.ai, vid: d.vid, th: d.th });
   function applyCfg() {
+    const add = cfg("dishes", []);
+    if (Array.isArray(add)) add.forEach(a => {
+      if (!a || !a.id || byId[a.id]) return;
+      const sc = MENU.find(x => x.id === a.sec); if (!sc) return;
+      const d = { id: a.id, sec: sc.id, uz: a.uz || "Yangi taom", ru: a.uz || "", n: a.n == null ? null : a.n, k: a.k || "", added: 1 };
+      sc.t.push(d); byId[d.id] = d;
+    });
     const m = cfg("menu", {});
     Object.keys(m).forEach(id => {
       const d = byId[id], o = m[id] || {};
@@ -3965,6 +4082,10 @@ if (typeof module !== "undefined") module.exports = makeQR;
       if (o.uz != null && o.uz !== "") d.uz = o.uz;
       if ("n" in o) d.n = o.n;
       if (o.k != null) d.k = o.k;
+      if ("bp" in o) d.bp = o.bp;
+      if ("bg" in o) d.bg = o.bg;
+      if ("bx" in o) d.bx = o.bx;
+      if (o.del) removeDish(d);
       const b = baseOf(d);
       if ("pic" in o) { if (o.pic) d.pic = o.pic; else { d.pic = b.pic; d.ai = b.ai; } }
       if (Array.isArray(o.img) && o.img.length) d.img = o.img;
