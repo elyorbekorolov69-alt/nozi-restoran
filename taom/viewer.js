@@ -94,3 +94,34 @@ export function show({ host, url, onReady, onFail }) {
   };
   return api;
 }
+
+// Admin yuklagan .glb faylni tekshiradi va undan poster rasm (JPEG) oladi. Fayl ochilmasa xato tashlaydi.
+export async function snapshot(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const gltf = await new Promise((ok, no) => getLoader().load(url, ok, undefined, no));
+    const W = 720, H = 560;
+    const canvas = document.createElement('canvas'); canvas.width = W; canvas.height = H;
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+    renderer.setSize(W, H, false);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+    const scene = new THREE.Scene(); scene.background = new THREE.Color(0x0e1426);
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture; scene.environment = envTex;
+    const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(2, 3, 2); scene.add(sun);
+    const camera = new THREE.PerspectiveCamera(35, W / H, 0.05, 50);
+    const model = gltf.scene, box = new THREE.Box3().setFromObject(model);
+    if (box.isEmpty()) throw new Error('model bo‘sh');
+    const c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3());
+    model.position.sub(c); scene.add(model);
+    const r = Math.max(s.x, s.z) * 0.5 + s.y * 0.35;
+    const dist = r / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * 1.05;
+    camera.position.set(0, dist * 0.62, dist * 0.82); camera.lookAt(0, 0, 0);
+    renderer.render(scene, camera);
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.85));
+    model.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { for (const k in m) { const t = m[k]; if (t && t.isTexture) t.dispose(); } m.dispose(); }); });
+    envTex.dispose(); pmrem.dispose(); renderer.dispose(); renderer.forceContextLoss();
+    return blob;
+  } finally { URL.revokeObjectURL(url); }
+}
