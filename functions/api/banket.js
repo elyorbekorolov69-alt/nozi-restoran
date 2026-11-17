@@ -5,12 +5,16 @@
 const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const json = (code, obj) => new Response(JSON.stringify(obj), { status: code, headers: { "Content-Type": "application/json" } });
 
+import { verifyToken } from "./_bk.js";
+
 export const onRequestOptions = () => new Response(null, { status: 204 });
 export const onRequestGet = () => json(405, { ok: false, error: "faqat POST" });
 
 export async function onRequestPost({ request, env }) {
   let p; try { p = await request.json(); } catch (e) { p = {}; }
-  if (p.website) return json(200, { ok: true, id: 0, link: "" });
+  if (p.website) return json(200, { ok: true, id: 0, link: "" });                  // robotlar uchun tuzoq
+  const who = await verifyToken(env, request.headers.get("x-banket"));          // Banket qulfi: faqat kod bilan kirganlar
+  if (!who) return json(401, { ok: false, error: "Banket bo‘limi qulflangan, kod bilan kiring" });
   const digits = String(p.phone || "").replace(/\D/g, "");
   if (String(p.text || "").trim().length < 20 || digits.length < 9) return json(400, { ok: false, error: "so‘rov to‘liq emas" });
 
@@ -20,10 +24,12 @@ export async function onRequestPost({ request, env }) {
   const now = Date.now() / 1000;
   const data = {};
   for (const k of ["name", "phone", "date", "time", "guests", "hall", "total", "lang"]) data[k] = String(p[k] ?? "").slice(0, 300);
+  data.who = String(who.n || "").slice(0, 40);
   const text = String(p.text).slice(0, 3500);
 
   let id, code;
   try {
+    // so'rovlarni cheklash: bir IP soatiga 5 ta
     const q = `${base}/hits?select=ts&ip=eq.${encodeURIComponent(ip)}&kind=eq.banket&ts=gt.${now - 3600}`;
     const hits = await (await fetch(q, { headers: H })).json();
     if (Array.isArray(hits) && hits.length >= 5) return json(429, { ok: false, error: "juda ko‘p so‘rov, keyinroq urinib ko‘ring" });
@@ -38,6 +44,7 @@ export async function onRequestPost({ request, env }) {
     id = row[0].id;
   } catch (e) { console.log("Baza xatosi:", e.message); return json(500, { ok: false, error: "server xatosi" }); }
 
+  // xodimlarga xabar: avval guruh, bo'lmasa adminlarga
   let shown = text;
   while (esc(shown).length > 3000) shown = shown.slice(0, Math.floor(shown.length * 0.8));
   if (shown !== text) shown += "\n…(matn qisqartirildi)";
