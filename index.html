@@ -2453,7 +2453,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
   // real 3D models (Tripo + Blender), loaded only when the dish is opened: dish id -> file name in /taom
   const MODEL3D = { "issiq-3": "baliq", "sovuq-8": "pishloq", "meva-0": "meva", "issiq-1": "lyulya", "issiq-12": "til", "salat-8": "sezar", "salat-12": "baqlajon" };   // kroket: menyudagi taomi aytilgach shu yerga qo‘shiladi
   const M3D = {};   // admin orqali yuklangan modellar: taom id -> { glb, img }
-  const READY3D = [["baliq","Baliq"],["baqlajon","Qarsildoq baqlajon"],["kolbasa","Kolbasa"],["kroket","Kroket"],["lyulya","Lyulya (Beyti)"],["meva","Meva"],["non","Non savat"],["pishloq","Pishloq"],["sabzavot","Sabzavot"],["salat3","Salat (shisha likopcha)"],["sezar","Sezar"],["sorva","Sho‘rva"],["til","Til"],["qanot","Qanot"],["yaxna","Yaxna (karpachcho)"]];
+  const READY3D = [["baliq","Baliq"],["baqlajon","Qarsildoq baqlajon"],["kolbasa","Kolbasa"],["kroket","Kroket"],["lyulya","Lyulya (Beyti)"],["meva","Meva"],["non","Non savat"],["pishloq","Pishloq"],["sabzavot","Sabzavot"],["salat3","Salat (shisha likopcha)"],["sezar","Sezar"],["sorva","Sho‘rva"],["til","Til"],["qanot","Qanot"],["yaxna","Yaxna (karpachcho)"],["desert","Desert (pishloqli)"],["qovun","Qovun (shishda)"],["meva-stend","Meva (tayanchda)"],["kroket2","Kroket (yangi)"]];
   const m3 = t => M3D[t.id] || (MODEL3D[t.id] ? { glb: "taom/" + MODEL3D[t.id] + ".glb", img: "taom/" + MODEL3D[t.id] + ".jpg" } : null);
   let glbView = null, glbToken = 0;
   function disposeGLB() { glbToken++; if (glbView) { try { glbView.dispose(); } catch (e) {} glbView = null; } }
@@ -2942,8 +2942,8 @@ if (typeof module !== "undefined") module.exports = makeQR;
   document.addEventListener("keydown", e => { if (e.key === "Escape" && fsBox()) fsExit(fsBox()); });
   new MutationObserver(paintFS).observe(document.body, { childList: true, subtree: true });
   // ----- Admin: haqiqiy kirish (parol serverda tekshiriladi), o'zgarishlar bazaga yoziladi, rasm va video Supabase Storage'ga yuklanadi -----
-  const adm = { on: false, pw: "", tab: "menyu", sec: "sovuq", queue: [], vurl: "", codes: null, found: null };
-  const ADM_TABS = [["menyu", "Menyu"], ["reklama", "Televizor reklamalari"], ["banket", "Banket zallari"], ["qr", "QR oynasi"], ["kodlar", "Sovg‘a kodlari"], ["video", "Stol videosi"], ["qoshiq", "Qo‘shiq navbati"], ["parol", "Parol"]];
+  const adm = { on: false, pw: "", tab: "menyu", sec: "sovuq", queue: [], vurl: "", codes: null, bk: null, found: null };
+  const ADM_TABS = [["menyu", "Menyu"], ["reklama", "Televizor reklamalari"], ["banket", "Banket zallari"], ["bkodlar", "Banket kodlari"], ["qr", "QR oynasi"], ["kodlar", "Sovg‘a kodlari"], ["video", "Stol videosi"], ["qoshiq", "Qo‘shiq navbati"], ["parol", "Parol"]];
   const admStore = { get() { try { return sessionStorage.getItem("nozi_adm") || ""; } catch (e) { return ""; } }, set(v) { try { v ? sessionStorage.setItem("nozi_adm", v) : sessionStorage.removeItem("nozi_adm"); } catch (e) {} } };
   // one call to the server; a wrong or expired password sends the admin back to the login form
   async function admApi(method, path, body, headers) {
@@ -3055,6 +3055,13 @@ if (typeof module !== "undefined") module.exports = makeQR;
           ${HALLS.map(h => `<div class="adm-dish hall" data-h="${h.id}"><input type="text" data-hn="${h.id}" value="${esc(h.name)}" aria-label="Zal nomi"><input type="text" class="adm-k" data-hd="${h.id}" value="${esc(h.note)}" aria-label="Izoh"></div>`).join("")}
           <p id="admMsg" class="adm-ok" role="status"></p>`;
       },
+      bkodlar() {
+        const L = adm.bk === null ? `<p class="note">Yuklanmoqda…</p>` : adm.bk.length ? adm.bk.map(c => `<div class="adm-row"><span><b>${esc(c.name)}</b><br><small class="muted">${c.last_login ? "oxirgi kirish: " + fmtDate(c.last_login) : "hali kirmagan"}</small></span><button class="pill" type="button" data-bkdel="${c.id}" aria-label="O‘chirish">✕</button></div>`).join("") : `<p class="note">Hozircha kod yo‘q. Banket bo‘limiga hech kim kira olmaydi.</p>`;
+        return `<p class="note" style="margin:0 0 8px">Banket bo‘limi qulflangan. Har bir odamga alohida kod bering (eng ko‘pi 10 ta). Kod bazada ochiq saqlanmaydi, keyin ko‘rib bo‘lmaydi, shuning uchun yozib qo‘ying.</p>
+          <form class="sg-form" id="admBkF" autocomplete="off" style="flex-wrap:wrap"><input type="text" id="admBkN" maxlength="40" placeholder="Ism" aria-label="Ism"><input type="text" id="admBkC" maxlength="40" placeholder="Kod (kamida 4 belgi)" aria-label="Kod" autocomplete="off" spellcheck="false"><button class="pill gold" type="submit">Qo‘shish</button></form>
+          <p id="admMsg" class="adm-ok" role="status"></p>
+          <p class="bk-sub">Kod egalari</p>${L}`;
+      },
       qr() {
         const h = hcfg(), w = h.wifi || {};
         const f = (id, label, val, ph, type) => `<label>${label}<input type="${type || "text"}" id="${id}" value="${esc(val == null ? "" : val)}" placeholder="${ph || ""}"></label>`;
@@ -3106,7 +3113,13 @@ if (typeof module !== "undefined") module.exports = makeQR;
           <p class="note">Parolni hech kimga chatda yozmang. Kamida 8 belgi bo‘lsin.</p>`;
       }
     };
-    const draw = () => { box.innerHTML = tabs[adm.tab](); if (adm.tab === "kodlar" && adm.codes === null) loadCodes(); };
+    const draw = () => { box.innerHTML = tabs[adm.tab](); if (adm.tab === "kodlar" && adm.codes === null) loadCodes(); if (adm.tab === "bkodlar" && adm.bk === null) loadBk(); };
+    async function loadBk() {
+      const r = await admApi("GET", "/api/bkodlar");
+      adm.bk = r.ok ? r.j.items || [] : [];
+      if (adm.tab === "bkodlar" && root.isConnected) draw();
+      if (!r.ok && r.status !== 401) msg("Ro‘yxatni olib bo‘lmadi. Supabase’da SQL bajarilganmi?", true);
+    }
     async function loadCodes() {
       const r = await admApi("GET", "/api/kod");
       adm.codes = r.ok ? r.j.items || [] : [];
@@ -3184,6 +3197,13 @@ if (typeof module !== "undefined") module.exports = makeQR;
         msg("Saqlanmoqda…");
         const r = await menuPatch(d.id, patch);
         draw(); msg(r.ok ? "Olib tashlandi" : failMsg(r), !r.ok); return;
+      }
+      const bkd = e.target.closest("[data-bkdel]");
+      if (bkd) {
+        if (bkd.dataset.sure !== "1") { bkd.dataset.sure = "1"; bkd.textContent = "Aniq o‘chirilsinmi?"; return; }
+        const r = await admApi("DELETE", "/api/bkodlar?id=" + encodeURIComponent(bkd.dataset.bkdel));
+        if (r.ok) { adm.bk = null; draw(); msg("O‘chirildi. Bu kod endi ishlamaydi."); } else msg((r.j && r.j.error) || "O‘chirilmadi", true);
+        return;
       }
       const use = e.target.closest("[data-use]");
       if (use) {
@@ -3291,6 +3311,15 @@ if (typeof module !== "undefined") module.exports = makeQR;
         msg("Saqlanmoqda…");
         const r = await admSave("hub", val);
         msg(r.ok ? "Saqlandi. QR oynasida darrov ko‘rinadi." : failMsg(r), !r.ok);
+        return;
+      }
+      if (e.target.id === "admBkF") {
+        const name = box.querySelector("#admBkN").value.trim(), code = box.querySelector("#admBkC").value.trim();
+        if (name.length < 2) return msg("Ismni yozing.", true);
+        if (code.length < 4) return msg("Kod kamida 4 belgi bo‘lsin.", true);
+        msg("Saqlanmoqda…");
+        const r = await admApi("POST", "/api/bkodlar", { name, code });
+        if (r.ok) { adm.bk = null; draw(); msg("Qo‘shildi: " + name + ". Kodni shu odamga yetkazing."); } else msg((r.j && r.j.error) || "Saqlanmadi", true);
         return;
       }
       if (e.target.id === "admCodeF") {
@@ -3541,6 +3570,40 @@ if (typeof module !== "undefined") module.exports = makeQR;
       ${bk.rest === "count" ? `<div class="field"><label for="bktc">Stollar soni</label><div class="stepper"><button class="qb" type="button" data-tc="-1" aria-label="Bitta kamaytirish">−</button><output id="bktc">${tablesNow()}</output><button class="qb" type="button" data-tc="1" aria-label="Bitta ko‘paytirish">+</button></div></div>` : ""}</div>`;
   }
 
+  // Banket qulfi: kod serverda tekshiriladi, token 12 soat amal qiladi
+  const bkTok = { get() { try { return sessionStorage.getItem("nozi_bk") || ""; } catch (e) { return ""; } }, set(v) { try { v ? sessionStorage.setItem("nozi_bk", v) : sessionStorage.removeItem("nozi_bk"); } catch (e) {} } };
+  let bkChecked = false;
+  function viewBanketGate(body, note) {
+    const t = bkTok.get();
+    if (t && bkChecked && !note) { viewBanket(body); return; }
+    if (t && !note) {
+      body.innerHTML = `<p class="note">Tekshirilmoqda…</p>`;
+      fetch("/api/bkirish", { headers: { "x-banket": t } })
+        .then(r => { if (r.ok) { bkChecked = true; return true; } if (r.status === 401) { bkTok.set(""); bkChecked = false; return false; } return true; })   // tarmoq/server xatosida ichkariga kiritamiz, haqiqiy tekshiruv yuborishda bo'ladi
+        .catch(() => true)
+        .then(ok => { if (winKey !== "banket" || !body.isConnected) return; ok ? viewBanket(body) : viewBanketGate(body); });
+      return;
+    }
+    body.innerHTML = `<h3 class="bk-h">Banket bo‘limi</h3>
+      <p class="bk-p">Bu bo‘lim hozircha faqat kodi borlar uchun. Kodni kiriting.</p>
+      <form class="adm-login" id="bkGate" autocomplete="off"><label>Kod<input type="password" id="bkCode" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="40"></label>
+      <p id="bkGateMsg" class="adm-err" role="status">${note ? esc(note) : ""}</p><button class="pill gold" type="submit">Kirish</button></form>`;
+    const f = body.querySelector("#bkGate"), m = body.querySelector("#bkGateMsg");
+    f.addEventListener("submit", async e => {
+      e.preventDefault();
+      const code = f.querySelector("#bkCode").value.trim(), btn = f.querySelector("button");
+      if (code.length < 4) { m.textContent = "Kodni kiriting."; return; }
+      btn.disabled = true; m.textContent = "";
+      try {
+        const r = await fetch("/api/bkirish", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) });
+        const j = await r.json().catch(() => ({}));
+        if (r.ok && j.ok && j.token) { bkTok.set(j.token); bkChecked = true; viewBanket(body); return; }
+        m.textContent = j.error || "Kirib bo‘lmadi, qayta urinib ko‘ring.";
+      } catch (err) { m.textContent = "Internet yo‘q yoki server javob bermadi."; }
+      btn.disabled = false;
+    });
+    setTimeout(() => { const i = f.querySelector("#bkCode"); if (i) i.focus(); }, 50);
+  }
   function viewBanket(body) {
     const h = hallNow(), n = sets();
     let html = stepsBar();
@@ -3683,7 +3746,8 @@ if (typeof module !== "undefined") module.exports = makeQR;
         bk.posted = "wait";
         const payload = { name: bk.name.trim(), phone: bk.phone.trim(), date: bk.date, time: bk.time, guests: String(bk.guests),
           hall: h.name, total: fmt(food * (1 + SERVICE)), lang: "uz", text: bk.text, website: "" };
-        fetch(BANKET_API, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+        fetch(BANKET_API, { method: "POST", headers: { "Content-Type": "application/json", "x-banket": bkTok.get() }, body: JSON.stringify(payload) })
+          .then(r => { if (r.status === 401) { bkTok.set(""); bkChecked = false; bk.posted = "fail"; if (winKey === "banket" && body.isConnected) viewBanketGate(body, "Sessiya tugadi. Kodni qayta kiriting."); } return r; })
           .then(r => r.json().catch(() => ({})).then(j => ({ ok: r.ok && j.ok === true, link: j.link || "" })))
           .catch(() => ({ ok: false, link: "" }))
           .then(res => {
@@ -4045,7 +4109,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
     else if (key === "reklamalar") viewAds(winBody);
     else if (key === "kartochka") viewCard(winBody);
     else if (key === "admin") viewAdmin(winBody);
-    else viewBanket(winBody);
+    else viewBanketGate(winBody);
     winBody.scrollTop = 0;
   }
   // the point of the window that sits over the petal stays put while the window scales
