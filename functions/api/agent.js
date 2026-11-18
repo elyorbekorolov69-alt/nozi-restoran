@@ -76,7 +76,7 @@ export async function onRequestPost({ request, env }) {
   if (merged[0] && merged[0].role !== "user") merged.shift();
 
   const chain = [["claude", env.ANTHROPIC_API_KEY, callClaude], ["gemini", env.GEMINI_API_KEY, callGemini], ["gemini2", env.GEMINI_API_KEY_2, (e, x, y) => callGemini(e, x, y, e.GEMINI_API_KEY_2)], ["groq", env.GROQ_API_KEY, callGroq], ["openrouter", env.OPENROUTER_API_KEY, callOR]].filter(c => c[1]);
-  if (!chain.length) return json(503, { ok: false, error: "AI kaliti sozlanmagan (Cloudflare’da GEMINI_API_KEY qo‘shing)" });
+  if (!chain.length) return json(200, { ok: false, error: "AI kaliti sozlanmagan (Cloudflare’da GEMINI_API_KEY qo‘shing)" });
   const fails = [];
   for (const [via, , fn] of chain) {
     try {
@@ -89,5 +89,5 @@ export async function onRequestPost({ request, env }) {
     } catch (e) { console.log("agent:", e.message); fails.push(via + ": " + clip(e.message, 60)); }
   }
   // sabab (faqat AI nomi va xato kodi, kalit emas): masalan "gemini: gemini-2.5-flash 404"
-  return json(502, { ok: false, error: "AI hozir javob bermadi, qayta urinib ko‘ring", detail: fails });
+  return json(200, { ok: false, error: "AI hozir javob bermadi, qayta urinib ko‘ring", detail: fails });
 }
