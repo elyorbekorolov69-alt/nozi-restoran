@@ -704,7 +704,7 @@ function Table3D(canvas, opts) {
       }
       if (uP > 9.5 && uP < 10.5) {
         float r = clamp(length(vL.xz) * 2.0, 0.0, 1.0);
-        gl_FragColor = vec4(0.02, 0.015, 0.03, alpha * pow(1.0 - r, 1.7)); return;
+        gl_FragColor = vec4(0.02, 0.015, 0.03, alpha * pow(1.0 - r, 2.4)); return;
       }
       if (uP > 11.5 && uP < 12.5) {
         float u = vW.x + vW.z, g = clamp(vL.y + 0.5, 0.0, 1.0);
@@ -1262,7 +1262,7 @@ function Table3D(canvas, opts) {
   // the restaurant's carved white chair: egg-shaped open back with carved leaves, grey velvet seat, cabriole front legs
   function chair(x, z, face) {
     const c = Math.cos(face), s = Math.sin(face);
-    put("disc", "#000000", x, 0.012, z, 0, 0.95, 1, 0.95, { a: 0.55, p: 10 });
+    put("disc", "#000000", x, 0.012, z, 0, 0.95, 1, 0.95, { a: 0.28, p: 10 });
     const at = (a, b) => [x + a * c + b * s, z - a * s + b * c];   // a: sideways, b: towards the back
     const W = { s: 0.55, sh: 60 };
     {   // the scanned chair: one frame solid + one seat solid (simpler when a whole hall is shown)
@@ -1502,7 +1502,7 @@ function Table3D(canvas, opts) {
   function longRow(z0, seats, L, side, gap, top, served) {
     const wood = STYLE === "wood";   // Terrasa: bare wooden top on black frames, no cloth, no runner, no flowers
     const drop = 0.42, W2 = wood ? 0.42 : 0.55, CZ = W2 + 0.4, PZ = W2 - 0.13;
-    put("disc", "#000000", 0, 0.012, z0, 0, L + 2.2, 1, 3.4, { a: 0.7, p: 10 });
+    put("disc", "#000000", 0, 0.012, z0, 0, L + 2.2, 1, 3.4, { a: 0.3, p: 10 });
     if (wood) put("box", C.wood, 0, top - 0.02, z0, 0, L + 0.06, 0.04, 2 * W2, { s: 0.35, sh: 30 });
     else {
       put("box", C.longCloth, 0, top - 0.01, z0, 0, L + 0.06, 0.02, 2 * W2 + 0.02, { s: 0.05 });
@@ -1572,7 +1572,7 @@ function Table3D(canvas, opts) {
 
   function roundTable(cx, cz, seats, served) {
     const top = 0.765;
-    put("disc", "#000000", cx, 0.012, cz, 0, 4.0, 1, 4.0, { a: 0.75, p: 10 });
+    put("disc", "#000000", cx, 0.012, cz, 0, 4.0, 1, 4.0, { a: 0.3, p: 10 });
     put("cloth", C.cloth, cx, 0, cz, 0, 1, 1, 1, { s: 0.06, sh: 12 });
     const seatsAt = [];
     for (let k = 0; k < seats; k++) {
@@ -1691,7 +1691,7 @@ function Table3D(canvas, opts) {
         else { gT = [first.cx, 0.75, first.cz]; gD = 3.4 / Math.max(0.7, asp); }
         minDist = 1.5; maxDist = Math.max(8, layout.size * 2); gP = 0.62;
       } else if (layout.list.length > 1) {
-        gT = [0, 0.4, 0]; gD = Math.max(6, layout.size * 1.65 / Math.max(0.6, asp)); minDist = 1.5; maxDist = Math.max(10, gD * 1.8); gP = 0.82;
+        gT = [0, 0.4, 0]; gD = Math.max(5, layout.size * 1.3 / Math.max(0.6, asp)); minDist = 1.5; maxDist = Math.max(10, gD * 1.8); gP = 0.66;
       } else if (layout.kind === "long") {
         gT = [0, 0.7, 0]; minDist = 1.8; gD = Math.max(3.4, layout.L * 0.75) / Math.max(0.75, asp); maxDist = Math.max(6, gD * 1.6); gP = 0.62;
       } else {
