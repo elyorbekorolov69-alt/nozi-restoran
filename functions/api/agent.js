@@ -34,13 +34,20 @@ async function callClaude(env, sys, msgs) {
   const j = await r.json(); return (j.content || []).map(c => c.text || "").join("");
 }
 async function callGemini(env, sys, msgs, key) {
-  const model = env.GEMINI_MODEL || "gemini-2.5-flash";
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method: "POST",
-    headers: { "x-goog-api-key": key || env.GEMINI_API_KEY, "content-type": "application/json" },
-    body: JSON.stringify({ systemInstruction: { parts: [{ text: sys }] }, generationConfig: { responseMimeType: "application/json", temperature: 0.4 },
-      contents: msgs.map(m => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })) }) });
-  if (!r.ok) throw new Error("gemini " + r.status);
-  const j = await r.json(); return ((((j.candidates || [])[0] || {}).content || {}).parts || []).map(p => p.text || "").join("");
+  // Google eski modellarni o'chirib turadi, shuning uchun bir nechta nomni ketma-ket sinaymiz
+  const models = [env.GEMINI_MODEL, "gemini-3.6-flash", "gemini-3.8-flash", "gemini-3.1-flash-lite", "gemini-2.5-flash"].filter((m, i, a) => m && a.indexOf(m) === i);
+  let last = "";
+  for (const model of models) {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method: "POST",
+      headers: { "x-goog-api-key": (key || env.GEMINI_API_KEY || "").trim(), "content-type": "application/json" },
+      body: JSON.stringify({ systemInstruction: { parts: [{ text: sys }] }, generationConfig: { responseMimeType: "application/json", temperature: 0.4 },
+        contents: msgs.map(m => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })) }) });
+    if (r.ok) { const j = await r.json(); return ((((j.candidates || [])[0] || {}).content || {}).parts || []).map(p => p.text || "").join(""); }
+    let msg = ""; try { msg = ((await r.json()).error || {}).message || ""; } catch (e) {}
+    last = model + " " + r.status + " " + msg.slice(0, 70);
+    if (r.status === 401 || r.status === 403 || r.status === 429) break;   // kalit yoki limit muammosi, model emas
+  }
+  throw new Error(last);
 }
 async function callOpenAIish(url, key, model, sys, msgs, extra = {}) {
   const r = await fetch(url, { method: "POST", headers: { authorization: "Bearer " + key, "content-type": "application/json", ...extra },
@@ -86,7 +93,7 @@ export async function onRequestPost({ request, env }) {
         add: (Array.isArray(o.add) ? o.add : []).slice(0, 40).map(x => ({ id: clip(x && x.id, 40), q: Math.max(1, Math.min(40, Math.round(+(x && x.q) || 1))) })),
         remove: (Array.isArray(o.remove) ? o.remove : []).slice(0, 40).map(x => clip(x, 40)),
         course: o.course && typeof o.course === "object" ? o.course : {} });
-    } catch (e) { console.log("agent:", e.message); fails.push(via + ": " + clip(e.message, 60)); }
+    } catch (e) { console.log("agent:", e.message); fails.push(via + ": " + clip(e.message, 110)); }
   }
   // sabab (faqat AI nomi va xato kodi, kalit emas): masalan "gemini: gemini-2.5-flash 404"
   return json(200, { ok: false, error: "AI hozir javob bermadi, qayta urinib ko‘ring", detail: fails });
