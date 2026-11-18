@@ -35,14 +35,15 @@ async function callClaude(env, sys, msgs) {
 }
 async function callGemini(env, sys, msgs, key) {
   // Google eski modellarni o'chirib turadi, shuning uchun bir nechta nomni ketma-ket sinaymiz
-  const models = [env.GEMINI_MODEL, "gemini-3.6-flash", "gemini-3.8-flash", "gemini-3.1-flash-lite", "gemini-2.5-flash"].filter((m, i, a) => m && a.indexOf(m) === i);
+  const models = [env.GEMINI_MODEL, "gemini-3.6-flash", "gemini-3.1-flash-lite"].filter((m, i, a) => m && a.indexOf(m) === i);
   let last = "";
   for (const model of models) {
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method: "POST",
+    let r; try { r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method: "POST",
       headers: { "x-goog-api-key": (key || env.GEMINI_API_KEY || "").trim(), "content-type": "application/json" },
+      signal: AbortSignal.timeout(14000),
       body: JSON.stringify({ systemInstruction: { parts: [{ text: sys }] }, generationConfig: { responseMimeType: "application/json", temperature: 0.4 },
-        contents: msgs.map(m => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })) }) });
-    if (r.ok) { const j = await r.json(); return ((((j.candidates || [])[0] || {}).content || {}).parts || []).map(p => p.text || "").join(""); }
+        contents: msgs.map(m => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })) }) }); } catch (e) { last = model + " vaqt tugadi"; continue; }
+    if (r.ok) { const j = await r.json(); console.log("gemini ok:", model); return ((((j.candidates || [])[0] || {}).content || {}).parts || []).map(p => p.text || "").join(""); }
     let msg = ""; try { msg = ((await r.json()).error || {}).message || ""; } catch (e) {}
     last = model + " " + r.status + " " + msg.slice(0, 70);
     if (r.status === 401 || r.status === 403 || r.status === 429) break;   // kalit yoki limit muammosi, model emas
