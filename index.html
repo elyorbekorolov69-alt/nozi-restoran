@@ -532,6 +532,7 @@ body {
 .col-r .vt3-wrap { position: static; margin: 0; padding: 0; border: 0; background: none; flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .col-r .vt3 { height: auto; flex: 1; min-height: 0; }
 .col-r .r-bot .d3 { height: auto; flex: 1; min-height: 0; }
+.col-r .r-top > .d3 { height: auto; flex: 1; min-height: 0; }
 .chip.add { border-style: dashed; color: var(--gold-soft); }
 .win.tab .dish, .win.tab .pk-dish [data-show] { cursor: pointer; }
 .win.tab .dish.sel { background: rgba(240, 211, 154, 0.07); box-shadow: inset 3px 0 0 var(--gold-soft); padding-left: 10px; border-radius: 10px; }
@@ -3841,10 +3842,14 @@ if (typeof module !== "undefined") module.exports = makeQR;
     }
     const tab = isTab() && bk.step > 0;   // the first step (Tadbir) has no table or dishes to show yet
     body.classList.toggle("split", tab);
-    if (tab) html = `<div class="col-l">${html}</div><div class="col-r"><div class="r-top">${view3DHTML(metaText())}</div></div>`;
+    // Taomlar bosqichida o'ng tomonda faqat oxirgi bosilgan taomning 3D ko'rinishi; stol, stul va gul keyingi bosqichlarda
+    const dishOnly = tab && bk.step === 2;
+    if (dishOnly) html = `<div class="col-l">${html}</div><div class="col-r"><div class="r-top"><div class="d3" id="bkd3"><span class="hint">Taomni bossangiz, shu yerda 3D ko‘rinadi</span></div><p class="vt-meta" id="bkd3c"></p></div></div>`;
+    else if (tab) html = `<div class="col-l">${html}</div><div class="col-r"><div class="r-top">${view3DHTML(metaText())}</div></div>`;
     body.innerHTML = html;
     const host = body.querySelector("#vt3");
     if (host) mount3D(host); else disposeHall();
+    if (dishOnly) showMini(body);
     wireBanket(body);
   }
 
@@ -4005,7 +4010,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
       const again = pkl.querySelector(`[data-q="${b.dataset.q}"][data-id="${CSS.escape(id)}"]`) || pkl.querySelector(`[data-id="${CSS.escape(id)}"]`);
       if (again && !again.disabled) again.focus({ preventScroll: true });
       rebuild3D();
-      body.querySelector("#vtm").textContent = metaText();
+      const vm2 = body.querySelector("#vtm"); if (vm2) vm2.textContent = metaText();
       const nx = body.querySelector("[data-go='1']");
       if (nx) nx.disabled = !chosenItems().length;
     });
