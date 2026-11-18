@@ -33,10 +33,10 @@ async function callClaude(env, sys, msgs) {
   if (!r.ok) throw new Error("claude " + r.status);
   const j = await r.json(); return (j.content || []).map(c => c.text || "").join("");
 }
-async function callGemini(env, sys, msgs) {
+async function callGemini(env, sys, msgs, key) {
   const model = env.GEMINI_MODEL || "gemini-2.5-flash";
   const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method: "POST",
-    headers: { "x-goog-api-key": env.GEMINI_API_KEY, "content-type": "application/json" },
+    headers: { "x-goog-api-key": key || env.GEMINI_API_KEY, "content-type": "application/json" },
     body: JSON.stringify({ systemInstruction: { parts: [{ text: sys }] }, generationConfig: { responseMimeType: "application/json", temperature: 0.4 },
       contents: msgs.map(m => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })) }) });
   if (!r.ok) throw new Error("gemini " + r.status);
@@ -75,7 +75,7 @@ export async function onRequestPost({ request, env }) {
   const merged = []; msgs.forEach(m => { const l = merged[merged.length - 1]; if (l && l.role === m.role) l.content += "\n" + m.content; else merged.push({ ...m }); });
   if (merged[0] && merged[0].role !== "user") merged.shift();
 
-  const chain = [["claude", env.ANTHROPIC_API_KEY, callClaude], ["gemini", env.GEMINI_API_KEY, callGemini], ["groq", env.GROQ_API_KEY, callGroq], ["openrouter", env.OPENROUTER_API_KEY, callOR]].filter(c => c[1]);
+  const chain = [["claude", env.ANTHROPIC_API_KEY, callClaude], ["gemini", env.GEMINI_API_KEY, callGemini], ["gemini2", env.GEMINI_API_KEY_2, (e, x, y) => callGemini(e, x, y, e.GEMINI_API_KEY_2)], ["groq", env.GROQ_API_KEY, callGroq], ["openrouter", env.OPENROUTER_API_KEY, callOR]].filter(c => c[1]);
   if (!chain.length) return json(503, { ok: false, error: "AI kaliti sozlanmagan (Cloudflare’da GEMINI_API_KEY qo‘shing)" });
   const fails = [];
   for (const [via, , fn] of chain) {
