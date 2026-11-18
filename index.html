@@ -532,6 +532,16 @@ body {
 .col-r .vt3-wrap { position: static; margin: 0; padding: 0; border: 0; background: none; flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .col-r .vt3 { height: auto; flex: 1; min-height: 0; }
 .col-r .r-bot .d3 { height: auto; flex: 1; min-height: 0; }
+.tf { border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; margin: 10px 0; background: rgba(255, 255, 255, 0.03); }
+.tf > summary { cursor: pointer; padding: 4px 0; }
+.tf-top { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin: 10px 0; }
+.tf label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.tf-sec { border-top: 1px solid rgba(255, 255, 255, 0.07); padding: 8px 0; }
+.tf-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tf-row label { flex-direction: row; align-items: center; gap: 8px; }
+.tf-row input { width: 64px; }
+.tf-dishes { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 4px 12px; margin: 8px 0; }
+.tf .tf-d { flex-direction: row; align-items: center; gap: 8px; }
 .col-r .r-top > .d3 { height: auto; flex: 1; min-height: 0; }
 .chip.add { border-style: dashed; color: var(--gold-soft); }
 .win.tab .dish, .win.tab .pk-dish [data-show] { cursor: pointer; }
@@ -2992,8 +3002,23 @@ if (typeof module !== "undefined") module.exports = makeQR;
   document.addEventListener("keydown", e => { if (e.key === "Escape" && fsBox()) fsExit(fsBox()); });
   new MutationObserver(paintFS).observe(document.body, { childList: true, subtree: true });
   // ----- Admin: haqiqiy kirish (parol serverda tekshiriladi), o'zgarishlar bazaga yoziladi, rasm va video Supabase Storage'ga yuklanadi -----
-  const adm = { on: false, pw: "", tab: "menyu", sec: "sovuq", queue: [], vurl: "", codes: null, bk: null, found: null };
-  const ADM_TABS = [["menyu", "Menyu"], ["reklama", "Televizor reklamalari"], ["banket", "Banket zallari"], ["bkodlar", "Banket kodlari"], ["qr", "QR oynasi"], ["kodlar", "Sovg‘a kodlari"], ["video", "Stol videosi"], ["qoshiq", "Qo‘shiq navbati"], ["parol", "Parol"]];
+  const adm = { on: false, pw: "", tab: "menyu", sec: "sovuq", queue: [], vurl: "", codes: null, bk: null, tf: null, found: null };
+  // narx toifalari: { list: [ { id, name, price, secs: { sovuq: { n, ids: [], extra } } } ] }
+  const tfLoad = () => ((CFG.toifa && Array.isArray(CFG.toifa.list)) ? CFG.toifa.list : []).map(t => JSON.parse(JSON.stringify(t)));
+  function tfCollect(box) {
+    return [...box.querySelectorAll("[data-tf]")].map((el, i) => {
+      const g = (root, f) => { const x = root.querySelector(`[data-f="${f}"]`); return x ? x.value.trim() : ""; };
+      const secs = {};
+      el.querySelectorAll(".tf-sec").forEach(se => {
+        const n = Math.max(0, Math.min(20, Math.round(Number(g(se, "n")) || 0)));
+        const ids = [...se.querySelectorAll("input[type=checkbox]:checked")].map(c => c.dataset.id);
+        const extra = g(se, "extra");
+        if (n || ids.length || extra) secs[se.dataset.s] = { n: n || ids.length, ids, extra };
+      });
+      return { id: (adm.tf[i] && adm.tf[i].id) || ("t" + Date.now().toString(36) + i), name: g(el, "name").slice(0, 40), price: Math.round(Number(g(el, "price")) || 0), secs, _open: el.open };
+    });
+  }
+  const ADM_TABS = [["menyu", "Menyu"], ["reklama", "Televizor reklamalari"], ["banket", "Banket zallari"], ["toifa", "Narx toifalari"], ["bkodlar", "Banket kodlari"], ["qr", "QR oynasi"], ["kodlar", "Sovg‘a kodlari"], ["video", "Stol videosi"], ["qoshiq", "Qo‘shiq navbati"], ["parol", "Parol"]];
   const admStore = { get() { try { return sessionStorage.getItem("nozi_adm") || ""; } catch (e) { return ""; } }, set(v) { try { v ? sessionStorage.setItem("nozi_adm", v) : sessionStorage.removeItem("nozi_adm"); } catch (e) {} } };
   // one call to the server; a wrong or expired password sends the admin back to the login form
   async function admApi(method, path, body, headers) {
@@ -3103,6 +3128,23 @@ if (typeof module !== "undefined") module.exports = makeQR;
       banket() {
         return `<p class="note" style="margin:0 0 8px">Banket oynasida mehmonga ko‘rinadigan zal nomi va izohi. Sig‘imni kod belgilaydi, uni o‘zgartirish kerak bo‘lsa, menga ayting.</p>
           ${HALLS.map(h => `<div class="adm-dish hall" data-h="${h.id}"><input type="text" data-hn="${h.id}" value="${esc(h.name)}" aria-label="Zal nomi"><input type="text" class="adm-k" data-hd="${h.id}" value="${esc(h.note)}" aria-label="Izoh"></div>`).join("")}
+          <p id="admMsg" class="adm-ok" role="status"></p>`;
+      },
+      toifa() {
+        if (adm.tf === null) adm.tf = tfLoad();
+        const T = adm.tf;
+        const card = (t, i) => `<details class="tf" data-tf="${i}" ${T.length === 1 || t._open ? "open" : ""}><summary><b>${esc(t.name || "Yangi toifa")}</b>${t.price ? " · " + fmt(t.price) + " so‘m / kishi" : ""}</summary>
+          <div class="tf-top"><label>Toifa nomi<input type="text" data-f="name" value="${esc(t.name || "")}" maxlength="40" placeholder="masalan, Standart"></label>
+          <label>Bir kishiga narx (so‘m)<input type="number" data-f="price" inputmode="numeric" min="10000" step="5000" value="${t.price || ""}" placeholder="200000"></label></div>
+          ${MENU.map(sec => { const c = (t.secs || {})[sec.id] || {}; const ids = c.ids || [];
+            return `<div class="tf-sec" data-s="${sec.id}"><div class="tf-row"><b>${esc(sec.uz)}</b><label>nechta xil<input type="number" data-f="n" min="0" max="20" value="${c.n || 0}"></label></div>
+              <details><summary>Taomlarni tanlash (${ids.length ? ids.length + " ta tanlangan" : "AI o‘zi tanlaydi"})</summary>
+                <div class="tf-dishes">${sec.t.map((d, di) => `<label class="tf-d"><input type="checkbox" data-id="${sec.id}-${di}" ${ids.includes(sec.id + "-" + di) ? "checked" : ""}><span>${esc(d.uz)}${d.n ? " · " + fmt(d.n) : ""}</span></label>`).join("")}</div>
+                <input type="text" data-f="extra" value="${esc(c.extra || "")}" placeholder="Menyuda yo‘q yangi taom nomlari (vergul bilan)" maxlength="160"></details></div>`; }).join("")}
+          <button class="pill" type="button" data-tfdel="${i}">Bu toifani o‘chirish</button></details>`;
+        return `<p class="note" style="margin:0 0 8px">Boshliq narx toifasini yaratadi: har bo‘limdan nechta xil taom bo‘lishi va qaysi taomlar kirishi. Banket oynasida AI faqat shu toifadan tanlaydi. Taom tanlanmasa, AI shu bo‘limdan o‘zi tanlaydi. Menyuda yo‘q yangi taom yozilsa, u so‘rov matniga qo‘shiladi (3D da ko‘rinmaydi).</p>
+          <form id="admTf" autocomplete="off">${T.length ? T.map(card).join("") : `<p class="note">Hozircha toifa yo‘q. Quyidagi tugma bilan qo‘shing.</p>`}
+            <div class="sg-form" style="flex-wrap:wrap;margin-top:10px"><button class="pill" type="button" data-tfadd="1">+ Yangi toifa</button><button class="pill gold" type="submit">Saqlash</button></div></form>
           <p id="admMsg" class="adm-ok" role="status"></p>`;
       },
       bkodlar() {
@@ -3248,6 +3290,15 @@ if (typeof module !== "undefined") module.exports = makeQR;
         const r = await menuPatch(d.id, patch);
         draw(); msg(r.ok ? "Olib tashlandi" : failMsg(r), !r.ok); return;
       }
+      const tfa = e.target.closest("[data-tfadd]");
+      if (tfa) { adm.tf = tfCollect(box); adm.tf.push({ id: "t" + Date.now().toString(36), name: "", price: 0, secs: {}, _open: true }); draw(); return; }
+      const tfd = e.target.closest("[data-tfdel]");
+      if (tfd) {
+        if (tfd.dataset.sure !== "1") { tfd.dataset.sure = "1"; tfd.textContent = "Aniq o‘chirilsinmi?"; return; }
+        adm.tf = tfCollect(box); adm.tf.splice(Number(tfd.dataset.tfdel), 1);
+        msg("Saqlanmoqda…"); const r0 = await admSave("toifa", { list: adm.tf.map(({ _open, ...t }) => t) }); draw();
+        msg(r0.ok ? "O‘chirildi." : failMsg(r0), !r0.ok); return;
+      }
       const bkd = e.target.closest("[data-bkdel]");
       if (bkd) {
         if (bkd.dataset.sure !== "1") { bkd.dataset.sure = "1"; bkd.textContent = "Aniq o‘chirilsinmi?"; return; }
@@ -3363,6 +3414,15 @@ if (typeof module !== "undefined") module.exports = makeQR;
         msg(r.ok ? "Saqlandi. QR oynasida darrov ko‘rinadi." : failMsg(r), !r.ok);
         return;
       }
+      if (e.target.id === "admTf") {
+        const T = tfCollect(box);
+        for (const t of T) { if (t.name.length < 2) return msg("Har toifaga nom bering.", true); if (t.price < 10000) return msg(`"${t.name}" uchun narx kamida 10 000 so‘m.`, true); if (!Object.keys(t.secs).length) return msg(`"${t.name}" ga kamida bitta bo‘lim kiriting.`, true); }
+        msg("Saqlanmoqda…");
+        const r = await admSave("toifa", { list: T.map(({ _open, ...t }) => t) });
+        if (r.ok) adm.tf = null;
+        msg(r.ok ? "Saqlandi. Banket oynasida darrov ko‘rinadi." : failMsg(r), !r.ok);
+        return;
+      }
       if (e.target.id === "admBkF") {
         const name = box.querySelector("#admBkN").value.trim(), code = box.querySelector("#admBkC").value.trim();
         if (name.length < 2) return msg("Ismni yozing.", true);
@@ -3411,7 +3471,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
   const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   const bk = { step: 0, type: "banket", guests: 30, date: "", time: "18:00", hall: null, shape: null, rows: null, change: false,
     items: {}, order: [], course: {}, sec: "", view: "dasturxon", name: "", phone: "", note: "", sent: false, posted: "", link: "",
-    rest: null, tcount: null, tview: null, lastDish: null, plates: {}, chat: [], chatOpen: false, chatBusy: false, agGuided: false, agq: 0, agBudget: 0, agKind: "", agWater: "" };
+    rest: null, tcount: null, tview: null, lastDish: null, plates: {}, chat: [], chatOpen: false, chatBusy: false, agGuided: false, agq: 0, agTier: "", agBudget: 0, agKind: "", agWater: "" };
 
   // ----- kilogramm bilan hisoblanadigan taomlar: kishiga gramm, stol va tarelkalarga bo‘linadi -----
   const KG_STEP = 50, PLATE_PER = 5, PLATE_STEP = 5;     // jami 50 g gacha yuqoriga; har 5 kishiga 1 tarelka
@@ -3656,11 +3716,15 @@ if (typeof module !== "undefined") module.exports = makeQR;
   }
   // AI yordamchi: avval savollar bittadan so‘raladi (tadbir turi va mehmonlar soni 1-qadamda allaqachon kiritilgan), keyin AI ishga tushadi
   const AG_BUDGETS = [100000, 150000, 200000, 250000];
+  const tiersList = () => ((CFG.toifa && Array.isArray(CFG.toifa.list)) ? CFG.toifa.list : []).filter(t => t && t.name && t.price >= 10000);
+  const tierNow = () => tiersList().find(t => t.id === bk.agTier) || null;
+  const tierState = () => { const t = tierNow(); return t ? { name: t.name, price: t.price, secs: Object.entries(t.secs || {}).map(([sec, c]) => ({ sec, n: c.n, ids: c.ids || [], extra: c.extra || "" })) } : null; };
+  const tierLines = () => { const t = tierNow(); if (!t) return []; const ex = Object.values(t.secs || {}).map(c => c.extra).filter(Boolean); return [`Toifa: ${t.name}`].concat(ex.length ? [`Menyuda yo‘q qo‘shimcha taomlar: ${ex.join(", ")}`] : []); };
   function agGuideHTML() {
     const q = bk.agq, who = `${bk.type === "toy" ? "To‘y" : "Banket"} · ${bk.guests} kishi`;
     if (q === 0) return `<div class="ag-g"><p class="ag-q">${esc(who)}. <b>1/3.</b> Bir kishi uchun taxminan qancha so‘m sarflamoqchisiz?</p>
-      <div class="opts">${AG_BUDGETS.map(v => `<button class="opt" type="button" data-agb="${v}" aria-pressed="${bk.agBudget === v}"><b>${fmt(v)}</b><small>so‘m / kishi</small></button>`).join("")}</div>
-      <div class="ag-custom"><input type="number" id="agBc" inputmode="numeric" min="10000" step="5000" placeholder="Boshqa summa (so‘m)" aria-label="Bir kishi uchun summa"><button class="btn" type="button" data-agbc="1">Davom etish</button></div></div>`;
+      <div class="opts">${tiersList().length ? tiersList().map(t => `<button class="opt" type="button" data-agt="${esc(t.id)}" aria-pressed="${bk.agTier === t.id}"><b>${esc(t.name)}</b><small>${fmt(t.price)} so‘m / kishi</small></button>`).join("") : AG_BUDGETS.map(v => `<button class="opt" type="button" data-agb="${v}" aria-pressed="${bk.agBudget === v}"><b>${fmt(v)}</b><small>so‘m / kishi</small></button>`).join("")}</div>
+      ${tiersList().length ? "" : `<div class="ag-custom"><input type="number" id="agBc" inputmode="numeric" min="10000" step="5000" placeholder="Boshqa summa (so‘m)" aria-label="Bir kishi uchun summa"><button class="btn" type="button" data-agbc="1">Davom etish</button></div>`}</div>`;
     if (q === 1) return `<div class="ag-g"><p class="ag-q"><b>2/3.</b> Qanday taomlar bo‘lsin?</p>
       <div class="opts"><button class="opt" type="button" data-agk="milliy"><b>Milliy</b><small>Osh, kabob, sho‘rva</small></button><button class="opt" type="button" data-agk="yevropa"><b>Yevropa</b><small>Steyk, sezar, desert</small></button><button class="opt" type="button" data-agk="aralash"><b>Aralash</b><small>Ikkalasidan</small></button></div>
       <button class="btn ag-skip" type="button" data-agk="">O‘tkazib yuborish</button></div>`;
@@ -3670,6 +3734,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
   }
   function agGuideText() {
     const p = [`${bk.type === "toy" ? "To‘y" : "Banket"}, ${bk.guests} kishi.`];
+    if (tierNow()) p.push(`Toifa: ${tierNow().name}.`);
     if (bk.agBudget) p.push(`Bir kishi uchun taxminan ${fmt(bk.agBudget)} so‘m.`);
     if (bk.agKind) p.push(`Taomlar: ${bk.agKind}.`);
     if (bk.agWater) p.push(`Komplekt suv: ${bk.agWater}.`);
@@ -3815,7 +3880,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
         `${bk.date.split("-").reverse().join(".")} · ${bk.time}`,
         `${h.name} · ${bk.guests} kishi · ${tableText()}`,
       ]).concat(dishLines).concat([`Jami (${SERVICE_PCT} xizmat bilan): ${fmt(food * (1 + SERVICE))} so‘m${unpriced().length ? " + narxi aniqlanmoqda bo‘lganlar" : ""}`])
-        .concat(bk.note.trim() ? [`Izoh: ${bk.note.trim()}`] : []);
+        .concat(tierLines()).concat(bk.note.trim() ? [`Izoh: ${bk.note.trim()}`] : []);
       bk.text = lines.join("\n");
       if (!bk.posted) {
         bk.posted = "wait";
@@ -3889,6 +3954,8 @@ if (typeof module !== "undefined") module.exports = makeQR;
     (o.remove || []).forEach(id => { if (byId[id]) { bk.items[id] = 0; bk.order = bk.order.filter(x => x !== id); } });
     (o.add || []).forEach(a => {
       const d = a && byId[a.id]; if (!d) return;
+      const tr = tierNow();
+      if (tr) { const c = (tr.secs || {})[d.sec]; if (!c || (c.ids && c.ids.length && !c.ids.includes(d.id))) return; }   // toifada yo'q taom qo'shilmaydi
       bk.items[d.id] = kgInfo(d) ? 1 : Math.max(1, Math.min(40, Math.round(a.q) || 1));
       bk.order = bk.order.filter(x => x !== d.id); bk.order.push(d.id);
     });
@@ -3911,7 +3978,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
       const done = () => { bk.chatBusy = false; rerender(); const i2 = body.querySelector("#agIn"); if (i2) i2.focus({ preventScroll: true }); };
       try {
         const payload = { message: text, history: bk.chat.slice(-9, -1).filter(m => !m.err).map(m => ({ r: m.r, t: m.t })), menu: agentMenu(),
-          state: { guests: bk.guests, type: bk.type, hall: hallNow().name, date: bk.date, chosen: chosenItems().map(x => ({ id: x.d.id, q: x.q })) } };
+          state: { guests: bk.guests, type: bk.type, tier: tierState(), hall: hallNow().name, date: bk.date, chosen: chosenItems().map(x => ({ id: x.d.id, q: x.q })) } };
         const r = await fetch("/api/agent", { method: "POST", headers: { "Content-Type": "application/json", "x-banket": bkTok.get() }, body: JSON.stringify(payload) });
         const j = await r.json().catch(() => ({}));
         if (r.status === 401) { bkTok.set(""); bkChecked = false; bk.chatBusy = false; viewBanketGate(body, "Sessiya tugadi. Kodni qayta kiriting."); return; }
@@ -3923,7 +3990,8 @@ if (typeof module !== "undefined") module.exports = makeQR;
     };
     if (agF) agF.addEventListener("submit", e => { e.preventDefault(); sendAgent(agF.querySelector("#agIn").value.trim()); });
     // savollar bittadan: narx, taom turi, komplekt suv. Oxirida hammasi bitta xabar bo‘lib AI ga ketadi
-    const agNext = () => { if (bk.agq < 2) { bk.agq++; bk.chatOpen = true; rerender(); } else { bk.agGuided = true; bk.chatOpen = true; sendAgent(agGuideText()); } };
+    const agNext = () => { if (bk.agq < 2) { bk.agq = bk.agTier && bk.agq === 0 ? 2 : bk.agq + 1; bk.chatOpen = true; rerender(); } else { bk.agGuided = true; bk.chatOpen = true; sendAgent(agGuideText()); } };
+    body.querySelectorAll("[data-agt]").forEach(b => b.addEventListener("click", () => { const t = tiersList().find(x => x.id === b.dataset.agt); if (!t) return; bk.agTier = t.id; bk.agBudget = t.price; agNext(); }));
     body.querySelectorAll("[data-agb]").forEach(b => b.addEventListener("click", () => { bk.agBudget = Number(b.dataset.agb); agNext(); }));
     const agBtn = body.querySelector("[data-agbc]");
     if (agBtn) agBtn.addEventListener("click", () => { const v = Math.round(Number((body.querySelector("#agBc") || {}).value)); if (v >= 10000) { bk.agBudget = v; agNext(); } else { agBtn.textContent = "10 000 dan kam bo‘lmaydi"; } });

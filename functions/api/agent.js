@@ -25,6 +25,14 @@ FAQAT shu JSON ni qaytar, boshqa matn yozma:
 {"reply":"foydalanuvchiga matn","guests":son yoki null,"type":"banket"|"toy"|null,"add":[{"id":"menyu id","q":son}],"remove":["id"],"course":{"id":"dasturxon|c1|c2|c3|desert"}}`;
 
 const clip = (s, n) => String(s == null ? "" : s).slice(0, n);
+// Narx toifasi (boshliq belgilagan): har bo'limdan nechta xil taom va qaysi id lar kiradi
+function tierBlock(t) {
+  if (!t || typeof t !== "object" || !t.name) return "";
+  const secs = (Array.isArray(t.secs) ? t.secs : []).slice(0, 12).map(c => `- bo'lim "${clip(c.sec, 20)}": ${Math.max(0, Math.min(20, +c.n || 0))} xil` +
+    (Array.isArray(c.ids) && c.ids.length ? `; FAQAT shu id lardan: ${c.ids.slice(0, 60).map(x => clip(x, 40)).join(", ")}` : "; menyudan o'zing tanla") +
+    (c.extra ? `; menyuda yo'q qo'shimcha: ${clip(c.extra, 160)} (id yo'q, faqat javob matnida eslat)` : "")).join("\n");
+  return `\n\nTOIFA "${clip(t.name, 40)}" (${Math.round(+t.price) || 0} so'm/kishi). Faqat shu toifa tarkibidan tanla, har bo'limdan ko'rsatilgan sondagi xil taom qo'sh, boshqa taom qo'shma:\n${secs}`;
+}
 
 async function callClaude(env, sys, msgs) {
   const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST",
@@ -75,7 +83,7 @@ export async function onRequestPost({ request, env }) {
   const menu = clip(p.menu, 14000), st = p.state && typeof p.state === "object" ? p.state : {};
   const sys = RULES + "\n\nMENYU (id|nom|narx so'm|bo'lim|kg belgisi):\n" + menu +
     "\n\nHOZIRGI HOLAT: mehmonlar " + (+st.guests || "noma'lum") + ", tur " + clip(st.type, 20) + ", zal " + clip(st.hall, 40) + ", sana " + clip(st.date, 12) +
-    ", tanlanganlar: " + clip(JSON.stringify(Array.isArray(st.chosen) ? st.chosen.slice(0, 80) : []), 1500);
+    ", tanlanganlar: " + clip(JSON.stringify(Array.isArray(st.chosen) ? st.chosen.slice(0, 80) : []), 1500) + tierBlock(st.tier);
   const msgs = [];
   (Array.isArray(p.history) ? p.history.slice(-8) : []).forEach(h => { if (h && h.t) msgs.push({ role: h.r === "a" ? "assistant" : "user", content: clip(h.t, 800) }); });
   msgs.push({ role: "user", content: message });
