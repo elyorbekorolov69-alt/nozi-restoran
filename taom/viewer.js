@@ -15,9 +15,36 @@ function getLoader() {
   return loader;
 }
 
+
+// Issiq taomlar ustidan chiqadigan yengil bug (sprite'lar, GPU'ga og'ir emas).
+const HOT = /\/(baliq2?|lyulya|qanot|kroket2?|sorva|til|kolbasa)\.glb/;
+function makeSteam(THREE, w, h) {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 64;
+  const g = cv.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,255,255,0.55)'); gr.addColorStop(0.45, 'rgba(255,255,255,0.18)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+  const group = new THREE.Group(), items = [];
+  for (let i = 0; i < 22; i++) {
+    const m = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0, color: 0xfff6e8 });
+    const sp = new THREE.Sprite(m); group.add(sp);
+    items.push({ sp, m, t: Math.random(), sp0: 0.16 + Math.random() * 0.1, x: (Math.random() - 0.5) * w * 0.5, z: (Math.random() - 0.5) * w * 0.5, ph: Math.random() * 6.28 });
+  }
+  const step = dt => {
+    for (const it of items) {
+      it.t += dt * it.sp0; if (it.t > 1) { it.t -= 1; it.x = (Math.random() - 0.5) * w * 0.5; it.z = (Math.random() - 0.5) * w * 0.5; }
+      const k = it.t, sway = Math.sin(it.ph + k * 4) * w * 0.06;
+      it.sp.position.set(it.x + sway, k * h * 1.6, it.z);
+      const sz = w * (0.12 + k * 0.22); it.sp.scale.set(sz, sz, 1);
+      it.m.opacity = Math.sin(Math.PI * k) * 0.42;
+    }
+  };
+  return { group, step, dispose() { tex.dispose(); items.forEach(i => i.m.dispose()); } };
+}
+
 // host ichiga 3D ko'rinish quradi. Qaytaradi: { dispose() }. Model yuklanguncha host ichidagi rasm turadi.
 export function show({ host, url, onReady, onFail }) {
-  let dead = false, raf = 0;
+  let dead = false, raf = 0, steam = null, last = performance.now();
   const canvas = document.createElement('canvas');
   canvas.setAttribute('aria-label', 'Taomning 3D ko‘rinishi. Aylantirish uchun suring.');
   host.prepend(canvas);
@@ -52,6 +79,7 @@ export function show({ host, url, onReady, onFail }) {
     if (!host.isConnected) { api.dispose(); return; }
     raf = requestAnimationFrame(loop);
     controls.update();
+    const now = performance.now(); if (steam) steam.step(Math.min((now - last) / 1000, 0.1)); last = now;
     renderer.render(scene, camera);
   };
 
@@ -69,6 +97,9 @@ export function show({ host, url, onReady, onFail }) {
     controls.minDistance = dist * 0.5; controls.maxDistance = dist * 1.8;
     controls.update();
     scene.add(model);
+    if (HOT.test(url) && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      steam = makeSteam(THREE, Math.max(s.x, s.z), s.y); steam.group.position.set(0, s.y * 0.1, 0); scene.add(steam.group);
+    }
     loop();
     if (onReady) onReady();
   }, undefined, err => { if (!dead && onFail) onFail(err); });
@@ -87,6 +118,7 @@ export function show({ host, url, onReady, onFail }) {
       if (dead) return; dead = true;
       cancelAnimationFrame(raf); ro.disconnect(); controls.dispose();
       if (model) { scene.remove(model); free(model); }
+      if (steam) steam.dispose();
       envTex.dispose(); pmrem.dispose();
       renderer.dispose(); renderer.forceContextLoss();
       canvas.remove();
