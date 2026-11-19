@@ -1636,7 +1636,7 @@ function Table3D(canvas, opts) {
     if (spec.shape === "dish") {
       // one dish on the same laid round table as in the banquet view (cloth, chairs, place settings), to turn around and look at closely
       LO = false; items = []; curHall = "dish"; cam = null; lastHall = "";
-      const tbl = roundTable(0, 0, 6, false), sp = tbl.spots[0];
+      const tbl = { top: 0, spots: [[0, 0, 0]] }, sp = tbl.spots[0];   // no table, chairs or cloth: only the dish (and its plate)
       const D0 = vis[0] && vis[0].d, real = D0 && ((D0.img && D0.img[0]) || D0.th || ""), pic = D0 ? (real || D0.pic || "") : "";
       setPhoto(pic, real ? 1 : 0.66);
       vis.slice(0, 1).forEach(x => {
@@ -1647,7 +1647,7 @@ function Table3D(canvas, opts) {
           put("disc", "#ffffff", sp[0], h + 0.012, sp[1], sp[2], 0.225, 1, 0.225, { s: 0.35, sh: 60, e: 0.1, p: 18 });
         } else { const [k, col] = kindOf(x.d); dish(k, col, sp[0], sp[1], sp[2], tbl.top, x.d); }
       });
-      target = [sp[0] * 0.55, tbl.top, sp[1] * 0.55]; minDist = 0.8; maxDist = 4.6; dist = 2.7; pitch = 0.74;
+      target = [0, tbl.top + 0.03, 0]; minDist = 0.35; maxDist = 2.4; dist = 1.05; pitch = 0.74;
       setStatic(items); setDyn([]); staticKey = ""; lastCam = "";
       draw();
       return;
@@ -2707,7 +2707,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
       if (dishView) {
         requestAnimationFrame(() => {
           dishView.build({ shape: "dish", course: "dasturxon", items: [{ d: t, q: 1, course: "dasturxon" }] });
-          dishView.view(0.5, 0.74, 2.4);
+          dishView.view(0.5, 0.74, 1.05);
         });
       } else host.insertAdjacentHTML("beforeend", `<p class="hint">Bu qurilmada 3D ko‘rinish ishlamadi.</p>`);
     }
@@ -2733,7 +2733,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
     if (!dishView) { host.insertAdjacentHTML("beforeend", `<p class="hint">Bu qurilmada 3D ko‘rinish ishlamadi.</p>`); return; }
     requestAnimationFrame(() => {
       dishView.build({ shape: "dish", course: "dasturxon", items: [{ d: t, q: 1, course: "dasturxon" }] });
-      dishView.view(0.5, 0.74, 2.4);
+      dishView.view(0.5, 0.74, 1.05);
     });
   }
   // tablet menu: the dish picked on the left is shown on the right, in 3D, with its photos and video
@@ -3614,7 +3614,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
     t3d.build({
       shape: round ? "round" : "long",
       hall: hallNow().id,
-      noRoom: !!(hs && hs.api),     // the Blender hall stands in for the room
+      noRoom: true,     // the old drawn room is gone: only the Blender hall (or nothing) stands behind the tables
       guests: bk.guests,
       rows: rowsNow(),
       seatsList: round ? roundSeats() : undefined,
