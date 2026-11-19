@@ -1,15 +1,18 @@
+<!doctype html>
+<html lang="uz">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>NoZi Kadupul</title>
 <meta name="description" content="NoZi Restaurant, Samarqand: menyu, banket va to‘y buyurtmasi, taomlarning 3D ko‘rinishi.">
 <meta name="theme-color" content="#050812">
-<script>document.documentElement.lang = "uz";</script>
 <meta name="claude:viewport-fit-sides" content="cover">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Italiana&family=Jost:wght@400;500&display=swap">
 <style>
+input, select, textarea, button { box-sizing: border-box; }
+table { font-size: inherit; }
 /* Layout: the Kadupul film fills the screen and keeps swaying in the wind; three different petals carry the sections; a window grows out of its petal */
 :root {
   --night: #050812;      /* page ground behind the film */
@@ -636,6 +639,7 @@ body {
 </div>
 <canvas id="fx" aria-hidden="true"></canvas>
 
+<h1 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap">NoZi Restaurant, Samarqand</h1>
 <header class="brand" id="brand"><b>NoZi</b><img class="brand-logo" src="nozi-emblem.png" alt="" aria-hidden="true"><small>Restaurant · Samarqand</small></header>
 
 <button class="petal" id="p0" type="button" hidden data-key="menyu"><span class="in"><span class="name">Menyu</span></span></button>
@@ -3457,7 +3461,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
   // max: the largest party the hall is picked for on its own; cap: the most it seats if the guest picks it
   const HALLS = [
     { id: "terrasa", name: "Terrasa", max: 20, cap: 80, note: "1–20 kishi · 80 kishigacha sig‘adi" },
-    { id: "mayda", name: "Mayda zal", max: 50, note: "21–50 kishi" },
+    { id: "mayda", name: "Kichik zal", max: 50, note: "21–50 kishi" },
     { id: "toyxona", name: "To‘yxona", max: 200, note: "51–200 kishi" },
     { id: "butun", name: "Butun NoZi", max: 100000, note: "200 kishidan ko‘p" },
   ];
