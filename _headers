@@ -1,2 +1,5 @@
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
 /taom/*
   Cache-Control: no-cache
