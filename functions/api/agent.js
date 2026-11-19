@@ -25,6 +25,19 @@ FAQAT shu JSON ni qaytar, boshqa matn yozma:
 {"reply":"foydalanuvchiga matn","guests":son yoki null,"type":"banket"|"toy"|null,"add":[{"id":"menyu id","q":son}],"remove":["id"],"course":{"id":"dasturxon|c1|c2|c3|desert"}}`;
 
 const clip = (s, n) => String(s == null ? "" : s).slice(0, n);
+// Summa va marosim: summani tartib bilan taqsimlash; reyting (egasi tasdiqlagan tanlovlar) tavsiyada hisobga olinadi
+function budgetBlock(st) {
+  let o = "";
+  if (st.event) o += `\n\nMAROSIM: ${clip(st.event, 40)}. Taom va bezakni shunga mos tavsiya qil.`;
+  const b = st.budget && typeof st.budget === "object" ? st.budget : null;
+  if (b && +b.pp > 0) {
+    const pp = Math.round(+b.pp), tot = Math.round(+b.total) || pp * (+st.guests || 1);
+    o += `\n\nBUDJET: kishiga ${pp} so'm, umumiy ${tot} so'm. Summani SHU TARTIBDA taqsimla: 1) avval 1-taom (sho'rva) va 2-taom (issiq) uchun ko'proq ulush; 2) keyin salatlar (summaga qarab nechta xil); 3) non (nechta); 4) yaxna; 5) Nozi salati; 6) issiq go'shtlar (shashlik, kabob). Jami summadan oshirma, javobda necha xil salat/non qo'shganingni qisqa ayt.`;
+  }
+  const pop = (Array.isArray(st.pop) ? st.pop : []).slice(0, 12).filter(x => x && x.id && +x.n > 0);
+  if (pop.length) o += `\n\nREYTING (mijozlar ko'p tanlagan, egasi tasdiqlagan): ${pop.map(x => clip(x.id, 40) + " (" + Math.round(+x.n) + ")").join(", ")}. Mos kelsa shularni tavsiya qil va "bu taom ko'p tanlanadi" deb ayt; bo'lmasa o'ylab topma.`;
+  return o;
+}
 // Narx toifasi (boshliq belgilagan): har bo'limdan nechta xil taom va qaysi id lar kiradi
 function tierBlock(t) {
   if (!t || typeof t !== "object" || !t.name) return "";
@@ -83,7 +96,7 @@ export async function onRequestPost({ request, env }) {
   const menu = clip(p.menu, 14000), st = p.state && typeof p.state === "object" ? p.state : {};
   const sys = RULES + "\n\nMENYU (id|nom|narx so'm|bo'lim|kg belgisi):\n" + menu +
     "\n\nHOZIRGI HOLAT: mehmonlar " + (+st.guests || "noma'lum") + ", tur " + clip(st.type, 20) + ", zal " + clip(st.hall, 40) + ", sana " + clip(st.date, 12) +
-    ", tanlanganlar: " + clip(JSON.stringify(Array.isArray(st.chosen) ? st.chosen.slice(0, 80) : []), 1500) + tierBlock(st.tier);
+    ", tanlanganlar: " + clip(JSON.stringify(Array.isArray(st.chosen) ? st.chosen.slice(0, 80) : []), 1500) + tierBlock(st.tier) + budgetBlock(st);
   const msgs = [];
   (Array.isArray(p.history) ? p.history.slice(-8) : []).forEach(h => { if (h && h.t) msgs.push({ role: h.r === "a" ? "assistant" : "user", content: clip(h.t, 800) }); });
   msgs.push({ role: "user", content: message });

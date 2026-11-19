@@ -25,7 +25,10 @@ export async function onRequestPost({ request, env }) {
   const data = {};
   for (const k of ["name", "phone", "date", "time", "guests", "hall", "total", "lang"]) data[k] = String(p[k] ?? "").slice(0, 300);
   data.who = String(who.n || "").slice(0, 40);
-  const text = String(p.text).slice(0, 3500);
+  data.event = String(p.event || "").slice(0, 40);
+  data.items = (Array.isArray(p.items) ? p.items : []).slice(0, 120).map(x => ({ id: String((x && x.id) || "").slice(0, 40), q: Math.max(0, Math.min(5000, Math.round(+(x && x.q) || 0))) })).filter(x => x.id && x.q > 0);
+  let text = String(p.text).slice(0, 3500);
+  if (data.event && !/Marosim:/.test(text)) text = text.replace("\n", `\nMarosim: ${data.event}\n`);
 
   let id, code;
   try {

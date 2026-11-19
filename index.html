@@ -487,6 +487,7 @@ body {
 /* ---- savatcha ---- */
 .qty { display: inline-flex; align-items: center; gap: 6px; flex: none; }
 .qty button { width: 36px; height: 36px; padding: 0; border-radius: 50%; border: 1px solid rgba(240, 211, 154, 0.5); background: transparent; color: var(--gold-soft); font: 500 21px/1 var(--font-ui); cursor: pointer; }
+.tag.pop { background: var(--gold-soft); color: var(--ink); }
 .qty button[data-add] { background: var(--gold-soft); color: var(--ink); border-color: var(--gold-soft); }
 .qty button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .dish .qty b, .qty b { min-width: 24px; text-align: center; font: 600 16px/1 var(--font-ui); color: var(--petal); }
@@ -3480,7 +3481,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
   const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   const bk = { step: 0, type: "banket", guests: 30, date: "", time: "18:00", hall: null, shape: null, rows: null, change: false,
     items: {}, order: [], course: {}, sec: "", view: "dasturxon", name: "", phone: "", note: "", sent: false, posted: "", link: "",
-    rest: null, tcount: null, tview: null, lastDish: null, plates: {}, chat: [], chatOpen: false, chatBusy: false, agGuided: false, agq: 0, agTier: "", agBudget: 0, agKind: "", agWater: "" };
+    rest: null, tcount: null, tview: null, lastDish: null, plates: {}, chat: [], chatOpen: false, chatBusy: false, agGuided: false, agq: 0, agTier: "", agBudget: 0, agTotal: 0, agKind: "", agWater: "", event: "", pop: {}, popLoaded: false };
 
   // ----- kilogramm bilan hisoblanadigan taomlar: kishiga gramm, stol va tarelkalarga bo‘linadi -----
   const KG_STEP = 50, PLATE_PER = 5, PLATE_STEP = 5;     // jami 50 g gacha yuqoriga; har 5 kishiga 1 tarelka
@@ -3724,6 +3725,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
     setTimeout(() => { const i = f.querySelector("#bkCode"); if (i) i.focus(); }, 50);
   }
   // AI yordamchi: avval savollar bittadan so‘raladi (tadbir turi va mehmonlar soni 1-qadamda allaqachon kiritilgan), keyin AI ishga tushadi
+  const EVENTS = ["Tug‘ilgan kun", "Yubiley", "Nikoh to‘yi", "Fotiha to‘yi", "Korporativ", "Xotira / ma‘rifat", "Boshqa"];
   const AG_BUDGETS = [100000, 150000, 200000, 250000];
   const tiersList = () => ((CFG.toifa && Array.isArray(CFG.toifa.list)) ? CFG.toifa.list : []).filter(t => t && t.name && t.price >= 10000);
   const tierNow = () => tiersList().find(t => t.id === bk.agTier) || null;
@@ -3733,7 +3735,8 @@ if (typeof module !== "undefined") module.exports = makeQR;
     const q = bk.agq, who = `${bk.type === "toy" ? "To‘y" : "Banket"} · ${bk.guests} kishi`;
     if (q === 0) return `<div class="ag-g"><p class="ag-q">${esc(who)}. <b>1/3.</b> Bir kishi uchun taxminan qancha so‘m sarflamoqchisiz?</p>
       <div class="opts">${tiersList().length ? tiersList().map(t => `<button class="opt" type="button" data-agt="${esc(t.id)}" aria-pressed="${bk.agTier === t.id}"><b>${esc(t.name)}</b><small>${fmt(t.price)} so‘m / kishi</small></button>`).join("") : AG_BUDGETS.map(v => `<button class="opt" type="button" data-agb="${v}" aria-pressed="${bk.agBudget === v}"><b>${fmt(v)}</b><small>so‘m / kishi</small></button>`).join("")}</div>
-      ${tiersList().length ? "" : `<div class="ag-custom"><input type="number" id="agBc" inputmode="numeric" min="10000" step="5000" placeholder="Boshqa summa (so‘m)" aria-label="Bir kishi uchun summa"><button class="btn" type="button" data-agbc="1">Davom etish</button></div>`}</div>`;
+      <div class="ag-custom"><input type="number" id="agBp" inputmode="numeric" min="10000" step="5000" placeholder="Kishiga (so‘m)" aria-label="Bir kishi uchun summa"><input type="number" id="agBt" inputmode="numeric" min="10000" step="100000" placeholder="Umumiy summa (so‘m)" aria-label="Umumiy summa"><button class="btn" type="button" data-agbc="1">Davom etish</button></div>
+      <p class="muted" id="agBh">Bittasini yozing, ikkinchisini o‘zim hisoblayman.</p></div>`;
     if (q === 1) return `<div class="ag-g"><p class="ag-q"><b>2/3.</b> Qanday taomlar bo‘lsin?</p>
       <div class="opts"><button class="opt" type="button" data-agk="milliy"><b>Milliy</b><small>Osh, kabob, sho‘rva</small></button><button class="opt" type="button" data-agk="yevropa"><b>Yevropa</b><small>Steyk, sezar, desert</small></button><button class="opt" type="button" data-agk="aralash"><b>Aralash</b><small>Ikkalasidan</small></button></div>
       <button class="btn ag-skip" type="button" data-agk="">O‘tkazib yuborish</button></div>`;
@@ -3744,13 +3747,15 @@ if (typeof module !== "undefined") module.exports = makeQR;
   function agGuideText() {
     const p = [`${bk.type === "toy" ? "To‘y" : "Banket"}, ${bk.guests} kishi.`];
     if (tierNow()) p.push(`Toifa: ${tierNow().name}.`);
-    if (bk.agBudget) p.push(`Bir kishi uchun taxminan ${fmt(bk.agBudget)} so‘m.`);
+    if (bk.event) p.push(`Marosim: ${bk.event}.`);
+    if (bk.agBudget) p.push(`Bir kishi uchun taxminan ${fmt(bk.agBudget)} so‘m, umumiy ${fmt(bk.agTotal || bk.agBudget * bk.guests)} so‘m. Summani tartib bilan taqsimla: avval 1-taom va 2-taom, keyin salatlar (nechta xil), non (nechta), yaxna, Nozi salati, issiq go‘shtlar.`);
     if (bk.agKind) p.push(`Taomlar: ${bk.agKind}.`);
     if (bk.agWater) p.push(`Komplekt suv: ${bk.agWater}.`);
     p.push("Shunga qarab taomlarni tanlab bering.");
     return p.join(" ");
   }
   function viewBanket(body) {
+    if (!bk.popLoaded) { bk.popLoaded = true; fetch("/api/reyting").then(r => r.json()).then(j => { if (j && j.ok && j.taom) { bk.pop = j.taom; if (winKey === "banket" && body.isConnected && bk.step === 2) { const pk = body.querySelector("#pkl"); if (pk) pk.innerHTML = pickList(); } } }).catch(() => {}); }
     const h = hallNow(), n = sets();
     let html = stepsBar();
     if (bk.step === 0) {
@@ -3767,7 +3772,8 @@ if (typeof module !== "undefined") module.exports = makeQR;
         <div class="row2">
           <div class="field"><label for="bkd">Sana</label><input id="bkd" type="date" min="${today}" value="${bk.date}"></div>
           <div class="field"><label for="bkt">Vaqt</label><input id="bkt" type="time" value="${bk.time}"></div>
-        </div>` + nav("", "Keyingi", !!bk.date && bk.guests >= 1);
+        </div>
+        <div class="field"><label for="bke">Qanday marosim? (xodimlarga ko‘rinadi)</label><select id="bke"><option value="">Tanlang</option>${EVENTS.map(e => `<option ${bk.event === e ? "selected" : ""}>${e}</option>`).join("")}</select></div>` + nav("", "Keyingi", !!bk.date && bk.guests >= 1);
     } else if (bk.step === 1) {
       const sh = shapeNow();
       html += `<h3 class="bk-h">Joy va stol</h3>
@@ -3888,13 +3894,13 @@ if (typeof module !== "undefined") module.exports = makeQR;
       ].concat(WHERE ? [`Mehmon joyi: ${WHERE}`] : []).concat([
         `${bk.date.split("-").reverse().join(".")} · ${bk.time}`,
         `${h.name} · ${bk.guests} kishi · ${tableText()}`,
-      ]).concat(dishLines).concat([`Jami (${SERVICE_PCT} xizmat bilan): ${fmt(food * (1 + SERVICE))} so‘m${unpriced().length ? " + narxi aniqlanmoqda bo‘lganlar" : ""}`])
+      ]).concat(bk.event ? [`Marosim: ${bk.event}`] : []).concat(dishLines).concat([`Jami (${SERVICE_PCT} xizmat bilan): ${fmt(food * (1 + SERVICE))} so‘m${unpriced().length ? " + narxi aniqlanmoqda bo‘lganlar" : ""}`])
         .concat(tierLines()).concat(bk.note.trim() ? [`Izoh: ${bk.note.trim()}`] : []);
       bk.text = lines.join("\n");
       if (!bk.posted) {
         bk.posted = "wait";
         const payload = { name: bk.name.trim(), phone: bk.phone.trim(), date: bk.date, time: bk.time, guests: String(bk.guests),
-          hall: h.name, total: fmt(food * (1 + SERVICE)), lang: "uz", text: bk.text, website: "" };
+          hall: h.name, total: fmt(food * (1 + SERVICE)), lang: "uz", event: bk.event, items: chosenItems().map(x => ({ id: x.d.id, q: x.q })), text: bk.text, website: "" };
         fetch(BANKET_API, { method: "POST", headers: { "Content-Type": "application/json", "x-banket": bkTok.get() }, body: JSON.stringify(payload) })
           .then(r => { if (r.status === 401) { bkTok.set(""); bkChecked = false; bk.posted = "fail"; if (winKey === "banket" && body.isConnected) viewBanketGate(body, "Sessiya tugadi. Kodni qayta kiriting."); } return r; })
           .then(r => r.json().catch(() => ({})).then(j => ({ ok: r.ok && j.ok === true, link: j.link || "" })))
@@ -3949,13 +3955,16 @@ if (typeof module !== "undefined") module.exports = makeQR;
           <span class="pp"><button class="qb sm" type="button" data-pl="-1" data-id="${t.id}" aria-label="${esc(t.uz)}: tarelka kamaytirish">−</button> tarelka <button class="qb sm" type="button" data-pl="1" data-id="${t.id}" aria-label="${esc(t.uz)}: tarelka qo‘shish">+</button></span>`
           : `<span class="pp">Kishiga ${ki.gpp} g hisoblanadi</span>`;
       })();
-      return `<div class="pk-dish"><div data-show="${t.id}"><b>${esc(t.uz)}</b><span class="pp">${ki ? fmt(ki.price) + " so‘m / kg" : t.n == null ? "narxi aniqlanmoqda" : fmt(t.n) + " so‘m"}${!ki && t.o ? " · " + esc(t.o) : ""}${t.s ? " · taxminiy" : ""}${!ki && q && tablesNow() > 1 ? ` · ${tableOf(t.id) + 1}-${tblWord()}ga` : ""}</span>${kgLine}</div>
+      return `<div class="pk-dish"><div data-show="${t.id}"><b>${esc(t.uz)}</b>${isPop(t.id) ? ` <span class="tag pop">Mashhur · ko‘p tanlanadi</span>` : ""}<span class="pp">${ki ? fmt(ki.price) + " so‘m / kg" : t.n == null ? "narxi aniqlanmoqda" : fmt(t.n) + " so‘m"}${!ki && t.o ? " · " + esc(t.o) : ""}${t.s ? " · taxminiy" : ""}${!ki && q && tablesNow() > 1 ? ` · ${tableOf(t.id) + 1}-${tblWord()}ga` : ""}</span>${kgLine}</div>
         <div class="qty"><button class="qb sm" type="button" data-q="-1" data-id="${t.id}" aria-label="${esc(t.uz)}: kamaytirish" ${q ? "" : "disabled"}>−</button>
         <output id="q-${t.id}">${ki ? (q ? "✓" : "0") : q}</output>
         <button class="qb sm plus" type="button" data-q="1" data-id="${t.id}" aria-label="${esc(t.uz)}: qo‘shish">+</button></div></div>`;
     }).join("");
   }
 
+  const POP_MIN = 3;   // kamida shuncha tasdiqlangan tanlovdan keyin "Mashhur"
+  const popTop = () => Object.entries(bk.pop).filter(([, n]) => n >= POP_MIN).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([id, n]) => ({ id, n }));
+  const isPop = id => (bk.pop[id] || 0) >= POP_MIN && popTop().some(x => x.id === id);
   const agentMenu = () => DISHES.map(d => [d.id, d.uz, d.n == null ? "?" : d.n, d.sec, kgInfo(d) ? "kg" : ""].join("|")).join("\n");
   function agentApply(o) {
     if (o.guests >= 1) { const g = Math.min(1500, Math.round(o.guests)); if (g !== bk.guests) { bk.guests = g; bk.shape = null; bk.rows = null; bk.rest = null; bk.tcount = null; } }
@@ -3987,7 +3996,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
       const done = () => { bk.chatBusy = false; rerender(); const i2 = body.querySelector("#agIn"); if (i2) i2.focus({ preventScroll: true }); };
       try {
         const payload = { message: text, history: bk.chat.slice(-9, -1).filter(m => !m.err).map(m => ({ r: m.r, t: m.t })), menu: agentMenu(),
-          state: { guests: bk.guests, type: bk.type, tier: tierState(), hall: hallNow().name, date: bk.date, chosen: chosenItems().map(x => ({ id: x.d.id, q: x.q })) } };
+          state: { guests: bk.guests, type: bk.type, tier: tierState(), hall: hallNow().name, date: bk.date, event: bk.event, budget: bk.agBudget ? { pp: bk.agBudget, total: bk.agTotal || bk.agBudget * bk.guests } : null, pop: popTop(), chosen: chosenItems().map(x => ({ id: x.d.id, q: x.q })) } };
         const r = await fetch("/api/agent", { method: "POST", headers: { "Content-Type": "application/json", "x-banket": bkTok.get() }, body: JSON.stringify(payload) });
         const j = await r.json().catch(() => ({}));
         if (r.status === 401) { bkTok.set(""); bkChecked = false; bk.chatBusy = false; viewBanketGate(body, "Sessiya tugadi. Kodni qayta kiriting."); return; }
@@ -4003,7 +4012,12 @@ if (typeof module !== "undefined") module.exports = makeQR;
     body.querySelectorAll("[data-agt]").forEach(b => b.addEventListener("click", () => { const t = tiersList().find(x => x.id === b.dataset.agt); if (!t) return; bk.agTier = t.id; bk.agBudget = t.price; agNext(); }));
     body.querySelectorAll("[data-agb]").forEach(b => b.addEventListener("click", () => { bk.agBudget = Number(b.dataset.agb); agNext(); }));
     const agBtn = body.querySelector("[data-agbc]");
-    if (agBtn) agBtn.addEventListener("click", () => { const v = Math.round(Number((body.querySelector("#agBc") || {}).value)); if (v >= 10000) { bk.agBudget = v; agNext(); } else { agBtn.textContent = "10 000 dan kam bo‘lmaydi"; } });
+    const agBp = body.querySelector("#agBp"), agBt = body.querySelector("#agBt");
+    if (agBp && agBt) {
+      agBp.addEventListener("input", () => { const v = Number(agBp.value); agBt.value = v > 0 ? Math.round(v * bk.guests) : ""; });
+      agBt.addEventListener("input", () => { const v = Number(agBt.value); agBp.value = v > 0 ? Math.round(v / bk.guests / 1000) * 1000 : ""; });
+    }
+    if (agBtn) agBtn.addEventListener("click", () => { const pp = Math.round(Number(agBp.value)), tt = Math.round(Number(agBt.value)); const v = pp >= 10000 ? pp : (tt >= 10000 ? Math.round(tt / bk.guests) : 0); if (v >= 10000) { bk.agBudget = v; bk.agTotal = tt >= 10000 && !(pp >= 10000) ? tt : v * bk.guests; agNext(); } else { agBtn.textContent = "Kishiga 10 000 dan kam bo‘lmaydi"; } });
     body.querySelectorAll("[data-agk]").forEach(b => b.addEventListener("click", () => { bk.agKind = b.dataset.agk; agNext(); }));
     body.querySelectorAll("[data-agw]").forEach(b => b.addEventListener("click", () => { bk.agWater = b.dataset.agw; agNext(); }));
     body.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => {
@@ -4022,6 +4036,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
       g.addEventListener("input", () => { const v = Number(g.value); if (v >= 1) { bk.guests = Math.min(1500, Math.round(v)); bk.shape = null; bk.rows = null; bk.rest = null; bk.tcount = null; syncNext(); } });
       body.querySelector("#bkd").addEventListener("input", e => { bk.date = e.target.value; syncNext(); });
       body.querySelector("#bkt").addEventListener("input", e => { bk.time = e.target.value || "18:00"; });
+      const bke = body.querySelector("#bke"); if (bke) bke.addEventListener("change", e => { bk.event = e.target.value; });
     }
     function syncNext() {
       const nx = body.querySelector("[data-go='1']");
