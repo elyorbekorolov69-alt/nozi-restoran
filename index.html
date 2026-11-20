@@ -3702,7 +3702,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
         <button class="opt" type="button" data-rest="own" aria-pressed="${bk.rest === "own"}"><b>Alohida stol</b><small>${full} ta to‘liq stol va ${rem} kishilik stol</small></button>
         <button class="opt" type="button" data-rest="count" aria-pressed="${bk.rest === "count"}"><b>Stollar sonini o‘zim belgilayman</b><small>Mehmonlar stollarga teng bo‘linadi</small></button>
       </div>
-      ${bk.rest === "count" ? `<div class="field"><label for="bktc">Stollar soni</label><div class="stepper"><button class="qb" type="button" data-tc="-1" aria-label="Bitta kamaytirish">−</button><output id="bktc">${tablesNow()}</output><button class="qb" type="button" data-tc="1" aria-label="Bitta ko‘paytirish">+</button></div></div>` : ""}</div>`;
+      ${bk.rest === "count" ? `<div class="field"><label for="bktc">Stollar soni</label><div class="stepper"><button class="qb" type="button" data-tc="-1" aria-label="Bitta kamaytirish">−</button><output id="bktc">${tablesNow()}</output><button class="qb" type="button" data-tc="1" aria-label="Bitta ko‘paytirish">+</button></div></div>` : ""}${bk.rest ? "" : `<p class="warn" role="status">Davom etish uchun yuqoridagi variantlardan birini tanlang.</p>`}</div>`;
   }
 
   // Banket qulfi: kod serverda tekshiriladi, token 12 soat amal qiladi
