@@ -487,6 +487,12 @@ body {
 /* ---- savatcha ---- */
 .qty { display: inline-flex; align-items: center; gap: 6px; flex: none; }
 .qty button { width: 36px; height: 36px; padding: 0; border-radius: 50%; border: 1px solid rgba(240, 211, 154, 0.5); background: transparent; color: var(--gold-soft); font: 500 21px/1 var(--font-ui); cursor: pointer; }
+.yt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: 10px; }
+.yt-card { position: relative; padding: 0; border: 0; border-radius: 10px; overflow: hidden; aspect-ratio: 16 / 9; cursor: pointer; background: #000; }
+.yt-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.yt-card span { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 34px; background: rgba(0, 0, 0, 0.25); }
+.yt-frame { aspect-ratio: 16 / 9; border-radius: 10px; overflow: hidden; background: #000; }
+.yt-frame iframe { width: 100%; height: 100%; border: 0; }
 .tag.pop { background: var(--gold-soft); color: var(--ink); }
 .qty button[data-add] { background: var(--gold-soft); color: var(--ink); border-color: var(--gold-soft); }
 .qty button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
@@ -2861,12 +2867,21 @@ if (typeof module !== "undefined") module.exports = makeQR;
       <h3 class="sub">Qo‘shiq</h3>
       <div id="sgList">${songList()}</div>
       ${ytBlock()}
+      <div id="ytVids"></div>
       <p class="bk-sub">Qo‘shiq buyurtma</p>
       <div class="sg-form"><input id="sgName" type="text" maxlength="60" placeholder="Qo‘shiq nomi, masalan: Samarqand" aria-label="Qo‘shiq nomi"><button class="pill gold" id="sgAdd" type="button">Qo‘shish</button></div>
       <div id="sgReq"></div>
       <p class="note">Tanlangan qo‘shiqlar ro‘yxatini ofitsiantga ko‘rsating. Ularni to‘g‘ridan-to‘g‘ri yetkazish keyin ulanadi.</p>
       <h3 class="sub">Dasturxonlarimiz</h3>
       <div class="gal">${GAL.map(g => `<figure><img src="${g.src}" alt="${esc(g.cap)}" loading="lazy"><figcaption>${esc(g.cap)}</figcaption></figure>`).join("")}</div>`;
+    // YouTube videolar: admin botda havola yuboradi, shu yerda ro‘yxat bo‘lib chiqadi (bosilganda o‘ynaydi)
+    fetch("/api/video").then(r => r.json()).then(j => {
+      const box = body.querySelector("#ytVids"); if (!box || !j || !Array.isArray(j.videos) || !j.videos.length) return;
+      box.innerHTML = `<h3 class="sub">YouTube videolar</h3><div class="yt-grid">${j.videos.filter(v => /^[\w-]{11}$/.test(v.yt)).map(v => `<button type="button" class="yt-card" data-yt="${v.yt}" aria-label="Videoni ijro etish"><img src="https://i.ytimg.com/vi/${v.yt}/hqdefault.jpg" alt="" loading="lazy"><span>▶</span></button>`).join("")}</div>`;
+      box.querySelectorAll("[data-yt]").forEach(c => c.addEventListener("click", () => {
+        c.outerHTML = `<div class="yt-frame"><iframe src="https://www.youtube-nocookie.com/embed/${c.dataset.yt}?autoplay=1&rel=0" title="YouTube video" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>`;
+      }));
+    }).catch(() => {});
     adVideo = body.querySelector("#adv");
     adWide = body.querySelector("#adw");
     let wi = 0;   // ro‘yxatda bir nechta katta ekran videosi bo‘lsa, ular navbat bilan aylanadi
