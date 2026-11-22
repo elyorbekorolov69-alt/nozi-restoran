@@ -1624,9 +1624,23 @@ function Table3D(canvas, opts) {
     return { cx, cz, seats, seatsAt, spots, top };
   }
 
+  const TERR_LINE = 5, TERR_SPARE = [-11.9, 2.6];   // Terrasa: tables in the wall line; spare spot (table-scene x,z) near the entrance
   function buildRound(guests, served, seatsList) {
     const n = seatsList && seatsList.length ? seatsList.length : Math.max(1, Math.ceil(guests / 14));
     LO = n > 3;
+    // Terrasa: the tables stand in ONE line along the glass wall (the carpet strip, 5 tables fit); more than 5 go to the spare spot by the entrance
+    if (curHall === "terrasa") {
+      const sp = 3.7, line = Math.min(n, TERR_LINE), list = [];
+      for (let i = 0; i < n; i++) {
+        let cx, cz;
+        if (i < line) { cx = (i - (line - 1) / 2) * sp; cz = 0; }
+        else { const k = i - line; cx = TERR_SPARE[0]; cz = TERR_SPARE[1] + k * sp; }
+        list.push(roundTable(cx, cz, seatsList && seatsList.length ? seatsList[i] : Math.min(14, guests - i * 14), served));
+      }
+      const n0 = items.length, room = env(curHall, (line - 1) * sp / 2 + 1.9, 1.9);
+      if (NOROOM) items.length = n0;
+      return { kind: "round", lo: LO, list, size: (n > line ? 14 : line * sp), room };
+    }
     const cols = Math.ceil(Math.sqrt(n)), rowsN = Math.ceil(n / cols), sp = 3.4;
     const list = [];
     for (let i = 0; i < n; i++) {
@@ -3588,7 +3602,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
   // the tables, chairs and dishes stay the table scene's own, so they follow every choice. Both use the same camera.
   const HALL3D = { terrasa: "terrasa", mayda: "kichik", toyxona: "katta" };
   // where the middle of the table area sits in the hall (metres, Blender x and y=-z) and how the tables are turned (their long side along the hall)
-  const HALL_AT = { terrasa: { x: 5.9, z: -5.0 }, mayda: { x: 0, z: -12.8 }, toyxona: { x: 0, z: -13.5 } };
+  const HALL_AT = { terrasa: { x: 3.3, z: -16.9 }, mayda: { x: 0, z: -12.8 }, toyxona: { x: 0, z: -13.5 } };
   const hallFail = {};
   const hallKey = () => { const k = HALL3D[hallNow().id]; return k && !hallFail[k] ? k : null; };
   let hs = null, hsTimer = 0;
