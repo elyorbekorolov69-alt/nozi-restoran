@@ -1624,7 +1624,7 @@ function Table3D(canvas, opts) {
     return { cx, cz, seats, seatsAt, spots, top };
   }
 
-  const TERR_LINE = 5, TERR_SPARE = [-11.9, 2.6];   // Terrasa: tables in the wall line; spare spot (table-scene x,z) near the entrance
+  const TERR_LINE = 5, TERR_SPARE = [-7.9, 3.8];   // Terrasa (table-scene x,z; hall x = 3.3 + z, hall y = 16.9 + x): 5 tables along the glass-wall strip (y 9.5 to 24.3), the 6th in the green corner by the brick wall (hall 7.1, 9.0)
   function buildRound(guests, served, seatsList) {
     const n = seatsList && seatsList.length ? seatsList.length : Math.max(1, Math.ceil(guests / 14));
     LO = n > 3;
@@ -1634,12 +1634,12 @@ function Table3D(canvas, opts) {
       for (let i = 0; i < n; i++) {
         let cx, cz;
         if (i < line) { cx = (i - (line - 1) / 2) * sp; cz = 0; }
-        else { const k = i - line; cx = TERR_SPARE[0]; cz = TERR_SPARE[1] + k * sp; }
+        else { const k = i - line; cx = TERR_SPARE[0]; cz = TERR_SPARE[1] + k * sp; }   // max 80 guests = 6 tables, so only k = 0 is used
         list.push(roundTable(cx, cz, seatsList && seatsList.length ? seatsList[i] : Math.min(14, guests - i * 14), served));
       }
       const n0 = items.length, room = env(curHall, (line - 1) * sp / 2 + 1.9, 1.9);
       if (NOROOM) items.length = n0;
-      return { kind: "round", lo: LO, list, size: (n > line ? 14 : line * sp), room };
+      return { kind: "round", lo: LO, list, size: line * sp, room };
     }
     const cols = Math.ceil(Math.sqrt(n)), rowsN = Math.ceil(n / cols), sp = 3.4;
     const list = [];
