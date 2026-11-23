@@ -1532,7 +1532,7 @@ function Table3D(canvas, opts) {
 
   // ---------- layouts ----------
   // a long row of tables at z0: cloth, frames, runner, chairs and places, flowers and napkin boxes
-  function longRow(z0, seats, L, side, gap, top, served) {
+  function longRow(z0, seats, L, side, gap, top, served, skip = 0) {
     const wood = STYLE === "wood";   // Terrasa: bare wooden top on black frames, no cloth, no runner, no flowers
     const drop = 0.42, W2 = wood ? 0.42 : 0.55, CZ = W2 + 0.4, PZ = W2 - 0.13;
     put("disc", "#000000", 0, 0.012, z0, 0, L + 2.2, 1, 3.4, { a: 0.3, p: 10 });
@@ -1558,7 +1558,8 @@ function Table3D(canvas, opts) {
     for (let i = 0; i < side; i++) {
       const x = -L / 2 + 0.25 + gap * (i + 0.5);
       [[1, 0], [-1, PI]].forEach(([sgn, face], sIdx) => {
-        if (i * 2 + sIdx >= sideN) return;
+        if (sgn === skip) return;   // the wall side stays free of chairs
+        if ((skip ? i : i * 2 + sIdx) >= sideN) return;
         chair(x, z0 + sgn * CZ, face);
         placeSetting(x, z0 + sgn * PZ, face, top, served);
         seatsAt.push([x, z0 + sgn * PZ]);
@@ -1603,13 +1604,15 @@ function Table3D(canvas, opts) {
     return { kind: "long", lo: LO, list, L: L + 1.1, size: Math.max(L + 1.1, depth), room };
   }
 
-  function roundTable(cx, cz, seats, served) {
+  function roundTable(cx, cz, seats, served, wall = 0) {
     const top = 0.765;
     put("disc", "#000000", cx, 0.012, cz, 0, 4.0, 1, 4.0, { a: 0.3, p: 10 });
     put("cloth", C.cloth, cx, 0, cz, 0, 1, 1, 1, { s: 0.06, sh: 12 });
     const seatsAt = [];
-    for (let k = 0; k < seats; k++) {
-      const a = k * 2 * PI / seats, ca = Math.cos(a), sa = Math.sin(a);
+    // wall != 0: nobody sits with their back to the wall, so the chairs fill only the free half (about 10 fit)
+    const hw = PI / 2 + 0.36, ac = wall < 0 ? PI / 2 : -PI / 2, nSeat = wall ? Math.min(seats, Math.floor(2 * hw * 1.22 / 0.46)) : seats;
+    for (let k = 0; k < nSeat; k++) {
+      const a = wall ? ac - hw + (k + 0.5) * 2 * hw / nSeat : k * 2 * PI / seats, ca = Math.cos(a), sa = Math.sin(a);
       chair(cx + ca * 1.22, cz + sa * 1.22, -a - PI / 2 + PI);
       placeSetting(cx + ca * 0.76, cz + sa * 0.76, -a - PI / 2 + PI, top, served, 0.9);
       seatsAt.push([cx + ca * 0.76, cz + sa * 0.76]);
@@ -1621,21 +1624,27 @@ function Table3D(canvas, opts) {
     [{ r: 0.45, n: 10 }, { r: 0.27, n: 6 }, { r: 0.58, n: 12 }].forEach((g, gi) => {
       for (let k = 0; k < g.n; k++) { const a = (k + (gi === 2 ? 0.5 : gi * 0.5)) * 2 * PI / g.n + 0.1; spots.push([cx + Math.cos(a) * g.r, cz + Math.sin(a) * g.r, a]); }
     });
-    return { cx, cz, seats, seatsAt, spots, top };
+    return { cx, cz, seats: nSeat, seatsAt, spots, top };
   }
 
   const TERR_LINE = 5, TERR_SPARE = [-7.9, 3.8];   // Terrasa (table-scene x,z; hall x = 3.3 + z, hall y = 16.9 + x): 5 tables along the glass-wall strip (y 9.5 to 24.3), the 6th in the green corner by the brick wall (hall 7.1, 9.0)
-  function buildRound(guests, served, seatsList) {
+  function buildRound(guests, served, seatsList, corner) {
     const n = seatsList && seatsList.length ? seatsList.length : Math.max(1, Math.ceil(guests / 14));
     LO = n > 3;
     // Terrasa: the tables stand in ONE line along the glass wall (the carpet strip, 5 tables fit); more than 5 go to the spare spot by the entrance
     if (curHall === "terrasa") {
       const sp = 3.7, line = Math.min(n, TERR_LINE), list = [];
       for (let i = 0; i < n; i++) {
-        let cx, cz;
-        if (i < line) { cx = (i - (line - 1) / 2) * sp; cz = 0; }
-        else { const k = i - line; cx = TERR_SPARE[0]; cz = TERR_SPARE[1] + k * sp; }   // max 80 guests = 6 tables, so only k = 0 is used
-        list.push(roundTable(cx, cz, seatsList && seatsList.length ? seatsList[i] : Math.min(14, guests - i * 14), served));
+        const seatsI = seatsList && seatsList.length ? seatsList[i] : Math.min(14, guests - i * 14);
+        if (i < line) { list.push(roundTable((i - (line - 1) / 2) * sp, 0, seatsI, served, -1)); continue; }   // glass-wall side stays free
+        // the corner by the brick wall (hall 7.1, 9.0): the guest picks a long or a round table; the wall side stays free (max 80 guests = 6 tables, so one corner table)
+        if (corner === "long") {
+          const side = 4, gap = 0.62, L = side * gap + 0.5, n1 = items.length;
+          const t = longRow(TERR_SPARE[1], Math.min(seatsI, 6), L, side, gap, 0.77, served, 1);
+          for (let q = n1; q < items.length; q++) items[q].M.m[12] += TERR_SPARE[0];
+          t.seatsAt = t.seatsAt.map(([x, z]) => [x + TERR_SPARE[0], z]); t.spots = t.spots.map(([x, z]) => [x + TERR_SPARE[0], z]); t.long = true;
+          list.push(t);
+        } else list.push(roundTable(TERR_SPARE[0], TERR_SPARE[1], seatsI, served, 1));
       }
       const n0 = items.length, room = env(curHall, (line - 1) * sp / 2 + 1.9, 1.9);
       if (NOROOM) items.length = n0;
@@ -1699,10 +1708,10 @@ function Table3D(canvas, opts) {
     curHall = HALLFX[spec.hall] ? spec.hall : "mayda";
     STYLE = curHall === "terrasa" ? "wood" : curHall === "toyxona" ? "cream" : "nozi";
     NOROOM = !!spec.noRoom;
-    const key = JSON.stringify([spec.shape, guests, rows, served, spec.seatsList || 0, curHall]);
+    const key = JSON.stringify([spec.shape, guests, rows, served, spec.seatsList || 0, curHall, spec.corner || "round"]);
     if (key + "|" + NOROOM !== staticKey) {
       items = [];
-      layout = spec.shape === "long" ? buildLong(guests, rows, served) : buildRound(guests, served, spec.seatsList);
+      layout = spec.shape === "long" ? buildLong(guests, rows, served) : buildRound(guests, served, spec.seatsList, spec.corner);
       setStatic(items);
       staticKey = key + "|" + NOROOM;
     }
@@ -1711,7 +1720,7 @@ function Table3D(canvas, opts) {
     items = []; LO = layout.lo;
     layout.list.forEach((t, ti) => {
       const { placed, perSeat } = perTable ? (perTable[ti] || { placed: [], perSeat: [] }) : common;
-      if (layout.kind === "long") {
+      if (layout.kind === "long" || t.long) {
         const sets = 1, all = [];
         for (let s2 = 0; s2 < sets; s2++) placed.forEach(p => all.push(p));
         all.slice(0, t.spots.length).forEach((p, i) => { const [x, z] = t.spots[i]; dish(p.k, p.col, x, z, 0.3 * (i % 3), t.top, p.d); });
@@ -3508,7 +3517,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
   const AUTO_COURSE = { sovuq: "dasturxon", salat: "dasturxon", non: "dasturxon", ichimlik: "dasturxon", meva: "dasturxon",
     birinchi: "c1", issiq: "c2", ikkinchi: "c2", garnir: "c2", steyk: "c2", kolbasa: "c3", shashlik: "c3", desert: "desert" };
   const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-  const bk = { step: 0, type: "banket", guests: 30, date: "", time: "18:00", hall: null, shape: null, rows: null, change: false,
+  const bk = { step: 0, type: "banket", guests: 30, date: "", time: "18:00", hall: null, shape: null, rows: null, corner: "round", change: false,
     items: {}, order: [], course: {}, sec: "", view: "dasturxon", name: "", phone: "", note: "", sent: false, posted: "", link: "",
     rest: null, tcount: null, tview: null, lastDish: null, plates: {}, chat: [], chatOpen: false, chatBusy: false, agGuided: false, agq: 0, agTier: "", agBudget: 0, agTotal: 0, agKind: "", agWater: "", event: "", pop: {}, popLoaded: false };
 
@@ -3656,6 +3665,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
       noRoom: true,     // the old drawn room is gone: only the Blender hall (or nothing) stands behind the tables
       guests: bk.guests,
       rows: rowsNow(),
+      corner: bk.corner,
       seatsList: round ? roundSeats() : undefined,
       // the first step shows the whole hall; later steps can stay on one table
       focus: bk.step === 1 || tv === "all" ? "all" : "one",
@@ -3815,6 +3825,11 @@ if (typeof module !== "undefined") module.exports = makeQR;
           <p class="pk-note">${sh === "round" ? (bk.type === "toy" ? "To‘ylarda dumaloq stol qo‘yiladi." : "12–14 kishiga bitta dumaloq stol to‘g‘ri keladi.") + (tablesNow() > 1 ? ` ${tablesNow()} ta stolning hammasi ${isTab() ? "o‘ngda" : "pastda"} ko‘rinadi.` : "") : "To‘rtburchak stollar uchma-uch qo‘yilib, mehmon soniga qarab uzayadi."}</p>
         </div>
         ${needRest() ? restBlock() : ""}
+        ${h.id === "terrasa" && sh === "round" && tablesNow() > 5 ? `<p class="bk-sub">Oxirgi stol g‘isht devor yonidagi burchakda turadi. Qanday stol bo‘lsin?</p>
+        <div class="opts">
+          <button class="opt" type="button" data-corner="round" aria-pressed="${bk.corner !== "long"}"><b>Dumaloq stol</b><small>Burchakda, devor tomonda stulsiz</small></button>
+          <button class="opt" type="button" data-corner="long" aria-pressed="${bk.corner === "long"}"><b>Uzun stol</b><small>Burchakda, 6 kishigacha, devor tomonda stulsiz</small></button>
+        </div>` : ""}
         ${sh === "long" && (bk.guests > 20 || h.id === "terrasa") ? `<p class="bk-sub">Stollar necha qator bo‘lsin?</p>
         <div class="opts">
           <button class="opt" type="button" data-rows="1" aria-pressed="${rowsNow() === 1}"><b>1 qator</b><small>Bitta uzun stol, ${bk.guests} kishi</small></button>
@@ -4083,6 +4098,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
       rebuild3D();
       const vm = body.querySelector("#vtm"); if (vm) vm.textContent = metaText();
     }));
+    body.querySelectorAll("[data-corner]").forEach(b => b.addEventListener("click", () => { bk.corner = b.dataset.corner; rerender(); }));
     body.querySelectorAll("[data-rows]").forEach(b => b.addEventListener("click", () => { bk.rows = Number(b.dataset.rows); rerender(); }));
     body.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", () => {
       bk.view = b.dataset.view;
@@ -4156,7 +4172,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
     });
     const nw = body.querySelector("#bknew");
     if (nw) nw.addEventListener("click", () => {
-      Object.assign(bk, { step: 0, hall: null, shape: null, rows: null, change: false, items: {}, order: [], course: {}, sent: false, posted: "", link: "", note: "", view: "dasturxon", rest: null, tcount: null, tview: null, lastDish: null, plates: {} });
+      Object.assign(bk, { step: 0, hall: null, shape: null, rows: null, corner: "round", change: false, items: {}, order: [], course: {}, sent: false, posted: "", link: "", note: "", view: "dasturxon", rest: null, tcount: null, tview: null, lastDish: null, plates: {} });
       viewBanket(body); body.scrollTop = 0;
     });
   }
