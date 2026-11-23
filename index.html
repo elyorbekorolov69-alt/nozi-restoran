@@ -1225,8 +1225,28 @@ function Table3D(canvas, opts) {
         prev = [zx, zz];
       }
     } else if (kind === "bread") {
-      put("basket", "#9c6b3c", x, y, z, rot, 0.2, 0.12, 0.2);
-      for (let k = 0; k < 3; k++) put("ball", col, x + Math.cos(k * 2.1) * 0.035, y + 0.06, z + Math.sin(k * 2.1) * 0.035, 0, 0.09, 0.03, 0.09, { p: 2 });
+      // har bir non alohida: buxanka (galaoso), qora non, chap non (chapchak)
+      const nm = ((d && (d.uz || d.ru)) || "").toLowerCase();
+      put("cyl", "#8a5a33", x, y, z, 0, 0.3, 0.012, 0.3, { s: 0.25, sh: 20 });          // yog‘och taxta
+      const by = y + 0.012;
+      if (/qora|черн/.test(nm)) {
+        put("ball", "#4a2c19", x, by + 0.035, z, rot, 0.25, 0.085, 0.12, { s: 0.2, sh: 24, p: 2 });
+        for (let k = -1; k <= 1; k++) { const [ox, oz] = at(k * 0.05, 0); put("box", "#2f1a0d", ox, by + 0.07, oz, rot + 0.9, 0.04, 0.004, 0.006); }
+        const [sx, sz] = at(0.07, 0.085);
+        put("box", "#3a2314", sx, by + 0.032, sz, rot, 0.1, 0.064, 0.016);                    // kesilgan bo‘lak: po‘stlog‘i
+        put("box", "#6e4b2e", sx, by + 0.033, sz, rot, 0.092, 0.058, 0.0175);                 // ichi
+      } else if (/chap|чап|lepyosh|лепеш/.test(nm)) {
+        const sc = /0\.5|0,5/.test(nm) ? 0.78 : 1;
+        put("disc", "#d49a50", x, by, z, 0, 0.32 * sc, 1, 0.32 * sc, { s: 0.2, sh: 20 });
+        put("band", "#bd7f35", x, by + 0.002, z, 0, 0.32 * sc, 0.03, 0.32 * sc, { s: 0.2, sh: 20 });
+        put("disc", "#e6b86c", x, by + 0.014, z, 0, 0.2 * sc, 0.5, 0.2 * sc, { s: 0.2, sh: 20 });
+        for (let k = 0; k < 18; k++) { const a = k * 0.349, r = 0.07 * sc; put("ball", "#9a5a22", x + Math.cos(a) * r, by + 0.022, z + Math.sin(a) * r, 0, 0.014, 0.008, 0.014); }
+        for (let k = 0; k < 7; k++) { const a = k * 0.897, r = 0.035 * sc; put("ball", "#a8672a", x + Math.cos(a) * r, by + 0.022, z + Math.sin(a) * r, 0, 0.012, 0.007, 0.012); }
+        put("ball", "#f1e6cf", x + 0.012, by + 0.023, z - 0.01, 0, 0.012, 0.005, 0.012);         // kunjut
+      } else {
+        put("ball", "#cf9650", x, by + 0.03, z, rot, 0.17, 0.075, 0.17, { s: 0.2, sh: 24, p: 2 });   // buxanka
+        for (let k = -1; k <= 1; k++) { const [ox, oz] = at(k * 0.024, 0); put("box", "#e6c28a", ox, by + 0.064, oz, rot + 0.6, 0.05, 0.004, 0.007); }
+      }
     } else if (kind === "cake") {
       const h = goldStand(x, z, y, 0.2);
       put("plate", C.plate, x, h, z, rot, 0.17, 0.4, 0.17, { s: 0.3, sh: 40 });
@@ -2550,7 +2570,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
   // real 3D models (Tripo + Blender), loaded only when the dish is opened: dish id -> file name in /taom
   const MODEL3D = { "issiq-3": "baliq2", "sovuq-8": "pishloq", "meva-0": "meva-a", "issiq-1": "lyulya", "issiq-12": "til", "salat-8": "sezar2", "salat-12": "baqlajon",
     "kolbasa-0": "kolbasa", "kolbasa-1": "kolbasa", "issiq-8": "sabzavot", "shashlik-5": "qanot2", "shashlik-19": "qanot2", "sovuq-5": "yaxna",
-    "non-0": "non2", "non-1": "non2", "non-2": "non2", "non-3": "non2", "birinchi-2": "tushonka", "salat-5": "veche", "issiq-7": "mulatka" };   // kroket: menyudagi taomi aytilgach shu yerga qo‘shiladi
+    "birinchi-2": "tushonka", "salat-5": "veche", "issiq-7": "mulatka", "issiq-5": "kotlet", "issiq-6": "kotlet" };   // kroket: menyudagi taomi aytilgach shu yerga qo‘shiladi
   const M3D = {};   // admin orqali yuklangan modellar: taom id -> { glb, img }
   const READY3D = [["baliq","Baliq"],["baqlajon","Qarsildoq baqlajon"],["kolbasa","Kolbasa"],["kroket","Kroket"],["lyulya","Lyulya (Beyti)"],["meva","Meva"],["non","Non savat"],["pishloq","Pishloq"],["sabzavot","Sabzavot"],["salat3","Salat (shisha likopcha)"],["sezar","Sezar"],["sorva","Sho‘rva"],["tushonka","Tushonka (yangi)"],["osh","Osh (yangi)"],["til","Til"],["qanot","Qanot"],["yaxna","Yaxna (karpachcho)"],["desert","Desert (pishloqli)"],["qovun","Qovun (shishda)"],["meva-stend","Meva (tayanchda)"],["kroket2","Kroket (yangi)"],["baliq2","Baliq (yangi, jonli)"],["veche","Salat Вече (yangi)"],["non2","Non assorti (yangi)"],["meva-a","Meva assorti 1 (yangi)"],["meva-b","Meva assorti 2 (yangi)"],["myasnoy","Мясное ассорти (yangi)"],["ovoshi","Овощной букет (yangi)"],["mulatka","Мулатка (yangi)"],["sezar2","Sezar (yangi)"],["qovun2","Qovun (yangi)"],["qanot2","Qanotcha (yangi)"],["gul2","Gul (yangi)"],["kotlet","Котлета (yangi)"]];
   const m3 = t => M3D[t.id] || (MODEL3D[t.id] ? { glb: "taom/" + MODEL3D[t.id] + ".glb", img: "taom/" + MODEL3D[t.id] + ".jpg" } : null);
