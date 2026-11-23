@@ -17,7 +17,7 @@ function getLoader() {
 
 
 // Issiq taomlar ustidan chiqadigan yengil bug (sprite'lar, GPU'ga og'ir emas).
-const HOT = /\/(baliq2?|lyulya|qanot2?|kroket2?|sorva|til|kolbasa)\.glb/;
+const HOT = /\/(baliq2?|lyulya|qanot2?|kroket2?|sorva|tushonka|til|kolbasa)\.glb/;
 function makeSteam(THREE, w, h) {
   const cv = document.createElement('canvas'); cv.width = cv.height = 64;
   const g = cv.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
