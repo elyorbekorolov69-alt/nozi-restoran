@@ -2597,6 +2597,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
   function disposeGLB() { glbToken++; if (glbView) { try { glbView.dispose(); } catch (e) {} glbView = null; } }
   function mountGLB(host, t) {
     disposeGLB();
+    if (typeof dishCanvas !== "undefined" && dishCanvas && dishCanvas.parentNode) dishCanvas.remove();   // eski protsedur 3D (tayanch) orqada qolib, modelga qo‘shilib ketmasin
     const m = m3(t), tok = glbToken;
     const poster = document.createElement("img"); poster.className = "glb-poster"; poster.alt = t.uz; if (m.img) poster.src = m.img; else poster.hidden = true;
     const st = document.createElement("span"); st.className = "glb-state"; st.textContent = "3D yuklanmoqda…";

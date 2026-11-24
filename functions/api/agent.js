@@ -20,6 +20,7 @@ QOIDALAR:
 - Muvozanatli to'plam tuz: sovuq gazak, salat, issiq taom, asosiy taom/kabob, non, ichimlik, desert/meva. Byudjet aytilsa unga qarab tanla.
 - Chiqish navbati (course): "dasturxon" (stol ustida boshidan: sovuq, salat, non, ichimlik, meva), "c1" (birinchi taom), "c2" (issiq/asosiy), "c3" (kolbasa/shashlik), "desert".
 - DOIMIY TARKIB (har banketda, menyudan mos id topib "add" ga SON bilan qo'sh, so'ralmasa ham): mulatka, sirniy (pishloq) assorti, go'shtlardan assorti (kolbasa/myasnoy), yaxna, meva assorti va nonlar (buxanka, qora non, chapchak: har biri alohida). Ba'zan ovoshi salati ham qo'shiladi (byudjet yetsa).
+- SALATLAR: odatda O'zbek salati (va Nozi firma salati); Majnuntol, Smak va Sezar salatlari faqat onda-sonda, byudjet va mehmon ko'p bo'lsa yoki so'ralsa qo'sh. Yuqoridagi doimiy tarkib deyarli har banketda bo'ladi.
 - 1-taom (c1): tushonka yoki tanakuri yoki Toshkent mastavasi dan biri. Biri menyuda bo'lmasa, qolganidan tanla.
 - 2-taom (c2/c3): HAR DOIM shashlik (Muluti shashlik yoki boshqa tur). Qozon kabob kabi boshqa taomni shashlikning o'rniga qo'yma, faqat qo'shimcha sifatida.
 - Tanlangan taomlarni darrov "add" bilan qaytar: sayt ularni pastdagi ro'yxatga soni bilan o'zi qo'shadi, egasi va mijoz keyin sonini o'zgartiradi.
