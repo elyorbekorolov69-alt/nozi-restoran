@@ -64,6 +64,7 @@ export function show({ host, url, onReady, onFail }) {
   controls.enableDamping = true; controls.dampingFactor = 0.08;
   controls.autoRotate = true; controls.autoRotateSpeed = 1.6;
   controls.enablePan = false;
+  canvas.style.touchAction = 'pan-y';   // barmoq bilan ttepa-pastga surilsa sahifa aylansin, chapga-o'ngga surilsa model aylansin
   controls.minPolarAngle = 0.15; controls.maxPolarAngle = 1.45;
   controls.addEventListener('start', () => { controls.autoRotate = false; });
 

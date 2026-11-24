@@ -273,7 +273,8 @@ body {
 .d-info .sub2 { display: flex; gap: 10px; color: var(--mist); font-size: 12.5px; margin-top: 3px; }
 .d-info .o { color: var(--gold-soft); }
 .d-info .k { color: var(--mist); font-size: 13.5px; line-height: 1.5; margin: 6px 0 0; }
-.d-vid { width: min(100%, calc(56vh * 9 / 16)); aspect-ratio: 9 / 16; margin: 0 auto; border-radius: 16px; overflow: hidden; background: #000; }
+.d-vid { position: relative; width: min(100%, calc(56vh * 9 / 16)); aspect-ratio: 9 / 16; margin: 0 auto; border-radius: 16px; overflow: hidden; background: #000; }
+.d-vid .fs { top: 8px; bottom: auto; }
 .d-vid video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .sec-ph { margin: 10px 0 4px; }
 .sec-ph img { width: 100%; max-width: 100%; height: clamp(150px, 42vw, 240px); object-fit: cover; border-radius: 14px; display: block; }
@@ -1635,12 +1636,23 @@ function Table3D(canvas, opts) {
   function buildLong(guests, rows, served) {
     LO = guests > 40;
     const per = Math.ceil(guests / rows), side = Math.max(1, Math.ceil((per - (per >= 6 ? 2 : 0)) / 2)), gap = 0.62, L = side * gap + 0.5, top = 0.77;
-    const zs = rows === 1 ? [0] : Array.from({ length: rows }, (_, r) => (r - (rows - 1) / 2) * 2.7);
-    const depth = rows * 2.7;
-    const list = zs.map((z0, r) => longRow(z0, r < rows - 1 ? per : guests - per * (rows - 1), L, side, gap, top, served));
-    const n0 = items.length, room = env(curHall, L / 2 + 1.0, depth / 2 + 0.5);
+    // Terrasa: the rows go one after another ALONG the glass wall (end to end), never side by side: a second row beside the first would stand out through the window
+    const inLine = curHall === "terrasa" && rows > 1, step = L + 1.1;
+    const zs = rows === 1 || inLine ? Array.from({ length: rows }, () => 0) : Array.from({ length: rows }, (_, r) => (r - (rows - 1) / 2) * 2.7);
+    const depth = inLine ? 2.7 : rows * 2.7;
+    const list = zs.map((z0, r) => {
+      const n1 = items.length, t = longRow(z0, r < rows - 1 ? per : guests - per * (rows - 1), L, side, gap, top, served);
+      if (inLine) {
+        const dx = (r - (rows - 1) / 2) * step;
+        for (let q = n1; q < items.length; q++) items[q].M.m[12] += dx;
+        t.seatsAt = t.seatsAt.map(([x, z]) => [x + dx, z]); t.spots = t.spots.map(([x, z]) => [x + dx, z]);
+      }
+      return t;
+    });
+    const totalL = inLine ? rows * step : L;
+    const n0 = items.length, room = env(curHall, totalL / 2 + 1.0, depth / 2 + 0.5);
     if (NOROOM) items.length = n0;
-    return { kind: "long", lo: LO, list, L: L + 1.1, size: Math.max(L + 1.1, depth), room };
+    return { kind: "long", lo: LO, list, L: totalL + 1.1, size: Math.max(totalL + 1.1, depth), room };
   }
 
   function roundTable(cx, cz, seats, served, wall = 0) {
@@ -2764,8 +2776,9 @@ if (typeof module !== "undefined") module.exports = makeQR;
     sheet.innerHTML = `
       <div class="sheet-head"><h3>${esc(t.uz)}</h3><button class="ctl back" type="button" id="dishClose">✕ Yopish</button></div>
       <div class="sheet-body">
-        ${t.vid ? `<div class="d-vid"><video src="${t.vid}" poster="${t.th}" muted loop playsinline autoplay aria-label="${esc(t.uz)}: NoZi’da olingan video"></video></div>` : ""}
-        ${(t.v || m3(t)) ? `<div class="d3" id="d3"${t.vid ? ' style="margin-top:14px"' : ""}><span class="hint">Barmoq bilan aylantiring · ikki barmoq bilan yaqinlashtiring</span><button class="fs" type="button" data-fs="" aria-label="To‘liq ekran" aria-pressed="false"></button></div>` : ""}
+        
+        ${(t.v || m3(t)) ? `<div class="d3" id="d3"><span class="hint">Barmoq bilan aylantiring · ikki barmoq bilan yaqinlashtiring</span><button class="fs" type="button" data-fs="" aria-label="To‘liq ekran" aria-pressed="false"></button></div>` : ""}
+        ${t.vid ? `<div class="d-vid" style="margin-top:14px"><video src="${t.vid}" poster="${t.th}" muted loop playsinline autoplay controls aria-label="${esc(t.uz)}: NoZi’da olingan video"></video><button class="fs" type="button" data-fs="" aria-label="To‘liq ekran" aria-pressed="false"></button></div>` : ""}
         <div class="d-info"><div class="ln"><b>${esc(t.uz)}</b><span class="lead" aria-hidden="true"></span><span class="p">${priceText(t)}<small>so‘m</small></span></div>
           <div class="sub2"><span>${esc(t.ru)}</span>${t.o ? `<span class="o">${esc(t.o)}</span>` : ""}</div>
           ${t.k ? `<p class="k">${esc(t.k)}</p>` : ""}</div>
@@ -2829,7 +2842,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
         ${t.k ? `<p class="k">${esc(t.k)}</p>` : ""}</div>
       <div class="d-act">${stepper(t.id)}</div>
       <div id="cartMini">${miniHTML()}</div>
-      ${t.vid ? `<div class="d-vid" style="margin:14px auto 0"><video src="${t.vid}" poster="${t.th}" muted loop playsinline autoplay aria-label="${esc(t.uz)}: NoZi’da olingan video"></video></div>` : ""}
+      ${t.vid ? `<div class="d-vid" style="margin:14px auto 0"><video src="${t.vid}" poster="${t.th}" muted loop playsinline autoplay controls aria-label="${esc(t.uz)}: NoZi’da olingan video"></video><button class="fs" type="button" data-fs="" aria-label="To‘liq ekran" aria-pressed="false"></button></div>` : ""}
       ${t.pic ? `<p class="bk-sub">Namuna rasm</p><img class="pnl-img" src="${t.pic}" alt="${esc(t.uz)}">` : ""}
       ${t.img ? `<p class="bk-sub">Haqiqiy rasmlar</p><div class="d-photos">${t.img.map((src, i) => `<img src="${src}" alt="${esc(t.uz)}, ${i + 1}-rasm" loading="lazy">`).join("")}</div>` : ""}`;
     box.scrollTop = 0;
