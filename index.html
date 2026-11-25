@@ -732,7 +732,7 @@ function Table3D(canvas, opts) {
     precision mediump float;
     #endif
     varying vec3 vN; varying vec3 vW; varying vec3 vL; varying vec4 vC; varying vec4 vM; varying vec4 vSh;
-    uniform sampler2D uSM; uniform float uShOn;
+    uniform sampler2D uSM; uniform float uShOn, uShB;
     uniform vec3 uEye, uLP, uLC, uTint, uSk1, uSk2;
     uniform float uAm, uSun, uTM, uAO; uniform sampler2D uTex;
     float hh(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -741,7 +741,8 @@ function Table3D(canvas, opts) {
       if (uShOn < 0.5) return 1.0;
       vec3 p = vSh.xyz / vSh.w * 0.5 + 0.5;
       if (p.x < 0.0 || p.x > 1.0 || p.y < 0.0 || p.y > 1.0 || p.z > 1.0) return 1.0;
-      float b = 0.00022 + 0.0005 * (1.0 - max(dot(N, L), 0.0)), s = 0.0, ts = 1.6 / 2048.0;
+      float nl = dot(N, L); if (nl < 0.14) return 1.0;
+      float b = (0.00022 + 0.0005 * (1.0 - nl)) * uShB, s = 0.0, ts = 1.6 / 2048.0;
       for (int i = -1; i <= 1; i++) for (int j = -1; j <= 1; j++) { float d = unp(texture2D(uSM, p.xy + vec2(float(i), float(j)) * ts)); s += (p.z - b > d) ? 0.0 : 1.0; }
       return s / 9.0;
     }
@@ -913,7 +914,7 @@ function Table3D(canvas, opts) {
     LPV = mul(P, V);
   }
   const A = {}; ["aP", "aN", "aL", "aC", "aM"].forEach(k => A[k] = gl.getAttribLocation(prog, k));
-  const U = {}; ["uPV", "uLPV", "uSM", "uShOn", "uEye", "uLP", "uLC", "uTint", "uSk1", "uSk2", "uAm", "uSun", "uTM", "uAO", "uTex"].forEach(k => U[k] = gl.getUniformLocation(prog, k));
+  const U = {}; ["uPV", "uLPV", "uSM", "uShOn", "uShB", "uEye", "uLP", "uLC", "uTint", "uSk1", "uSk2", "uAm", "uSun", "uTM", "uAO", "uTex"].forEach(k => U[k] = gl.getUniformLocation(prog, k));
   gl.enable(gl.DEPTH_TEST);
   gl.disable(gl.CULL_FACE);
   // the real photo of a dish, laid on the plate (texture unit 0; a plain plate colour until the photo arrives)
@@ -1378,7 +1379,7 @@ function Table3D(canvas, opts) {
     const at = (a, b) => [x + sx * a * k + fx * b * k, z + sz * a * k + fz * b * k];
     if (STYLE === "wood") put("box", "#a9b79a", x, top + 0.002, z, face, 0.34 * k, 0.004, 0.4 * k, { s: 0.12, p: 4 });   // sage place mat on the bare wood
     if (STYLE === "cream") put("plate", C.charger, x, top - 0.006, z, face, 0.335 * k, 0.4, 0.335 * k, { s: 0.25, sh: 30 });   // cream charger plate
-    if (!LO && AS.tagtarelka && AS.piyola && AS.stakan && SEATM < 90) {   // the restaurant's own place setting, from the ready-made models
+    if (!LO && AS.tagtarelka && AS.piyola && AS.stakan && SEATM < 70) {   // the restaurant's own place setting, from the ready-made models
       SEATM++;
       putA("tagtarelka", x, top, z, face, k);
       if (!course1) putA("piyola", x, top + 0.018 * k, z, face, k);
@@ -1936,7 +1937,7 @@ function Table3D(canvas, opts) {
     const eye = [target[0] + dist * Math.cos(pitch) * Math.sin(yaw), target[1] + dist * Math.sin(pitch), target[2] + dist * Math.cos(pitch) * Math.cos(yaw)];
     gl.uniformMatrix4fv(U.uPV, false, mul(persp(0.75, w / Math.max(1, h), 0.1, 900), lookAt(eye, target)));
     gl.uniform3fv(U.uEye, eye);
-    gl.uniformMatrix4fv(U.uLPV, false, LPV); gl.uniform1i(U.uSM, 1); gl.uniform1f(U.uShOn, SHON ? 1 : 0);
+    gl.uniformMatrix4fv(U.uLPV, false, LPV); gl.uniform1i(U.uSM, 1); gl.uniform1f(U.uShOn, SHON ? 1 : 0); gl.uniform1f(U.uShB, Math.max(1, shR / 3));
     if (hookFn) hookFn(eye, target, w / Math.max(1, h));
     const fx = FX();
     gl.uniform3fv(U.uLP, fx.lp); gl.uniform3fv(U.uLC, fx.lc); gl.uniform3fv(U.uTint, fx.tint); gl.uniform3fv(U.uSk1, fx.sk1); gl.uniform3fv(U.uSk2, fx.sk2);
