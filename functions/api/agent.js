@@ -92,6 +92,14 @@ function parse(txt) {
   return JSON.parse(t.slice(a, b + 1));
 }
 
+// "Miya": asboblar/agent-miya.md faylidagi egasi qoidalari har so'rovda promptga qo'shiladi (fayl o'zgarsa agent shuni o'qiydi)
+let MIYA = "", MIYA_T = 0;
+async function miya(request) {
+  if (MIYA && Date.now() - MIYA_T < 300000) return MIYA;
+  try { const r = await fetch(new URL("/asboblar/agent-miya.md", request.url)); if (r.ok) { MIYA = (await r.text()).slice(0, 6000); MIYA_T = Date.now(); } } catch (e) { /* fayl topilmasa asosiy qoidalar ishlayveradi */ }
+  return MIYA;
+}
+
 export async function onRequestPost({ request, env }) {
   if (!(await verifyToken(env, request.headers.get("x-banket")))) return json(401, { ok: false, error: "Banket kodi kerak" });
   if (await limited(env, request, "agent", 60, 3600)) return json(429, { ok: false, error: "juda ko‘p so‘rov, birozdan keyin urinib ko‘ring" });
@@ -99,7 +107,7 @@ export async function onRequestPost({ request, env }) {
   const message = clip(p.message, 1200).trim();
   if (!message) return json(400, { ok: false, error: "xabar bo‘sh" });
   const menu = clip(p.menu, 14000), st = p.state && typeof p.state === "object" ? p.state : {};
-  const sys = RULES + "\n\nMENYU (id|nom|narx so'm|bo'lim|kg belgisi):\n" + menu +
+  const sys = RULES + (await miya(request) ? "\n\nEGASINING QOIDALARI (miya, doim bajar):\n" + MIYA : "") + "\n\nMENYU (id|nom|narx so'm|bo'lim|kg belgisi):\n" + menu +
     "\n\nHOZIRGI HOLAT: mehmonlar " + (+st.guests || "noma'lum") + ", tur " + clip(st.type, 20) + ", zal " + clip(st.hall, 40) + ", sana " + clip(st.date, 12) +
     ", tanlanganlar: " + clip(JSON.stringify(Array.isArray(st.chosen) ? st.chosen.slice(0, 80) : []), 1500) + tierBlock(st.tier) + budgetBlock(st);
   const msgs = [];
