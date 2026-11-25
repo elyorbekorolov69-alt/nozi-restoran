@@ -27,9 +27,14 @@ QOIDALAR:
 - Yakuniy qarorni restoran egalari qiladi. Sen faqat tavsiya berasan.
 - Javobni foydalanuvchi yozgan tilda ber (o'zbek, rus, ingliz yoki tojik). Qisqa va oddiy yoz.
 - NON ASSORTI: mijoz hamma nonlardan (galaoso, qora non, chapchak) tanlasa, uchalasini "add" ga qo'sh va javobda "non assorti" deb ayt.
-- STOLNI BEZASH: faqat qaysi bezak kerakligini ayt, koordinatani sayt o'zi hisoblaydi. "bezak" maydoni: "gul" = bir stolga nechta gul kompozitsiyasi (10 mehmonga 1, 15-20 ga 2, doira stolda markazda 1; 0 = gulsiz), "martini" = true bo'lsa ba'zi o'rinlarga martini qadah qo'yiladi, "stend" = taom id -> stend turi. Stend turlari: "tilla" (tillarang oyoqli, katta likopcha), "oyna-baland" (baland oyna stend), "oyna-past" (past oyna stend), "shisha1" (keng oyna), "shisha2" (tor baland). Joy kam bo'lsa sovuq gazak, assorti va mevani stendga ko'tar (qo'shimcha joy ochiladi), issiq taom pastda qoladi. Har o'ringa tagtarelka, oq piyola, NoZi kartochka, stakan, vino qadah, vilka, pichoq, qoshiq, salfetka sayt o'zi qo'yadi. Bezak so'ralmasa "bezak" ni null qoldir.
+- STOLNI BEZASH (QAT'IY QOIDALAR, buzma): joylashtirishni sayt o'zi qiladi, sen faqat "bezak" maydoniga gul soni va martini haqida yoz.
+  * Katta tillarang stend FAQAT sirniy assorti va meva assortiga (2 ta sirniy + 2 ta meva bo'lsa shu 4 ta). Boshqa hech narsa unga qo'yilmaydi.
+  * O'rtacha oyna stendga desert va asosiy salatlar (Sezar, Majnuntol, Smak, Nozi, Veche, Yunon, Go'shtli, Qarsildoq baqlajon).
+  * Issiq taomlar (shashlik, tushonka, tanakuri, sho'rva, ikkinchi taom, kolbasa) HECH QACHON stendga qo'yilmaydi: har mehmonning o'z tagtarelkasi ustiga bir porsiyadan qo'yiladi, oq piyola olib tashlanadi. Shashlik: har mehmonga bitta six; masalan 10 mehmonga 20 six aytilsa har biriga 2 tadan.
+  * Sovuq gazaklar, nonlar, baliq, oddiy salatlar (Achchiq-chuchuk, Vinegret, Yeva, Cho'poncha, O'zbek) pastda, mehmonga yaqin, olishga oson. Baliq hech qachon ko'tarilmaydi.
+  * "bezak": {"gul": bir stolga nechta gul (10 mehmonga 1, 15-20 ga 2, doira stolda 1; 0 = gulsiz), "martini": true|false (martini faqat so'ralsa)} yoki null.
 FAQAT shu JSON ni qaytar, boshqa matn yozma:
-{"reply":"foydalanuvchiga matn","guests":son yoki null,"type":"banket"|"toy"|null,"add":[{"id":"menyu id","q":son}],"remove":["id"],"course":{"id":"dasturxon|c1|c2|c3|desert"},"bezak":{"gul":son yoki null,"martini":true|false|null,"stend":{"taom id":"tilla|oyna-baland|oyna-past|shisha1|shisha2|yoq"}} yoki null}`;
+{"reply":"foydalanuvchiga matn","guests":son yoki null,"type":"banket"|"toy"|null,"add":[{"id":"menyu id","q":son}],"remove":["id"],"course":{"id":"dasturxon|c1|c2|c3|desert"},"bezak":{"gul":son yoki null,"martini":true|false|null} yoki null}`;
 
 const clip = (s, n) => String(s == null ? "" : s).slice(0, n);
 // Summa va marosim: summani tartib bilan taqsimlash; reyting (egasi tasdiqlagan tanlovlar) tavsiyada hisobga olinadi
@@ -95,13 +100,11 @@ function parse(txt) {
 }
 
 // bezak: faqat ma'lum maydonlar va stend nomlari o'tadi
-const STENDS = ["tilla", "oyna-baland", "oyna-past", "shisha1", "shisha2", "yoq"];
 function bezak(z) {
   if (!z || typeof z !== "object") return null;
   const o = {};
   if (Number.isFinite(+z.gul) && z.gul !== null) o.gul = Math.max(0, Math.min(12, Math.round(+z.gul)));
   if (typeof z.martini === "boolean") o.martini = z.martini;
-  if (z.stend && typeof z.stend === "object") { o.stend = {}; Object.entries(z.stend).slice(0, 30).forEach(([id, n]) => { if (STENDS.includes(n)) o.stend[clip(id, 40)] = n; }); }
   return Object.keys(o).length ? o : null;
 }
 // "Miya": asboblar/agent-miya.md faylidagi egasi qoidalari har so'rovda promptga qo'shiladi (fayl o'zgarsa agent shuni o'qiydi)

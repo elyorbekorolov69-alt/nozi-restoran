@@ -1134,6 +1134,22 @@ function Table3D(canvas, opts) {
   let items = [];
   let DECOR = {}, SEATM = 0;   // DECOR: how the agent / owner wants the table dressed ({gul:n, martini:bool, raise:{dishId:"tilla"|...}}); SEATM: places drawn from models so far (capped for speed)
   const STH = { "stend-tilla": 0.292, "stend-shisha1": 0.32, "stend-shisha2": 0.32, "stend-oyna-baland": 0.32, "stend-oyna-past": 0.158 };   // top height of each ready-made stand, metres
+  // ---- the owner's strict rules for where a dish goes (see asboblar/agent-miya.md) ----
+  // "seat": hot food (soups, shashlik, mains, grilled sausages) goes on the guest's own charger, the white bowl taken away
+  // "tilla": cheese assorti and fruit assorti, only these, on the big gold stand (and they never stand anywhere else)
+  // "mid": desserts and the main salads on the one medium glass stand
+  // "low": everything else (cold snacks, bread, fish, hot snacks, side dishes, simple salads) stays low on the table, close to the guests
+  const SEATSEC = ["birinchi", "ikkinchi", "shashlik", "kolbasa"], MAINSALAD = ["Цезарь", "Махнунтол", "Смак", "Вече", "Nozi", "Мясной", "Греческий", "Хрустящий"];
+  function catOf(d) {
+    if (!d) return "low";
+    if (d.ru === "Сырное ассорти" || d.v === "fruit") return "tilla";
+    if (SEATSEC.includes(d.sec)) return "seat";
+    if (d.sec === "desert") return "mid";
+    if (d.sec === "salat" && MAINSALAD.some(w => (d.ru || "").includes(w))) return "mid";
+    return "low";
+  }
+  const MIDH = 0.24;   // the medium stand: the tall glass stand pressed to this height (half-way between the tall and the low one)
+  let CURD = null;     // the dish being drawn: the gold stand is only ever drawn under its own kind
   let LO = false;   // simpler chairs and places when a whole hall is shown
   let STYLE = "nozi";   // how the tables look: the restaurant's decorated table, or as in the Blender halls ("wood": Terrasa, "cream": To'yxona)
   let NOROOM = false, hookFn = null;   // NOROOM: the hall around the tables is drawn by someone else; hookFn: told the camera on every draw
@@ -1143,9 +1159,9 @@ function Table3D(canvas, opts) {
   }
 
   // a ready-made model, scaled by sc, standing at x,y,z; false if it has not arrived (the caller then draws the plain shape)
-  function putA(name, x, y, z, r, sc = 1) {
+  function putA(name, x, y, z, r, sc = 1, sy = sc) {
     const parts = AS[name]; if (!parts) return false;
-    parts.forEach(g => items.push({ g, c: [255, 255, 255], M: model(x, y, z, r, sc, sc, sc, 0), a: g.a, s: g.s, sh: g.sh, e: 0, p: 0 }));
+    parts.forEach(g => items.push({ g, c: [255, 255, 255], M: model(x, y, z, r, sc, sy, sc, 0), a: g.a, s: g.s, sh: g.sh, e: 0, p: 0 }));
     return true;
   }
   // bake a list of pieces into as few GPU buffers as 16-bit indices allow
@@ -1213,6 +1229,7 @@ function Table3D(canvas, opts) {
   // and a mirror top in a gold rim, round or oblong; returns the height of the mirror
   const GOLD = { s: 0.85, sh: 70 }, MIRROR = "#2b333d";
   function goldStand(x, z, y, dia, rot = 0, oblong = false) {
+    if (CURD && catOf(CURD) !== "tilla") return y;   // strict rule: nothing but cheese and fruit assorti stands on the gold stand
     if (!oblong && !LO && AS["stend-tilla"]) { const sc = dia / 0.32; putA("stend-tilla", x, y, z, rot, sc); return y + STH["stend-tilla"] * sc; }   // the restaurant's gold stand
     const H = dia * (oblong ? 0.5 : 0.55), fw = dia * (oblong ? 0.56 : 0.62), sy = 0.15;
     put("goldFoot", C.gold, x, y, z, 0, fw, H * 0.5, fw, GOLD);
@@ -1234,8 +1251,10 @@ function Table3D(canvas, opts) {
 
   function dish(kind, col, x, z, rot, top, d) {
     // the restaurant's own 3D model of this dish (light copy in asboblar/engine.json), if it has one
-    const rs = d && DECOR.raise && DECOR.raise[d.id] ? "stend-" + DECOR.raise[d.id] : "";   // the agent put this dish up on a stand
-    if (rs && AS[rs] && !LO) { putA(rs, x, top, z, rot, 1); top += STH[rs] || 0.3; }
+    CURD = d || null;
+    const rn = d && DECOR.raise ? DECOR.raise[d.id] : "", cat = catOf(d);   // cheese and fruit assorti on the big gold stand, desserts and main salads on the medium one; nothing else is lifted
+    if (!LO && rn === "tilla" && cat === "tilla" && AS["stend-tilla"]) { putA("stend-tilla", x, top, z, rot, 1); top += STH["stend-tilla"]; }
+    else if (!LO && rn === "orta" && cat === "mid" && AS["stend-oyna-baland"]) { putA("stend-oyna-baland", x, top, z, rot, 0.94, 0.75); top += MIDH; }
     const mn = d && (window.NZI_M3D || {})[d.id]; if (mn && AS[mn] && putA(mn, x, top, z, rot, 1)) return;
     const y = top, c = Math.cos(rot), s = Math.sin(rot);
     const at = (a, b) => [x + a * c + b * s, z - a * s + b * c];
@@ -1812,7 +1831,7 @@ function Table3D(canvas, opts) {
       vis.slice(0, 1).forEach(x => {
         if (pic) {
           // the dish's own photo, laid on a plate on the restaurant's serving stand
-          const h = goldStand(sp[0], sp[1], tbl.top, 0.3);
+          CURD = x.d; const h = goldStand(sp[0], sp[1], tbl.top, 0.3); CURD = null;
           put("plate", C.plate, sp[0], h, sp[1], sp[2], 0.25, 0.4, 0.25, { s: 0.3, sh: 40, p: 6 });
           put("disc", "#ffffff", sp[0], h + 0.012, sp[1], sp[2], 0.225, 1, 0.225, { s: 0.35, sh: 60, e: 0.1, p: 18 });
         } else { const [k, col] = kindOf(x.d); dish(k, col, sp[0], sp[1], sp[2], tbl.top, x.d); }
@@ -1829,7 +1848,7 @@ function Table3D(canvas, opts) {
       const placed = [], perSeat = [];
       arr.filter(isVis).forEach(x => {
         const [k, col] = kindOf(x.d);
-        for (let i = 0; i < x.q; i++) (k === "soup" ? perSeat : placed).push({ k, col, d: x.d });
+        for (let i = 0; i < x.q; i++) (catOf(x.d) === "seat" || k === "soup" ? perSeat : placed).push({ k, col, d: x.d, cat: catOf(x.d) });
       });
       return { placed, perSeat };
     };
@@ -1841,8 +1860,10 @@ function Table3D(canvas, opts) {
     STYLE = curHall === "terrasa" ? "wood" : curHall === "toyxona" ? "cream" : "nozi";
     NOROOM = !!spec.noRoom;
     {   // decoration chosen by the agent / owner; only known names pass
-      const dc = spec.decor || {}, ok = ["tilla", "oyna-baland", "oyna-past", "shisha1", "shisha2"], raise = {};
-      Object.entries(dc.raise || {}).forEach(([id, n]) => { if (ok.includes(n)) raise[id] = n; });
+      const dc = spec.decor || {}, raise = {};
+      // stands follow the owner's rules, not the agent's whim: every dish of the right kind gets its stand, nothing else does
+      const seen = []; [spec.items || []].concat(spec.perTable || []).forEach(a => a.forEach(x => { if (x && x.d && !seen.includes(x.d)) seen.push(x.d); }));
+      seen.forEach(d => { const c = catOf(d); if (c === "tilla") raise[d.id] = "tilla"; else if (c === "mid") raise[d.id] = "orta"; });
       DECOR = { gul: Number.isFinite(+dc.gul) && dc.gul !== null && dc.gul !== undefined ? Math.max(0, Math.min(12, Math.round(+dc.gul))) : undefined, martini: !!dc.martini, raise };
     }
     const key = JSON.stringify([spec.shape, guests, rows, served, spec.seatsList || 0, curHall, spec.corner || "round", DECOR.gul, DECOR.martini, Object.keys(AS).length]);
@@ -1862,9 +1883,13 @@ function Table3D(canvas, opts) {
         for (let s2 = 0; s2 < sets; s2++) placed.forEach(p => all.push(p));
         all.slice(0, t.spots.length).forEach((p, i) => { const [x, z] = t.spots[i]; dish(p.k, p.col, x, z, 0.3 * (i % 3), t.top, p.d); });
       } else {
-        placed.slice(0, t.spots.length).forEach((p, i) => { const [x, z, a] = t.spots[i]; dish(p.k, p.col, x, z, a, t.top, p.d); });
+        // cheese and fruit on the big stands go in the middle, the medium stand next, everything low towards the guests
+        const ord = { tilla: 0, mid: 1, low: 2 }, sp = t.spots.slice().sort((a, b) => Math.hypot(a[0] - (t.cx || 0), a[1] - (t.cz || 0)) - Math.hypot(b[0] - (t.cx || 0), b[1] - (t.cz || 0)));
+        placed.slice().sort((a, b) => (ord[a.cat] ?? 2) - (ord[b.cat] ?? 2)).slice(0, sp.length).forEach((p, i) => { const [x, z, a] = sp[i]; dish(p.k, p.col, x, z, a, t.top, p.d); });
       }
-      perSeat.forEach((p, i) => { if (i < t.seatsAt.length) { const [x, z] = t.seatsAt[i]; dish("soup", p.col, x, z, 0, t.top + 0.012, p.d); } });
+      // hot food: one portion on each guest's own charger (more portions than guests: two or three each, side by side)
+      const ns = t.seatsAt.length;
+      if (ns) perSeat.slice(0, ns * 3).forEach((p, i) => { const [x, z] = t.seatsAt[i % ns], j = Math.floor(i / ns); dish(p.k, p.col, x + (j ? (j === 1 ? 0.06 : -0.06) : 0), z, 0, t.top + (AS.tagtarelka ? 0.018 : 0.012) + j * 0.004, p.d); });
     });
     setDyn(items);
     items = [];
@@ -3837,7 +3862,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
   function rebuild3D() {
     if (!t3d) return;
     const round = shapeNow() === "round";
-    const cap = x => ({ d: x.d, q: Math.min(x.q, x.course === "c1" ? 40 : 6), course: x.course });
+    const cap = x => ({ d: x.d, q: Math.min(x.q, ["c1", "c2", "c3"].includes(x.course) ? 60 : 6), course: x.course });
     const tv = tviewNow();
     t3d.build({
       shape: round ? "round" : "long",

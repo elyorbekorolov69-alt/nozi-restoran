@@ -32,6 +32,11 @@ Faqat egasi aytganlari. Yangi qoida qo'shilsa shu faylga qator qo'shiladi. [tasd
 ## Chiqish formati
 Sayt JSON kutadi: reply, guests, type, add:[{id,q}], remove, course. Bezash (gul, stend, joy) uchun [tasdiqlanmagan] kelajakdagi maydon: "joylar":[{"taom_id","joy","qatlam"}].
 
-## Stolni bezash chiqishi (tasdiqlangan)
-- Agent "bezak" maydonini qaytaradi: gul soni, martini, taom -> stend turi (tilla, oyna-baland, oyna-past, shisha1, shisha2). Koordinatani sayt o'zi hisoblaydi.
-- Joy kam bo'lsa sovuq gazak, assorti va mevani stendga ko'taradi. Issiq taom pastda qoladi.
+## Stolni bezash: QAT'IY QOIDALAR (egasi aytgan, 25 Noyabr)
+- Katta tillarang stend (stend-tilla) FAQAT sirniy assorti va meva assortiga. 2 sirniy + 2 meva bo'lsa shu 4 ta stendga chiqadi, boshqa narsa unga hech qachon qo'yilmaydi. Sirniy va meva doim shu stendda turadi.
+- O'rtacha oyna stend (bitta, baland va past stendning o'rtasi): desert va asosiy salatlar (Sezar, Majnuntol, Smak, Nozi, Veche, Yunon, Go'shtli, Qarsildoq baqlajon).
+- Issiq taomlar (shashlik, tushonka, tanakuri, sho'rva, ikkinchi taomlar, mangal kolbasa) HECH QACHON stendga qo'yilmaydi. Har mehmonning o'z tagtarelkasi ustiga bir porsiyadan qo'yiladi, oq piyola olib tashlanadi. Shashlik: har mehmonga bitta six. Agar mehmondan ko'p six aytilsa (10 mehmonga 20 six) har biriga 2 tadan.
+- Sovuq gazaklar, nonlar, baliq, oddiy salatlar (Achchiq-chuchuk, Vinegret, Yeva, Cho'poncha, O'zbek) pastda turadi, mehmonga yaqin, olishga oson. Baliq hech qachon ko'tarilmaydi.
+- Martini qadah faqat so'ralsa qo'yiladi.
+- Joy yetmasa piyola, stakan, kichik stulcha kabi asboblar bilan turli balandlik qilish mumkin, lekin [tasdiqlanmagan: faqat salat va desert uchun] hozircha sayt buni qilmaydi.
+- Sayt bu qoidalarni agentdan mustaqil, o'zi bajaradi: agent xato aytsa ham qoida buzilmaydi.
