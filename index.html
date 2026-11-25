@@ -2612,7 +2612,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
   MENU.forEach(s => s.t.forEach((t, i) => { t.id = s.id + "-" + i; t.sec = s.id; DISHES.push(t); }));
   const byId = Object.fromEntries(DISHES.map(d => [d.id, d]));
   // real 3D models (Tripo + Blender), loaded only when the dish is opened: dish id -> file name in /taom
-  const MODEL3D = { "issiq-3": "baliq2", "sovuq-8": "pishloq", "meva-0": "meva-a", "meva-1": "oreh", "meva-2": "konfet", "shashlik-9": "qiymali_hq", "shashlik-10": "qiymali_hq", "shashlik-11": "qiymali_hq", "shashlik-13": "lyulya", "issiq-12": "til", "salat-8": "sezar2", "salat-11": "salat_nozi", "sovuq-2": "limon", "salat-12": "baqlajon",
+  const MODEL3D = { "issiq-3": "baliq2", "sovuq-8": "pishloq", "meva-0": "meva-a", "meva-1": "oreh", "meva-2": "konfet", "shashlik-9": "qiymali_hq", "shashlik-10": "qiymali_hq", "shashlik-11": "qiymali_hq", "shashlik-13": "lyulya", "issiq-12": "til", "salat-8": "sezar2", "salat-11": "salat_nozi", "sovuq-2": "limon", "sovuq-5": "yaxna_new", "salat-12": "baqlajon",
     "kolbasa-0": "kolbasa", "kolbasa-1": "kolbasa", "issiq-8": "sabzavot", "shashlik-5": "qanot2", "shashlik-19": "qanot2", "sovuq-5": "yaxna",
     "birinchi-2": "tushonka", "salat-5": "veche", "issiq-7": "mulatka", "issiq-5": "kotlet", "issiq-6": "kotlet",
     "issiq-9": "baliq2", "ichimlik-2": "cola", "ichimlik-3": "fanta", "ichimlik-4": "pepsi", "ichimlik-5": "sharbat", "desert-7": "des_assorti", "non-1": "qora_non", "ichimlik-1": "suv" };   // kroket: menyudagi taomi aytilgach shu yerga qo‘shiladi
