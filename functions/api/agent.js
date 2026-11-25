@@ -16,7 +16,7 @@ QOIDALAR:
 - Miqdor (q): tanlangan sondagi porsiya, avtomatik ko'paytirilmaydi. Kilogramm bilan hisoblanadigan taomlarda (ro'yxatda "kg" belgisi bor) q doim 1: sayt grammni mehmon soniga qarab o'zi hisoblaydi.
 - Mehmon soni, tadbir turi (banket/toy), sanasi noma'lum bo'lsa, avval shuni so'ra. Soni ma'lum bo'lsa "guests" ni qaytar.
 - Tushunarli bo'lmagan narsani o'zing taxmin qilma, so'ra. Bir javobda ko'pi bilan 2 ta savol ber.
-- Komplekt suv (1 sok, 1 gazli ichimlik: Cola/Fanta/Pepsi, 2 Mojito, 1 gazsiz suv) uchun egasidan so'ra: bir komplektga nechta mehmon, narxi, sok turlari. Javob olmasdan bu haqda narx yoki son o'ylab topma.
+- Komplekt suv (1 sok, 1 gazli ichimlik: Cola/Fanta/Pepsi, 2 Mojito, 1 gazsiz suv) uchun egasidan so'ra: bir komplektga nechta mehmon, narxi, sok turlari. Komplekt qo'shilganda so'ra: gazli (Cola/Fanta/Pepsi qaysi), gazsiz (Vico), sok turlari (Sochnaya dolina va boshqa tur), nechta mehmonga bir komplekt va komplekt narxi (Vico va Sochnaya dolina qiymati ham shunga kiradi). Javob olmasdan bu haqda narx yoki son o'ylab topma.
 - Muvozanatli to'plam tuz: sovuq gazak, salat, issiq taom, asosiy taom/kabob, non, ichimlik, desert/meva. Byudjet aytilsa unga qarab tanla.
 - Chiqish navbati (course): "dasturxon" (stol ustida boshidan: sovuq, salat, non, ichimlik, meva), "c1" (birinchi taom), "c2" (issiq/asosiy), "c3" (kolbasa/shashlik), "desert".
 - DOIMIY TARKIB (har banketda, menyudan mos id topib "add" ga SON bilan qo'sh, so'ralmasa ham): mulatka, sirniy (pishloq) assorti, go'shtlardan assorti (kolbasa/myasnoy), yaxna, meva assorti va nonlar (buxanka, qora non, chapchak: har biri alohida). Ba'zan ovoshi salati ham qo'shiladi (byudjet yetsa).
@@ -26,8 +26,10 @@ QOIDALAR:
 - Tanlangan taomlarni darrov "add" bilan qaytar: sayt ularni pastdagi ro'yxatga soni bilan o'zi qo'shadi, egasi va mijoz keyin sonini o'zgartiradi.
 - Yakuniy qarorni restoran egalari qiladi. Sen faqat tavsiya berasan.
 - Javobni foydalanuvchi yozgan tilda ber (o'zbek, rus, ingliz yoki tojik). Qisqa va oddiy yoz.
+- NON ASSORTI: mijoz hamma nonlardan (galaoso, qora non, chapchak) tanlasa, uchalasini "add" ga qo'sh va javobda "non assorti" deb ayt.
+- STOLNI BEZASH: faqat qaysi bezak kerakligini ayt, koordinatani sayt o'zi hisoblaydi. "bezak" maydoni: "gul" = bir stolga nechta gul kompozitsiyasi (10 mehmonga 1, 15-20 ga 2, doira stolda markazda 1; 0 = gulsiz), "martini" = true bo'lsa ba'zi o'rinlarga martini qadah qo'yiladi, "stend" = taom id -> stend turi. Stend turlari: "tilla" (tillarang oyoqli, katta likopcha), "oyna-baland" (baland oyna stend), "oyna-past" (past oyna stend), "shisha1" (keng oyna), "shisha2" (tor baland). Joy kam bo'lsa sovuq gazak, assorti va mevani stendga ko'tar (qo'shimcha joy ochiladi), issiq taom pastda qoladi. Har o'ringa tagtarelka, oq piyola, NoZi kartochka, stakan, vino qadah, vilka, pichoq, qoshiq, salfetka sayt o'zi qo'yadi. Bezak so'ralmasa "bezak" ni null qoldir.
 FAQAT shu JSON ni qaytar, boshqa matn yozma:
-{"reply":"foydalanuvchiga matn","guests":son yoki null,"type":"banket"|"toy"|null,"add":[{"id":"menyu id","q":son}],"remove":["id"],"course":{"id":"dasturxon|c1|c2|c3|desert"}}`;
+{"reply":"foydalanuvchiga matn","guests":son yoki null,"type":"banket"|"toy"|null,"add":[{"id":"menyu id","q":son}],"remove":["id"],"course":{"id":"dasturxon|c1|c2|c3|desert"},"bezak":{"gul":son yoki null,"martini":true|false|null,"stend":{"taom id":"tilla|oyna-baland|oyna-past|shisha1|shisha2|yoq"}} yoki null}`;
 
 const clip = (s, n) => String(s == null ? "" : s).slice(0, n);
 // Summa va marosim: summani tartib bilan taqsimlash; reyting (egasi tasdiqlagan tanlovlar) tavsiyada hisobga olinadi
@@ -92,6 +94,16 @@ function parse(txt) {
   return JSON.parse(t.slice(a, b + 1));
 }
 
+// bezak: faqat ma'lum maydonlar va stend nomlari o'tadi
+const STENDS = ["tilla", "oyna-baland", "oyna-past", "shisha1", "shisha2", "yoq"];
+function bezak(z) {
+  if (!z || typeof z !== "object") return null;
+  const o = {};
+  if (Number.isFinite(+z.gul) && z.gul !== null) o.gul = Math.max(0, Math.min(12, Math.round(+z.gul)));
+  if (typeof z.martini === "boolean") o.martini = z.martini;
+  if (z.stend && typeof z.stend === "object") { o.stend = {}; Object.entries(z.stend).slice(0, 30).forEach(([id, n]) => { if (STENDS.includes(n)) o.stend[clip(id, 40)] = n; }); }
+  return Object.keys(o).length ? o : null;
+}
 // "Miya": asboblar/agent-miya.md faylidagi egasi qoidalari har so'rovda promptga qo'shiladi (fayl o'zgarsa agent shuni o'qiydi)
 let MIYA = "", MIYA_T = 0;
 async function miya(request) {
@@ -127,7 +139,8 @@ export async function onRequestPost({ request, env }) {
         type: o.type === "toy" || o.type === "banket" ? o.type : null,
         add: (Array.isArray(o.add) ? o.add : []).slice(0, 40).map(x => ({ id: clip(x && x.id, 40), q: Math.max(1, Math.min(40, Math.round(+(x && x.q) || 1))) })),
         remove: (Array.isArray(o.remove) ? o.remove : []).slice(0, 40).map(x => clip(x, 40)),
-        course: o.course && typeof o.course === "object" ? o.course : {} });
+        course: o.course && typeof o.course === "object" ? o.course : {},
+        bezak: bezak(o.bezak) });
     } catch (e) { console.log("agent:", e.message); fails.push(via + ": " + clip(e.message, 110)); }
   }
   // sabab (faqat AI nomi va xato kodi, kalit emas): masalan "gemini: gemini-2.5-flash 404"

@@ -1083,6 +1083,8 @@ function Table3D(canvas, opts) {
   // ---------- scene ----------
   const hex = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
   let items = [];
+  let DECOR = {}, SEATM = 0;   // DECOR: how the agent / owner wants the table dressed ({gul:n, martini:bool, raise:{dishId:"tilla"|...}}); SEATM: places drawn from models so far (capped for speed)
+  const STH = { "stend-tilla": 0.292, "stend-shisha1": 0.32, "stend-shisha2": 0.32, "stend-oyna-baland": 0.32, "stend-oyna-past": 0.158 };   // top height of each ready-made stand, metres
   let LO = false;   // simpler chairs and places when a whole hall is shown
   let STYLE = "nozi";   // how the tables look: the restaurant's decorated table, or as in the Blender halls ("wood": Terrasa, "cream": To'yxona)
   let NOROOM = false, hookFn = null;   // NOROOM: the hall around the tables is drawn by someone else; hookFn: told the camera on every draw
@@ -1162,6 +1164,7 @@ function Table3D(canvas, opts) {
   // and a mirror top in a gold rim, round or oblong; returns the height of the mirror
   const GOLD = { s: 0.85, sh: 70 }, MIRROR = "#2b333d";
   function goldStand(x, z, y, dia, rot = 0, oblong = false) {
+    if (!oblong && !LO && AS["stend-tilla"]) { const sc = dia / 0.32; putA("stend-tilla", x, y, z, rot, sc); return y + STH["stend-tilla"] * sc; }   // the restaurant's gold stand
     const H = dia * (oblong ? 0.5 : 0.55), fw = dia * (oblong ? 0.56 : 0.62), sy = 0.15;
     put("goldFoot", C.gold, x, y, z, 0, fw, H * 0.5, fw, GOLD);
     put("gem", C.glass, x, y + H * 0.5, z, 0.2, dia * 0.2, H * 0.22, dia * 0.2, { a: 0.45, s: 1, sh: 100, p: 3 });
@@ -1182,6 +1185,8 @@ function Table3D(canvas, opts) {
 
   function dish(kind, col, x, z, rot, top, d) {
     // the restaurant's own 3D model of this dish (light copy in asboblar/engine.json), if it has one
+    const rs = d && DECOR.raise && DECOR.raise[d.id] ? "stend-" + DECOR.raise[d.id] : "";   // the agent put this dish up on a stand
+    if (rs && AS[rs] && !LO) { putA(rs, x, top, z, rot, 1); top += STH[rs] || 0.3; }
     const mn = d && (window.NZI_M3D || {})[d.id]; if (mn && AS[mn] && putA(mn, x, top, z, rot, 1)) return;
     const y = top, c = Math.cos(rot), s = Math.sin(rot);
     const at = (a, b) => [x + a * c + b * s, z - a * s + b * c];
@@ -1325,6 +1330,18 @@ function Table3D(canvas, opts) {
     const at = (a, b) => [x + sx * a * k + fx * b * k, z + sz * a * k + fz * b * k];
     if (STYLE === "wood") put("box", "#a9b79a", x, top + 0.002, z, face, 0.34 * k, 0.004, 0.4 * k, { s: 0.12, p: 4 });   // sage place mat on the bare wood
     if (STYLE === "cream") put("plate", C.charger, x, top - 0.006, z, face, 0.335 * k, 0.4, 0.335 * k, { s: 0.25, sh: 30 });   // cream charger plate
+    if (!LO && AS.tagtarelka && AS.piyola && AS.stakan && SEATM < 90) {   // the restaurant's own place setting, from the ready-made models
+      SEATM++;
+      putA("tagtarelka", x, top, z, face, k);
+      if (!course1) putA("piyola", x, top + 0.018 * k, z, face, k);
+      const m1 = (n, a, b, y = 0) => { if (!AS[n]) return; const [qx, qz] = at(a, b); putA(n, qx, top + y * k, qz, face, k); };
+      m1("kartochka", 0, -0.105, 0.018);
+      m1("vilka", -0.205, 0); m1("pichoq", 0.19, 0); m1("qoshiq", 0.235, 0);
+      m1("salfetka", -0.1, 0.21);
+      m1("stakan", 0.1, 0.2); m1("vino", 0.19, 0.14);
+      if (DECOR.martini) m1("martini", -0.04, 0.26);
+      return;
+    }
     put("plate", C.gold, x, top - 0.003, z, face, 0.292 * k, 0.4, 0.292 * k, GOLD);   // thin gold rim
     put("plate", C.plate, x, top, z, face, 0.28 * k, 0.4, 0.28 * k, { s: 0.3, sh: 40, p: 1 });
     if (!course1) put("bowl", "#f4f2ee", x, top + 0.067, z, 0, 0.115 * k, -0.1, 0.115 * k, { s: 0.45, sh: 60, p: 14 });
@@ -1380,6 +1397,8 @@ function Table3D(canvas, opts) {
   function centrepiece(x, z, top, seed = 1) {
     let sd = seed * 9301 + 49297;
     const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+    if (DECOR.gul === 0) return;   // the owner / agent asked for no flowers
+    if (AS.gul) { putA("gul", x, top, z, seed * 1.7, 1); return; }   // the restaurant's own flower arrangement
     put("column", C.gold, x, top, z, 0, 0.2, 0.56, 0.2, { s: 0.85, sh: 70 });
     put("ball", C.glass, x, top + 0.335, z, 0, 0.065, 0.065, 0.065, { a: 0.35, s: 1, sh: 90 });
     put("vase", "#f3f1ee", x, top + 0.555, z, 0, 0.17, 0.25, 0.17, { s: 0.55, sh: 60 });
@@ -1624,7 +1643,7 @@ function Table3D(canvas, opts) {
       seatsAt.push([sgn * (L / 2 - 0.1), z0]);
     });
     const obstacles = [];
-    const nFl = wood ? 0 : Math.max(1, Math.ceil(seats / 12));
+    const nFl = wood ? 0 : (DECOR.gul > 0 ? Math.min(DECOR.gul, Math.max(1, Math.floor((L - 0.5) / 0.9))) : Math.max(1, Math.ceil(seats / 12)));
     for (let f = 0; f < nFl; f++) {
       const x = -L / 2 + 0.25 + (L - 0.5) * (f + 0.5) / nFl;
       centrepiece(x, z0, top, f + 1 + Math.round(z0 * 3)); obstacles.push(x);
@@ -1772,9 +1791,14 @@ function Table3D(canvas, opts) {
     curHall = HALLFX[spec.hall] ? spec.hall : "mayda";
     STYLE = curHall === "terrasa" ? "wood" : curHall === "toyxona" ? "cream" : "nozi";
     NOROOM = !!spec.noRoom;
-    const key = JSON.stringify([spec.shape, guests, rows, served, spec.seatsList || 0, curHall, spec.corner || "round"]);
+    {   // decoration chosen by the agent / owner; only known names pass
+      const dc = spec.decor || {}, ok = ["tilla", "oyna-baland", "oyna-past", "shisha1", "shisha2"], raise = {};
+      Object.entries(dc.raise || {}).forEach(([id, n]) => { if (ok.includes(n)) raise[id] = n; });
+      DECOR = { gul: Number.isFinite(+dc.gul) && dc.gul !== null && dc.gul !== undefined ? Math.max(0, Math.min(12, Math.round(+dc.gul))) : undefined, martini: !!dc.martini, raise };
+    }
+    const key = JSON.stringify([spec.shape, guests, rows, served, spec.seatsList || 0, curHall, spec.corner || "round", DECOR.gul, DECOR.martini, Object.keys(AS).length]);
     if (key + "|" + NOROOM !== staticKey) {
-      items = [];
+      items = []; SEATM = 0;
       layout = spec.shape === "long" ? buildLong(guests, rows, served) : buildRound(guests, served, spec.seatsList, spec.corner);
       setStatic(items);
       staticKey = key + "|" + NOROOM;
@@ -3612,7 +3636,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
   const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   const bk = { step: 0, type: "banket", guests: 30, date: "", time: "18:00", hall: null, shape: null, rows: null, corner: "round", change: false,
     items: {}, order: [], course: {}, sec: "", view: "dasturxon", name: "", phone: "", note: "", sent: false, posted: "", link: "",
-    rest: null, tcount: null, tview: null, lastDish: null, plates: {}, chat: [], chatOpen: false, chatBusy: false, agGuided: false, agq: 0, agTier: "", agBudget: 0, agTotal: 0, agKind: "", agWater: "", event: "", pop: {}, popLoaded: false };
+    rest: null, tcount: null, tview: null, lastDish: null, plates: {}, chat: [], chatOpen: false, chatBusy: false, agGuided: false, decor: {}, agq: 0, agTier: "", agBudget: 0, agTotal: 0, agKind: "", agWater: "", event: "", pop: {}, popLoaded: false };
 
   // ----- kilogramm bilan hisoblanadigan taomlar: kishiga gramm, stol va tarelkalarga bo‘linadi -----
   const KG_STEP = 50, PLATE_PER = 5, PLATE_STEP = 5;     // jami 50 g gacha yuqoriga; har 5 kishiga 1 tarelka
@@ -3764,6 +3788,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
       focus: bk.step === 1 || tv === "all" ? "all" : "one",
       focusIdx: tv === "all" ? 0 : tv,
       course: bk.view,
+      decor: bk.decor,
       items: chosenItems().map(cap),
       perTable: units().map(u => u.items.concat(u.kgs.map(k => ({ d: k.d, q: 1, course: k.course }))).map(cap)),
     });
@@ -4114,6 +4139,13 @@ if (typeof module !== "undefined") module.exports = makeQR;
       bk.items[d.id] = kgInfo(d) ? 1 : Math.max(1, Math.min(40, Math.round(a.q) || 1));
       bk.order = bk.order.filter(x => x !== d.id); bk.order.push(d.id);
     });
+    if (o.bezak && typeof o.bezak === "object") {   // bezak: gul soni, martini, qaysi taom stendda (sayt koordinatani o'zi hisoblaydi)
+      const z = o.bezak, d = { gul: bk.decor.gul, martini: !!bk.decor.martini, raise: Object.assign({}, bk.decor.raise) };
+      if (z.gul !== undefined && z.gul !== null && Number.isFinite(+z.gul)) d.gul = Math.max(0, Math.min(12, Math.round(+z.gul)));
+      if (typeof z.martini === "boolean") d.martini = z.martini;
+      Object.entries(z.stend || {}).forEach(([id, n]) => { if (byId[id]) { if (n && n !== "yoq") d.raise[id] = n; else delete d.raise[id]; } });
+      bk.decor = d;
+    }
     Object.entries(o.course || {}).forEach(([id, c]) => { if (byId[id] && ["dasturxon", "c1", "c2", "c3", "desert"].includes(c)) bk.course[id] = c; });
     bk.view = "dasturxon";
   }

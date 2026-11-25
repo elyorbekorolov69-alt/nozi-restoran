@@ -12,7 +12,8 @@ Faqat egasi aytganlari. Yangi qoida qo'shilsa shu faylga qator qo'shiladi. [tasd
 - 2-taom: har doim shashlik (Muluti yoki boshqa tur).
 - Salat: odatda O'zbek salati (va Nozi salati). Majnuntol, Smak, Sezar faqat onda-sonda. Ovoshi salat ba'zan.
 - Tanlangan taomlar darrov pastdagi ro'yxatga sonlari bilan tushadi; egasi va mijoz keyin sonini o'zgartiradi.
-- Komplekt suv: 1 sok, 1 gazli ichimlik (Cola/Fanta/Pepsi), 2 Mojito, 1 gazsiz suv. Nechta mehmonga bir komplekt, narxi, sok turini egasidan so'raydi, o'zi o'ylab topmaydi.
+- Komplekt suv: bir komplektga 1 sok, 1 gazli ichimlik, 2 Mojito, 1 gazsiz suv kiradi. Komplekt suv qo'shilganda egasidan shularni so'raydi (bittadan, o'zi o'ylab topmaydi): 1) gazli ichimlik qaysi: Cola, Fanta yoki Pepsi; 2) gazsiz suv: Vico; 3) sok turlari (ikki xil bor: Sochnaya dolina va yana bir turi), qaysi biri yoki ikkalasi; 4) bir komplektga nechta mehmon; 5) komplektning narxi (Vico va Sochnaya dolina qiymati ham shunga kiradi). Javob olmasdan narx yoki son yozmaydi.
+- Non assorti: mijoz hamma nonlardan tanlasa (Galaoso, Qora non, Chapchak), agent ularni alohida emas, bitta "non assorti" qilib aytadi va uchalasini ham "add" ga qo'shadi. Javobda "non assorti" deb yozadi.
 
 ## Stolni bezash va joylashtirish
 - Maqsad: tanlangan menyuning imkon qadar ko'pi stolga sig'sin. Ko'tarma stendlar joyni ko'paytiradi.
@@ -30,3 +31,7 @@ Faqat egasi aytganlari. Yangi qoida qo'shilsa shu faylga qator qo'shiladi. [tasd
 
 ## Chiqish formati
 Sayt JSON kutadi: reply, guests, type, add:[{id,q}], remove, course. Bezash (gul, stend, joy) uchun [tasdiqlanmagan] kelajakdagi maydon: "joylar":[{"taom_id","joy","qatlam"}].
+
+## Stolni bezash chiqishi (tasdiqlangan)
+- Agent "bezak" maydonini qaytaradi: gul soni, martini, taom -> stend turi (tilla, oyna-baland, oyna-past, shisha1, shisha2). Koordinatani sayt o'zi hisoblaydi.
+- Joy kam bo'lsa sovuq gazak, assorti va mevani stendga ko'taradi. Issiq taom pastda qoladi.
