@@ -710,9 +710,18 @@ function Table3D(canvas, opts) {
 
   // ---------- shaders: colour and material travel with each vertex ----------
   const VS = `attribute vec3 aP; attribute vec3 aN; attribute vec3 aL; attribute vec4 aC; attribute vec4 aM;
-    uniform mat4 uPV;
-    varying vec3 vN; varying vec3 vW; varying vec3 vL; varying vec4 vC; varying vec4 vM;
-    void main(){ vW = aP; vN = aN; vL = aL; vC = aC; vM = aM; gl_Position = uPV * vec4(aP, 1.0); }`;
+    uniform mat4 uPV, uLPV;
+    varying vec3 vN; varying vec3 vW; varying vec3 vL; varying vec4 vC; varying vec4 vM; varying vec4 vSh;
+    void main(){ vW = aP; vN = aN; vL = aL; vC = aC; vM = aM; vSh = uLPV * vec4(aP, 1.0); gl_Position = uPV * vec4(aP, 1.0); }`;
+  // soft sun shadows: depth of the table seen from the sun, packed into RGBA, read back with a small blur
+  const DVS = `attribute vec3 aP; attribute vec4 aM; uniform mat4 uLPV; varying vec4 vM; void main(){ vM = aM; gl_Position = uLPV * vec4(aP, 1.0); }`;
+  const DFS = `precision highp float; varying vec4 vM;
+    void main(){
+      float uP = floor(vM.w * 255.0 / 10.0 + 0.5);
+      if ((uP > 6.5 && uP < 8.5) || (uP > 8.5 && uP < 10.5) || (uP > 10.5 && uP < 12.5) || (uP > 15.5 && uP < 17.5)) discard;
+      vec4 e = fract(gl_FragCoord.z * vec4(1.0, 255.0, 65025.0, 16581375.0)); e -= e.yzww * vec4(1.0 / 255.0, 1.0 / 255.0, 1.0 / 255.0, 0.0);
+      gl_FragColor = e;
+    }`;
   // material: x shine, y sharpness/128, z glow, w surface*15/255
   // surfaces: 1 plate with a dotted rim, 2 breaded crust, 3 ribbed glass, 4 velvet, 5 clustered blossoms, 6 streaked plate,
   //           7 planked floor, 8 plaster wall, 9 sky, 10 soft shadow, 11 marble tile, 12 lit window (7, 8, 11, 12 are drawn from the inside only)
@@ -722,10 +731,20 @@ function Table3D(canvas, opts) {
     #else
     precision mediump float;
     #endif
-    varying vec3 vN; varying vec3 vW; varying vec3 vL; varying vec4 vC; varying vec4 vM;
+    varying vec3 vN; varying vec3 vW; varying vec3 vL; varying vec4 vC; varying vec4 vM; varying vec4 vSh;
+    uniform sampler2D uSM; uniform float uShOn;
     uniform vec3 uEye, uLP, uLC, uTint, uSk1, uSk2;
     uniform float uAm, uSun, uTM, uAO; uniform sampler2D uTex;
     float hh(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+    float unp(vec4 c){ return dot(c, vec4(1.0, 1.0 / 255.0, 1.0 / 65025.0, 1.0 / 16581375.0)); }
+    float shadowAt(vec3 N, vec3 L){
+      if (uShOn < 0.5) return 1.0;
+      vec3 p = vSh.xyz / vSh.w * 0.5 + 0.5;
+      if (p.x < 0.0 || p.x > 1.0 || p.y < 0.0 || p.y > 1.0 || p.z > 1.0) return 1.0;
+      float b = 0.00022 + 0.0005 * (1.0 - max(dot(N, L), 0.0)), s = 0.0, ts = 1.6 / 2048.0;
+      for (int i = -1; i <= 1; i++) for (int j = -1; j <= 1; j++) { float d = unp(texture2D(uSM, p.xy + vec2(float(i), float(j)) * ts)); s += (p.z - b > d) ? 0.0 : 1.0; }
+      return s / 9.0;
+    }
     float ell(vec2 p, vec2 c, vec2 ab, float an){ vec2 d = p - c; float ca = cos(an), sa = sin(an); return step(length(vec2((d.x * ca + d.y * sa) / ab.x, (-d.x * sa + d.y * ca) / ab.y)), 1.0); }
     float rng(vec2 p, vec2 c, float r, float w){ return step(abs(length(p - c) - r), w); }
     float nz(vec3 p){
@@ -845,14 +864,15 @@ function Table3D(canvas, opts) {
       }
       if (uAO > 0.5 && (uP < 6.5 || (uP > 12.5 && uP < 15.5))) base *= mix(0.55, 1.0, smoothstep(0.0, 0.42, vW.y));
       vec3 L1 = normalize(vec3(0.45, 1.0, 0.35)), L2 = normalize(vec3(-0.6, 0.45, -0.5));
-      float d1 = max(dot(N, L1), 0.0), d2 = max(dot(N, L2), 0.0);
+      float shw = shadowAt(N, L1);
+      float d1 = max(dot(N, L1), 0.0) * mix(0.18, 1.0, shw), d2 = max(dot(N, L2), 0.0);
       vec3 amb = mix(vec3(0.20, 0.19, 0.22), vec3(0.46, 0.47, 0.52), N.y * 0.5 + 0.5) * uAm;
-      vec3 col = base * uTint * (amb + vec3(1.0, 0.95, 0.88) * d1 * 0.78 * uSun + vec3(0.55, 0.62, 0.8) * d2 * 0.22 * uSun);
+      vec3 col = base * uTint * (amb * mix(0.8, 1.0, shw) + vec3(1.0, 0.95, 0.88) * d1 * 0.78 * uSun + vec3(0.55, 0.62, 0.8) * d2 * 0.22 * uSun);
       vec3 pd = uLP - vW; float pl = length(pd); vec3 pn = pd / pl;
       float att = 1.0 / (1.0 + 0.03 * pl * pl);
       col += base * uLC * max(dot(N, pn), 0.0) * att;
       vec3 H = normalize(L1 + V);
-      col += vec3(1.0, 0.97, 0.92) * pow(max(dot(N, H), 0.0), uSh) * uS * uSun;
+      col += vec3(1.0, 0.97, 0.92) * pow(max(dot(N, H), 0.0), uSh) * uS * uSun * shw;
       col += uLC * pow(max(dot(N, normalize(pn + V)), 0.0), uSh) * uS * att * 1.6;
       float fr = pow(1.0 - max(dot(N, V), 0.0), 3.0);
       col += vec3(0.85, 0.88, 1.0) * fr * 0.12 * uSun + base * uE;
@@ -863,9 +883,37 @@ function Table3D(canvas, opts) {
   function sh(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; }
   const prog = gl.createProgram();
   gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS));
+  ["aP", "aN", "aL", "aC", "aM"].forEach((k, i) => gl.bindAttribLocation(prog, i, k));
   gl.linkProgram(prog); gl.useProgram(prog);
+  // the shadow map: its own small program and a 2048 square target (no shadows if the phone cannot make one)
+  const SMS = 2048; let dprog = null, sfb = null, stex = null, SHON = false;
+  const DU = {};
+  try {
+    dprog = gl.createProgram(); gl.attachShader(dprog, sh(gl.VERTEX_SHADER, DVS)); gl.attachShader(dprog, sh(gl.FRAGMENT_SHADER, DFS));
+    ["aP", "aN", "aL", "aC", "aM"].forEach((k, i) => gl.bindAttribLocation(dprog, i, k));
+    gl.linkProgram(dprog); if (!gl.getProgramParameter(dprog, gl.LINK_STATUS)) throw new Error("dprog");
+    DU.uLPV = gl.getUniformLocation(dprog, "uLPV");
+    gl.activeTexture(gl.TEXTURE1); stex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, stex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, SMS, SMS, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    sfb = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, sfb);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, stex, 0);
+    const rb = gl.createRenderbuffer(); gl.bindRenderbuffer(gl.RENDERBUFFER, rb); gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, SMS, SMS);
+    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rb);
+    SHON = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.activeTexture(gl.TEXTURE0);
+  } catch (e) { console.warn("shadow off:", e.message); SHON = false; try { gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.activeTexture(gl.TEXTURE0); } catch (e2) {} }
+  gl.useProgram(prog);
+  let LPV = new Array(16).fill(0), sdirty = true, shC = [0, 0.4, 0], shR = 4;
+  function setSun(c, R) {   // the sun's view of the table: a square of half-width R round c
+    shC = c; shR = R; sdirty = true;
+    const L = [0.45, 1.0, 0.35], l = Math.hypot(...L), e = [c[0] + L[0] / l * 40, c[1] + L[1] / l * 40, c[2] + L[2] / l * 40];
+    const V = lookAt(e, c), n = 22, f = 62, P = [1 / R, 0, 0, 0, 0, 1 / R, 0, 0, 0, 0, -2 / (f - n), 0, 0, 0, -(f + n) / (f - n), 1];
+    LPV = mul(P, V);
+  }
   const A = {}; ["aP", "aN", "aL", "aC", "aM"].forEach(k => A[k] = gl.getAttribLocation(prog, k));
-  const U = {}; ["uPV", "uEye", "uLP", "uLC", "uTint", "uSk1", "uSk2", "uAm", "uSun", "uTM", "uAO", "uTex"].forEach(k => U[k] = gl.getUniformLocation(prog, k));
+  const U = {}; ["uPV", "uLPV", "uSM", "uShOn", "uEye", "uLP", "uLC", "uTint", "uSk1", "uSk2", "uAm", "uSun", "uTM", "uAO", "uTex"].forEach(k => U[k] = gl.getUniformLocation(prog, k));
   gl.enable(gl.DEPTH_TEST);
   gl.disable(gl.CULL_FACE);
   // the real photo of a dish, laid on the plate (texture unit 0; a plain plate colour until the photo arrives)
@@ -1337,7 +1385,6 @@ function Table3D(canvas, opts) {
       const m1 = (n, a, b, y = 0) => { if (!AS[n]) return; const [qx, qz] = at(a, b); putA(n, qx, top + y * k, qz, face, k); };
       m1("kartochka", 0, -0.105, 0.018);
       m1("vilka", -0.205, 0); m1("pichoq", 0.19, 0); m1("qoshiq", 0.235, 0);
-      m1("salfetka", -0.1, 0.21);
       m1("stakan", 0.1, 0.2); m1("vino", 0.19, 0.14);
       if (DECOR.martini) m1("martini", -0.04, 0.26);
       return;
@@ -1747,8 +1794,8 @@ function Table3D(canvas, opts) {
   let alive = true;
   let target = [0, 0.75, 0], minDist = 1.6, maxDist = 6, dist = 3.2, yaw = 0.6, pitch = 0.62;
   let staticKey = "", staticB = [[], []], dynB = [[], []], layout = null, lastCam = "", lastHall = "", cam = null;
-  function setStatic(list) { free(staticB[0]); free(staticB[1]); staticB = split(list).map(bake); }
-  function setDyn(list) { free(dynB[0]); free(dynB[1]); dynB = split(list).map(bake); }
+  function setStatic(list) { sdirty = true; free(staticB[0]); free(staticB[1]); staticB = split(list).map(bake); }
+  function setDyn(list) { sdirty = true; free(dynB[0]); free(dynB[1]); dynB = split(list).map(bake); }
 
   function build(spec) {
     const course = spec.course || "dasturxon";
@@ -1769,6 +1816,7 @@ function Table3D(canvas, opts) {
           put("disc", "#ffffff", sp[0], h + 0.012, sp[1], sp[2], 0.225, 1, 0.225, { s: 0.35, sh: 60, e: 0.1, p: 18 });
         } else { const [k, col] = kindOf(x.d); dish(k, col, sp[0], sp[1], sp[2], tbl.top, x.d); }
       });
+      setSun([0, 0.1, 0], 0.7);
       target = [0, tbl.top + 0.03, 0]; minDist = 0.35; maxDist = 2.4; dist = 1.05; pitch = 0.74;
       setStatic(items); setDyn([]); staticKey = ""; lastCam = "";
       draw();
@@ -1820,6 +1868,11 @@ function Table3D(canvas, opts) {
     setDyn(items);
     items = [];
 
+    {   // where the sun's shadow map looks: the whole layout, or just the table being studied
+      const one = spec.focus === "one" && layout.list.length > 1, f0 = layout.list[Math.max(0, Math.min(layout.list.length - 1, spec.focusIdx || 0))];
+      if (one) setSun(layout.kind === "long" ? [0, 0.4, f0.z0 || 0] : [f0.cx || 0, 0.4, f0.cz || 0], layout.kind === "long" ? Math.min(14, Math.max(3.5, layout.L * 0.55)) : 3.0);
+      else setSun([0, 0.4, 0], Math.min(16, Math.max(3.2, layout.kind === "long" ? Math.max(layout.L * 0.55, (rows || 1) * 2.2) : layout.size * 0.62 + 2)));
+    }
     // camera: the whole hall, or the first table up close; only reset when the hall itself changes,
     // so adding a dish never throws the guest's view around
     const fIdx = Math.max(0, Math.min(layout.list.length - 1, spec.focusIdx || 0));
@@ -1865,9 +1918,17 @@ function Table3D(canvas, opts) {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, b.ib);
     gl.drawElements(gl.TRIANGLES, b.n, gl.UNSIGNED_SHORT, 0);
   }
+  function shadowPass() {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, sfb); gl.viewport(0, 0, SMS, SMS);
+    gl.clearColor(1, 1, 1, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.useProgram(dprog); gl.uniformMatrix4fv(DU.uLPV, false, LPV); gl.disable(gl.BLEND); gl.depthMask(true);
+    staticB[0].forEach(drawBatch); dynB[0].forEach(drawBatch);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.useProgram(prog); sdirty = false;
+  }
   function draw() {
     if (!canvas.clientWidth) return;
     lastDraw = performance.now();
+    if (SHON && sdirty) shadowPass();
     const w = canvas.clientWidth, h = canvas.clientHeight, dpr = Math.min(window.devicePixelRatio || 1, 2);
     if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }
     gl.viewport(0, 0, canvas.width, canvas.height);
@@ -1875,13 +1936,14 @@ function Table3D(canvas, opts) {
     const eye = [target[0] + dist * Math.cos(pitch) * Math.sin(yaw), target[1] + dist * Math.sin(pitch), target[2] + dist * Math.cos(pitch) * Math.cos(yaw)];
     gl.uniformMatrix4fv(U.uPV, false, mul(persp(0.75, w / Math.max(1, h), 0.1, 900), lookAt(eye, target)));
     gl.uniform3fv(U.uEye, eye);
+    gl.uniformMatrix4fv(U.uLPV, false, LPV); gl.uniform1i(U.uSM, 1); gl.uniform1f(U.uShOn, SHON ? 1 : 0);
     if (hookFn) hookFn(eye, target, w / Math.max(1, h));
     const fx = FX();
     gl.uniform3fv(U.uLP, fx.lp); gl.uniform3fv(U.uLC, fx.lc); gl.uniform3fv(U.uTint, fx.tint); gl.uniform3fv(U.uSk1, fx.sk1); gl.uniform3fv(U.uSk2, fx.sk2);
     gl.uniform1f(U.uAm, fx.am); gl.uniform1f(U.uSun, fx.sun); gl.uniform1f(U.uTM, fx.tm); gl.uniform1f(U.uAO, fx.ao);
     gl.disable(gl.BLEND); gl.depthMask(true);
     staticB[0].forEach(drawBatch); dynB[0].forEach(drawBatch);
-    gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false);
+    gl.enable(gl.BLEND); gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE); gl.depthMask(false);   // glass must not make the picture itself see-through
     gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(-2, -2);
     staticB[1].forEach(drawBatch); dynB[1].forEach(drawBatch);
     gl.disable(gl.POLYGON_OFFSET_FILL);
