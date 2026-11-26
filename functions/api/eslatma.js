@@ -50,7 +50,36 @@ async function run({ request, env }) {
     }
     sent.push(`${r.id}:${kind}`);
   }
-  return json(200, { ok: true, today, tomorrow, checked: rows.length, sent });
+  // Har kuni bir marta (09:00 dan keyin) egasiga: banketlarda ko'p aytilgan, lekin 3D modeli yo'q taomlar (kuniga 3 tadan)
+  let models = "";
+  if (now.getUTCHours() >= 9) {
+    try {
+      const ins = await fetch(`${base}/banket_eslatma`, { method: "POST", headers: { ...H, Prefer: "resolution=ignore-duplicates,return=representation" },
+        body: JSON.stringify({ banket_id: 0, kind: "model:" + today, ts: Date.now() / 1000 }) });
+      const got = await ins.json().catch(() => null);
+      if (ins.ok && Array.isArray(got) && got.length) {
+        const M = await (await fetch(new URL("/asboblar/modellar.json", request.url))).json();
+        const have = new Set(M.have || []), names = M.names || {}, cnt = {};
+        for (const r of rows) { let d = {}; try { d = JSON.parse(r.data || "{}"); } catch (e) {} (d.items || []).forEach(x => { if (x && x.id && names[x.id] && !have.has(x.id)) cnt[x.id] = (cnt[x.id] || 0) + 1; }); }
+        // admin panelda kiritilgan banket tarixi (matn): menyudagi nomlar bo'yicha sanaymiz
+        try {
+          const tr = await (await fetch(`${base}/content?select=value&key=eq.priv.tarix`, { headers: H })).json();
+          const T = Array.isArray(tr) && tr[0] && Array.isArray(tr[0].value) ? tr[0].value : [];
+          T.forEach(t => { const txt = String(t.items || "").toLowerCase(); Object.entries(names).forEach(([id, n]) => { const key = String(n).toLowerCase().replace(/\s*\d.*$/, "").trim(); if (key.length > 3 && !have.has(id) && txt.includes(key)) cnt[id] = (cnt[id] || 0) + 1; }); });
+        } catch (e) {}
+        const top = Object.entries(cnt).sort((a, b) => b[1] - a[1]);
+        if (top.length) {
+          const body = "🧩 <b>Bugungi 3D modellar</b> (banketlarda ko‘p aytilgan, lekin saytda modeli yo‘q):\n\n" +
+            top.slice(0, 3).map(([id, n], i) => `${i + 1}. ${esc(names[id])} — ${n} marta`).join("\n") +
+            (top.length > 3 ? `\n\nYana ${top.length - 3} ta taomning modeli yo‘q.` : "") + "\n\nRasmini Tripo’da yasab, Downloads papkasiga tashlang — saytga men qo‘yaman.";
+          const owners = String(env.ADMIN_IDS || "").split(",").map(x => x.trim()).filter(Boolean);
+          for (const c of owners) { try { await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chat_id: c, text: body, parse_mode: "HTML" }) }); } catch (e) {} }
+          models = top.slice(0, 3).map(x => x[0]).join(",");
+        }
+      }
+    } catch (e) { models = "xato: " + String(e.message || e).slice(0, 80); }
+  }
+  return json(200, { ok: true, today, tomorrow, checked: rows.length, sent, models });
 }
 
 export const onRequestGet = run;
