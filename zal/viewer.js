@@ -103,7 +103,7 @@ export async function start({ canvas, id, url, onProgress, shell }) {
     });
   }
 
-  let floorRefl = null, ceilRefl = null;
+  let floorRefl = null, ceilRefl = null, slow = 0;
   let wallRefl = null, mirrorRT = null, mirrorCam = null, mirrorBox = null, mirrorFar = 60;
   let limit; // (nx, ny[, x0, y0]) -> bool, ny = -z (Blender y)
 
@@ -283,7 +283,9 @@ export async function start({ canvas, id, url, onProgress, shell }) {
     const now = performance.now();
     if (now - t0 >= 2500) {
       const fps = frames * 1000 / (now - t0); frames = 0; t0 = now;
-      if (fps < 24 && document.visibilityState === 'visible') {
+      slow = fps < 15 ? slow + 1 : 0;   // sifatni faqat ketma-ket ikki marta juda sekin bo'lsa tushiramiz (oyna va aniqlik tez yo'qolmasin)
+      if (slow >= 2 && document.visibilityState === 'visible') {
+        slow = 0;
         if (stage === 0 && pixelRatio > 1) { pixelRatio = 1; renderer.setPixelRatio(1); resize(); }
         else if (stage === 1 && wallRefl) setMirror(false);
         else if (stage === 2) setRefl(false);

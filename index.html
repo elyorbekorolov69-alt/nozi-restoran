@@ -1674,7 +1674,7 @@ function Table3D(canvas, opts) {
   function longRow(z0, seats, L, side, gap, top, served, skip = 0) {
     const wood = STYLE === "wood";   // Terrasa: bare wooden top on black frames, no cloth, no runner, no flowers
     const drop = 0.42, W2 = wood ? 0.42 : 0.55, CZ = W2 + 0.4, PZ = W2 - 0.13;
-    put("disc", "#000000", 0, 0.012, z0, 0, L + 2.2, 1, 3.4, { a: 0.3, p: 10 });
+    put("disc", "#000000", 0, 0.012, z0, 0, L + 1.6, 1, 3.0, { a: 0.1, p: 10 });
     if (wood) put("box", C.wood, 0, top - 0.02, z0, 0, L + 0.06, 0.04, 2 * W2, { s: 0.35, sh: 30 });
     else {
       put("box", C.longCloth, 0, top - 0.01, z0, 0, L + 0.06, 0.02, 2 * W2 + 0.02, { s: 0.05 });
@@ -1756,7 +1756,7 @@ function Table3D(canvas, opts) {
 
   function roundTable(cx, cz, seats, served, wall = 0) {
     const top = 0.765;
-    put("disc", "#000000", cx, 0.012, cz, 0, 4.0, 1, 4.0, { a: 0.3, p: 10 });
+    put("disc", "#000000", cx, 0.012, cz, 0, 3.3, 1, 3.3, { a: 0.1, p: 10 });
     put("cloth", C.cloth, cx, 0, cz, 0, 1, 1, 1, { s: 0.06, sh: 12 });
     const seatsAt = [];
     // wall != 0: nobody sits with their back to the wall, so the chairs fill only the free half (about 10 fit)
@@ -1922,8 +1922,14 @@ function Table3D(canvas, opts) {
         all.slice(0, spotsAll.length).forEach((p, i) => { const [x, z] = spotsAll[i]; dish(p.k, p.col, x, z, 0.3 * (i % 3), t.top, p.d); });
       } else {
         // cheese and fruit on the big stands go in the middle, the medium stand next, everything low towards the guests
-        const ord = { tilla: 0, mid: 1, drink: 1.5, low: 2 }, sp = spotsAll.slice().sort((a, b) => Math.hypot(a[0] - (t.cx || 0), a[1] - (t.cz || 0)) - Math.hypot(b[0] - (t.cx || 0), b[1] - (t.cz || 0)));
-        placed.slice().sort((a, b) => (ord[a.k === "drink" ? "drink" : a.cat] ?? 2) - (ord[b.k === "drink" ? "drink" : b.cat] ?? 2)).slice(0, sp.length).forEach((p, i) => { const [x, z, a] = sp[i]; dish(p.k, p.col, x, z, a, t.top, p.d); });
+        // stendlar (pishloq/meva assorti, katta salat, desert) bir-biriga tegmasin: 0.45 va 0.58 halqada bittadan oralatib, qolgan taomlar bo'sh joyga
+        const dc = q => Math.hypot(q[0] - (t.cx || 0), q[1] - (t.cz || 0));
+        const stands = placed.filter(p => p.cat === "tilla" || p.cat === "mid").sort((a, b) => (a.cat === "tilla" ? 0 : 1) - (b.cat === "tilla" ? 0 : 1)), rest = placed.filter(p => !(p.cat === "tilla" || p.cat === "mid"));
+        const ringPos = r => spotsAll.filter(q => Math.abs(dc(q) - r) < 0.04).sort((a, b) => Math.atan2(a[1] - t.cz, a[0] - t.cx) - Math.atan2(b[1] - t.cz, b[0] - t.cx)).filter((q, i) => i % 2 === 0);
+        const stPos = ringPos(0.45).concat(ringPos(0.58)), used = [];
+        stands.slice(0, stPos.length).forEach((p, i) => { const [x, z, a] = stPos[i]; used.push(stPos[i]); dish(p.k, p.col, x, z, a, t.top, p.d); });
+        const sp = spotsAll.filter(q => !used.some(u => Math.hypot(q[0] - u[0], q[1] - u[1]) < 0.22) && !used.includes(q)).sort((a, b) => dc(a) - dc(b));
+        rest.slice(0, sp.length).forEach((p, i) => { const [x, z, a] = sp[i]; dish(p.k, p.col, x, z, a, t.top, p.d); });
       }
       // hot food: one portion on each guest's own charger (more portions than guests: two or three each, side by side)
       const ns = t.seatsAt.length;
@@ -1993,7 +1999,7 @@ function Table3D(canvas, opts) {
     if (!canvas.clientWidth) return;
     lastDraw = performance.now();
     if (SHON && sdirty) shadowPass();
-    const w = canvas.clientWidth, h = canvas.clientHeight, dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = canvas.clientWidth, h = canvas.clientHeight, dpr = Math.min(Math.max(window.devicePixelRatio || 1, 1.25), 2);
     if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -2767,7 +2773,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
   const MODEL3D = { "issiq-3": "baliq2", "sovuq-8": "pishloq", "meva-0": "meva-a", "meva-1": "oreh", "meva-2": "konfet", "shashlik-9": "qiymali_hq", "shashlik-10": "qiymali_hq", "shashlik-11": "qiymali_hq", "shashlik-13": "lyulya", "issiq-12": "til", "salat-8": "sezar2", "salat-11": "salat_nozi", "sovuq-2": "limon", "sovuq-3": "sarimsoq", "sovuq-4": "zaytun", "sovuq-7": "qalampir", "sovuq-5": "yaxna_new", "salat-12": "baqlajon",
     "kolbasa-0": "kolbasa", "kolbasa-1": "kolbasa", "issiq-8": "sabzavot", "shashlik-5": "qanot2", "shashlik-19": "qanot2",
     "birinchi-2": "tushonka", "salat-5": "veche", "issiq-7": "mulatka", "issiq-5": "kotlet", "issiq-6": "kotlet",
-    "issiq-9": "baliq2", "ichimlik-2": "cola", "ichimlik-3": "fanta", "ichimlik-4": "pepsi", "ichimlik-5": "sharbat", "desert-7": "des_assorti", "non-1": "qora_non", "non-0": "non_assorti", "non-2": "chapchak", "non-3": "chapchak", "ichimlik-1": "suv" };
+    "issiq-9": "baliq2", "ichimlik-2": "cola", "ichimlik-3": "fanta", "ichimlik-4": "pepsi", "desert-7": "des_assorti", "non-1": "qora_non", "non-0": "non_assorti", "non-2": "chapchak", "non-3": "chapchak", "ichimlik-1": "suv" };
   window.NZI_M3D = MODEL3D;   // kroket: menyudagi taomi aytilgach shu yerga qo‘shiladi
   const M3D = {};   // admin orqali yuklangan modellar: taom id -> { glb, img }
   const READY3D = [["baliq","Baliq"],["baqlajon","Qarsildoq baqlajon"],["kolbasa","Kolbasa"],["kroket","Kroket"],["lyulya","Lyulya (Beyti)"],["meva","Meva"],["non","Non savat"],["pishloq","Pishloq"],["sabzavot","Sabzavot"],["salat3","Salat (shisha likopcha)"],["sezar","Sezar"],["sorva","Sho‘rva"],["tushonka","Tushonka (yangi)"],["osh","Osh (yangi)"],["til","Til"],["qanot","Qanot"],["yaxna","Yaxna (karpachcho)"],["desert","Desert (pishloqli)"],["qovun","Qovun (shishda)"],["meva-stend","Meva (tayanchda)"],["kroket2","Kroket (yangi)"],["baliq2","Baliq (yangi, jonli)"],["veche","Salat Вече (yangi)"],["non2","Non assorti (yangi)"],["meva-a","Meva assorti 1 (yangi)"],["meva-b","Meva assorti 2 (yangi)"],["myasnoy","Мясное ассорти (yangi)"],["ovoshi","Овощной букет (yangi)"],["mulatka","Мулатка (yangi)"],["sezar2","Sezar (yangi)"],["qovun2","Qovun (yangi)"],["qanot2","Qanotcha (yangi)"],["gul2","Gul (yangi)"],["kotlet","Котлета (yangi)"]];
