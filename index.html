@@ -1884,8 +1884,8 @@ function Table3D(canvas, opts) {
         all.slice(0, t.spots.length).forEach((p, i) => { const [x, z] = t.spots[i]; dish(p.k, p.col, x, z, 0.3 * (i % 3), t.top, p.d); });
       } else {
         // cheese and fruit on the big stands go in the middle, the medium stand next, everything low towards the guests
-        const ord = { tilla: 0, mid: 1, low: 2 }, sp = t.spots.slice().sort((a, b) => Math.hypot(a[0] - (t.cx || 0), a[1] - (t.cz || 0)) - Math.hypot(b[0] - (t.cx || 0), b[1] - (t.cz || 0)));
-        placed.slice().sort((a, b) => (ord[a.cat] ?? 2) - (ord[b.cat] ?? 2)).slice(0, sp.length).forEach((p, i) => { const [x, z, a] = sp[i]; dish(p.k, p.col, x, z, a, t.top, p.d); });
+        const ord = { tilla: 0, mid: 1, drink: 1.5, low: 2 }, sp = t.spots.slice().sort((a, b) => Math.hypot(a[0] - (t.cx || 0), a[1] - (t.cz || 0)) - Math.hypot(b[0] - (t.cx || 0), b[1] - (t.cz || 0)));
+        placed.slice().sort((a, b) => (ord[a.k === "drink" ? "drink" : a.cat] ?? 2) - (ord[b.k === "drink" ? "drink" : b.cat] ?? 2)).slice(0, sp.length).forEach((p, i) => { const [x, z, a] = sp[i]; dish(p.k, p.col, x, z, a, t.top, p.d); });
       }
       // hot food: one portion on each guest's own charger (more portions than guests: two or three each, side by side)
       const ns = t.seatsAt.length;
@@ -3862,7 +3862,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
   function rebuild3D() {
     if (!t3d) return;
     const round = shapeNow() === "round";
-    const cap = x => ({ d: x.d, q: Math.min(x.q, ["c1", "c2", "c3"].includes(x.course) ? 60 : 6), course: x.course });
+    const cap = x => ({ d: x.d, q: Math.min(x.q, ["c1", "c2", "c3"].includes(x.course) ? 60 : (x.d && (x.d.sec === "non" || x.d.sec === "ichimlik") ? 2 : 6)), course: x.course });   // bread and drinks: a few on the table, not twenty
     const tv = tviewNow();
     t3d.build({
       shape: round ? "round" : "long",
@@ -4227,6 +4227,15 @@ if (typeof module !== "undefined") module.exports = makeQR;
       bk.items[d.id] = kgInfo(d) ? 1 : Math.max(1, Math.min(40, Math.round(a.q) || 1));
       bk.order = bk.order.filter(x => x !== d.id); bk.order.push(d.id);
     });
+    {   // non: bir necha xil bo'lsa, har biridan oz (assorti kabi), 10 tadan emas
+      const br = DISHES.filter(d => d.sec === "non" && bk.items[d.id] > 0);
+      if (br.length >= 2) br.forEach(d => { bk.items[d.id] = Math.max(1, Math.min(bk.items[d.id], Math.ceil(bk.guests / (br.length * 3)))); });
+    }
+    if (/kerak/i.test(bk.agWater || "") && !/emas/i.test(bk.agWater)) {   // komplekt suv: gazsiz suv, gazli ichimlik, sharbat (har 10 mehmonga bittadan)
+      const n = Math.max(1, Math.ceil(bk.guests / 10)), pick = v => DISHES.find(d => d.sec === "ichimlik" && d.v === v);
+      const gazli = ["cola", "fanta", "pepsi"].map(pick).find(d => d && bk.items[d.id] > 0) || pick("cola");
+      [pick("water"), gazli, pick("juice")].forEach(d => { if (d && !(bk.items[d.id] > 0)) { bk.items[d.id] = n; bk.order = bk.order.filter(x => x !== d.id); bk.order.push(d.id); } });
+    }
     if (o.bezak && typeof o.bezak === "object") {   // bezak: gul soni, martini, qaysi taom stendda (sayt koordinatani o'zi hisoblaydi)
       const z = o.bezak, d = { gul: bk.decor.gul, martini: !!bk.decor.martini, raise: Object.assign({}, bk.decor.raise) };
       if (z.gul !== undefined && z.gul !== null && Number.isFinite(+z.gul)) d.gul = Math.max(0, Math.min(12, Math.round(+z.gul)));
