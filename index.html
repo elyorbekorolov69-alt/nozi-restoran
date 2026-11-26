@@ -735,7 +735,7 @@ function Table3D(canvas, opts) {
     varying vec3 vN; varying vec3 vW; varying vec3 vL; varying vec4 vC; varying vec4 vM; varying vec4 vSh;
     uniform sampler2D uSM; uniform float uShOn, uShB;
     uniform vec3 uEye, uLP, uLC, uTint, uSk1, uSk2;
-    uniform float uAm, uSun, uTM, uAO; uniform sampler2D uTex; uniform sampler2D uA0, uA1;
+    uniform float uAm, uSun, uTM, uAO; uniform sampler2D uTex; uniform sampler2D uA0, uA1, uA2;
     float hh(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
     float unp(vec4 c){ return dot(c, vec4(1.0, 1.0 / 255.0, 1.0 / 65025.0, 1.0 / 16581375.0)); }
     float shadowAt(vec3 N, vec3 L){
@@ -858,9 +858,9 @@ function Table3D(canvas, opts) {
         vec2 q = vL.xz; float r = length(q) * 2.0;
         vec3 tc = texture2D(uTex, vec2(q.x + 0.5, 0.5 - q.y)).rgb;
         base = mix(tc, vec3(0.93, 0.92, 0.9), smoothstep(0.94, 1.0, r));
-      } else if (uP > 18.5 && uP < 20.5) {
-        // the restaurant's real dish photographs-as-texture (atlas pages 0 and 1), uv in vL.xy
-        base = (uP < 19.5 ? texture2D(uA0, vL.xy).rgb : texture2D(uA1, vL.xy).rgb) * vC.rgb;
+      } else if (uP > 18.5 && uP < 21.5) {
+        // the restaurant's real dish photographs-as-texture (atlas pages 0, 1, 2), uv in vL.xy
+        base = (uP < 19.5 ? texture2D(uA0, vL.xy).rgb : uP < 20.5 ? texture2D(uA1, vL.xy).rgb : texture2D(uA2, vL.xy).rgb) * vC.rgb;
         float lb = dot(base, vec3(0.299, 0.587, 0.114));
         base = clamp(mix(vec3(lb), base, 1.45), 0.0, 1.0);          // more colour: food looks fresh, not grey
         base = clamp((base - 0.5) * 1.12 + 0.5, 0.0, 1.0) * 1.04;   // a little more contrast
@@ -921,7 +921,7 @@ function Table3D(canvas, opts) {
     LPV = mul(P, V);
   }
   const A = {}; ["aP", "aN", "aL", "aC", "aM"].forEach(k => A[k] = gl.getAttribLocation(prog, k));
-  const U = {}; ["uPV", "uLPV", "uSM", "uShOn", "uShB", "uEye", "uLP", "uLC", "uTint", "uSk1", "uSk2", "uAm", "uSun", "uTM", "uAO", "uTex", "uA0", "uA1"].forEach(k => U[k] = gl.getUniformLocation(prog, k));
+  const U = {}; ["uPV", "uLPV", "uSM", "uShOn", "uShB", "uEye", "uLP", "uLC", "uTint", "uSk1", "uSk2", "uAm", "uSun", "uTM", "uAO", "uTex", "uA0", "uA1", "uA2"].forEach(k => U[k] = gl.getUniformLocation(prog, k));
   gl.enable(gl.DEPTH_TEST);
   gl.disable(gl.CULL_FACE);
   // the real photo of a dish, laid on the plate (texture unit 0; a plain plate colour until the photo arrives)
@@ -2183,13 +2183,13 @@ function Table3D(canvas, opts) {
     loadHQ();
   });
   // the sharp copies: real textures in two atlas pages (asboblar/atlas0.jpg, atlas1.jpg) + denser shapes (asboblar/engine-hq.json)
-  const atlasTex = [0, 1].map(i => { const t = gl.createTexture(); gl.activeTexture(gl.TEXTURE2 + i); gl.bindTexture(gl.TEXTURE_2D, t); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([200, 190, 175, 255])); return t; });
+  const NATL = 3, atlasTex = [0, 1, 2].map(i => { const t = gl.createTexture(); gl.activeTexture(gl.TEXTURE2 + i); gl.bindTexture(gl.TEXTURE_2D, t); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([200, 190, 175, 255])); return t; });
   gl.activeTexture(gl.TEXTURE0);
-  gl.uniform1i(U.uA0, 2); gl.uniform1i(U.uA1, 3);
+  gl.uniform1i(U.uA0, 2); gl.uniform1i(U.uA1, 3); gl.uniform1i(U.uA2, 4);
   function loadHQ() {
     if (!window.__nziHQ) window.__nziHQ = Promise.all([
-      fetch("asboblar/engine-hq.json").then(r => r.ok ? r.json() : null),
-      ...[0, 1].map(i => new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = "asboblar/atlas" + i + ".jpg"; })),
+      fetch("asboblar/engine-hq.json?v=3").then(r => r.ok ? r.json() : null),
+      ...[0, 1, 2].map(i => new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = "asboblar/atlas" + i + ".jpg?v=3"; })),
     ]).catch(() => [null]);
     window.__nziHQ.then(([j, ...ims]) => {
       if (!j || !alive || ims.some(im => !im)) return;
