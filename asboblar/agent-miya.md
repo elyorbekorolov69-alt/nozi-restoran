@@ -44,3 +44,5 @@ Sayt JSON kutadi: reply, guests, type, add:[{id,q}], remove, course. Bezash (gul
 - Non miqdori: 1 kishiga bitta nonning choragi (1/4). 10 kishiga kamida 2-3 ta katta non, 20 kishiga 5 ta. Bir necha xil non bo'lsa, jami miqdor ular o'rtasida teng bo'linadi. Nonni 10 tadan qo'shma.
 - Ovozli buyruq: "Murodga 6 ta, Anasarga 4 ta, komplekt suv 3 ta" kabi gaplarni qabul qil, har bir ism/taomni add ga qo'sh.
 - Mijoz "to'rtburchak/4 burchak stol" desa uzun (to'rtburchak) stol, "dumaloq" desa doira stol; shaklni o'zing o'zgartirma, sayt buni eslab qoladi.
+
+- "100гр" deb yozilgan taomlar (masalan, Яхна 100гр) narxi 100 gramm uchun. Kishi boshiga 100 gramm: 10 kishiga 10 ta (= 1 kg), 30 kishiga 30 ta (= 3 kg). Miqdor = mehmonlar soni. Javobda kilogramm bilan ham ayt (masalan, "Яхна 1 kg"). Stolda bu taxminan 200 grammli laganlar bo'lib ko'rinadi. (egasi 26 Noyabr)

@@ -4119,7 +4119,10 @@ if (typeof module !== "undefined") module.exports = makeQR;
     const round = shapeNow() === "round";
     const isT = x => x.d && (x.d.ru === "Сырное ассорти" || x.d.v === "fruit");
     const tillaQ = x => !isT(x) ? x.q : round ? Math.max(2, x.q) : Math.min(x.q, 2 * Math.max(1, Math.ceil(bk.guests / Math.max(1, rowsNow() || 1) / 14)));   // doira: 2 ta; uzun qator: har ~14 kishiga 1 juft (ko'payib ketmasin)   // doira stolga odatda 2 ta pishloq va 2 ta meva assorti
-    const cap = x => ({ d: x.d, q: Math.min(tillaQ(x), ["c1", "c2", "c3"].includes(x.course) ? 60 : (x.d && x.d.sec === "non" ? Math.min(6, Math.max(1, Math.ceil(Math.ceil(bk.guests / 4) / 3 / Math.max(1, DISHES.filter(d => d.sec === "non" && bk.items[d.id] > 0).length)))) : x.d && x.d.sec === "ichimlik" ? 10 : 6)), course: x.course });   // bread and drinks: a few on the table, not twenty
+    // "100гр" taom (yaxna): q = 100 grammlar soni (butun banket); stolda bitta lagan ~200 gr, har stolga o'z ulushi
+    const perT = round ? 10 : Math.max(1, bk.guests / Math.max(1, rowsNow() || 1)), nT = Math.max(1, Math.round(bk.guests / perT));
+    const gramQ = x => x.d && /100\s*гр/i.test(x.d.ru || "") ? Math.min(6, Math.max(1, Math.ceil(x.q / nT / 2))) : null;
+    const cap = x => gramQ(x) != null ? { d: x.d, q: gramQ(x), course: x.course } : ({ d: x.d, q: Math.min(tillaQ(x), ["c1", "c2", "c3"].includes(x.course) ? 60 : (x.d && x.d.sec === "non" ? Math.min(6, Math.max(1, Math.ceil(Math.ceil(bk.guests / 4) / 3 / Math.max(1, DISHES.filter(d => d.sec === "non" && bk.items[d.id] > 0).length)))) : x.d && x.d.sec === "ichimlik" ? 10 : 6)), course: x.course });   // bread and drinks: a few on the table, not twenty
     const tv = tviewNow();
     t3d.build({
       shape: round ? "round" : "long",
@@ -4488,6 +4491,8 @@ if (typeof module !== "undefined") module.exports = makeQR;
       const br = DISHES.filter(d => d.sec === "non" && bk.items[d.id] > 0);
       // 1 kishiga non chorak (1/4): 10 kishiga ~3 ta, 20 kishiga 5 ta; bir necha xil bo'lsa teng bo'linadi
       if (br.length) { const per = Math.max(1, Math.ceil(Math.ceil(bk.guests / 4) / br.length)); br.forEach(d => { bk.items[d.id] = per; }); }
+      // "100гр" li taomlar (Яхна 100гр): narx 100 gramm uchun, kishi boshiga 100 gr -> 10 kishiga 10 ta (= 1 kg). Agent 1 ta deb qo'ysa ham shunga to'g'rilanadi
+      DISHES.filter(d => /100\s*гр/i.test(d.ru || "") && bk.items[d.id] > 0).forEach(d => { if (bk.items[d.id] < bk.guests) bk.items[d.id] = bk.guests; });
     }
     if (/kerak/i.test(bk.agWater || "") && !/emas/i.test(bk.agWater)) {   // komplekt suv: 1 komplekt = 10 mehmon (gazsiz suv, gazli ichimlik, sharbat); to'liq o'nliklar qo'yiladi, ortig'i uchun so'raydi
       const n = Math.max(1, Math.floor(bk.guests / 10)), rem = bk.guests - n * 10, pick = v => DISHES.find(d => d.sec === "ichimlik" && d.v === v);
