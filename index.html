@@ -3250,11 +3250,14 @@ if (typeof module !== "undefined") module.exports = makeQR;
         ? `<div class="cm-row"><span><b class="sg-t">${esc(s.title)}</b>${s.by ? ` <small>${esc(s.by)}</small>` : ""}</span><button class="pill" type="button" data-song="${i}" aria-pressed="false">▶ Tinglash</button></div>`
         : `<div class="cm-row"><span><b class="sg-t">${esc(s.title)}</b>${s.by ? ` <small>${esc(s.by)}</small>` : ""}</span>${s.url ? `<a class="pill" href="${esc(s.url)}" target="_blank" rel="noopener">Ochish</a>` : ""}</div>`).join("")}</div><audio preload="none"></audio>`
     : `<p class="note" style="margin-top:6px">Restoran qo‘shiqlari tez orada shu yerda bo‘ladi.</p>`;
+  // YouTube havolasidan video id (watch?v=, youtu.be/, shorts/, embed/, live/)
+  const ytIdOf = u => { const m = String(u || "").match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/)|youtu\.be\/)([\w-]{11})/); return m ? m[1] : ""; };
+  const ytWide = id => `<iframe class="ad-yt" src="https://www.youtube-nocookie.com/embed/${id}?autoplay=1&mute=1&loop=1&playlist=${id}&controls=1&rel=0&playsinline=1&modestbranding=1" title="NoZi reklamasi (YouTube)" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:0;z-index:2"></iframe>`;
   function viewAds(body) {
     body.classList.remove("split");
     body.innerHTML = `
       <h3 class="sub first">Katta ekran reklamasi</h3>
-      <div class="ad-wide"><video id="adw" src="${WADS[0]}" ${WADS[0] === WIDE_AD ? `poster="${WIDE_POSTER}"` : ""} playsinline muted ${WADS.length > 1 ? "" : "loop"} preload="metadata" aria-label="NoZi reklamasi, katta ekran uchun"></video><button class="fs" type="button" data-fs="" aria-label="To‘liq ekran" aria-pressed="false"></button>
+      <div class="ad-wide"><video id="adw" src="${ytIdOf(WADS[0]) ? "" : WADS[0]}" ${WADS[0] === WIDE_AD ? `poster="${WIDE_POSTER}"` : ""} playsinline muted ${WADS.length > 1 ? "" : "loop"} preload="metadata" aria-label="NoZi reklamasi, katta ekran uchun"></video><button class="fs" type="button" data-fs="" aria-label="To‘liq ekran" aria-pressed="false"></button>
         <button class="ad-sound" id="adwsound" type="button" aria-pressed="false"></button></div>
       <p class="ad-cap">Zaldagi katta televizor uchun yasalgan video, 2:1 kenglikda. Ovozi bilan ko‘ring.</p>
       <h3 class="sub">Restoran videolari</h3>
@@ -3287,9 +3290,14 @@ if (typeof module !== "undefined") module.exports = makeQR;
     adVideo = body.querySelector("#adv");
     adWide = body.querySelector("#adw");
     let wi = 0;   // ro‘yxatda bir nechta katta ekran videosi bo‘lsa, ular navbat bilan aylanadi
+    const wideBox = adWide.parentElement;
+    const showYT = id => { if (!wideBox.querySelector(".ad-yt")) { wideBox.style.position = "relative"; wideBox.insertAdjacentHTML("afterbegin", ytWide(id)); } adWide.pause(); adWide.removeAttribute("src"); const sb = wideBox.querySelector("#adwsound"); if (sb) sb.hidden = true; };
+    if (ytIdOf(WADS[0])) showYT(ytIdOf(WADS[0]));   // YouTube havolasi: o'sha video aylanib turadi (ovozini YouTube tugmasidan yoqasiz)
     adWide.addEventListener("ended", () => {
       if (WADS.length < 2) return;
-      wi = (wi + 1) % WADS.length; adWide.removeAttribute("poster"); adWide.src = WADS[wi]; adWide.play().catch(() => {});
+      wi = (wi + 1) % WADS.length;
+      if (ytIdOf(WADS[wi])) return showYT(ytIdOf(WADS[wi]));
+      adWide.removeAttribute("poster"); adWide.src = WADS[wi]; adWide.play().catch(() => {});
     });
     // songs: play one at a time; guests collect requests into a list they can copy
     const sgList = body.querySelector("#sgList"), sgReq = body.querySelector("#sgReq"), sgName = body.querySelector("#sgName");
@@ -3559,13 +3567,15 @@ if (typeof module !== "undefined") module.exports = makeQR;
           <p id="admMsg" class="adm-ok" role="status"></p>`;
       },
       reklama() {
-        const W = WADS.map((u, i) => `<div class="adm-row"><span class="adm-name">${i + 1}. ${esc(String(u).split("/").pop())}</span>
+        const W = WADS.map((u, i) => `<div class="adm-row"><span class="adm-name">${i + 1}. ${ytIdOf(u) ? "YouTube: " + esc(ytIdOf(u)) : esc(String(u).split("/").pop())}</span>
           <button class="pill" type="button" data-wadup="${i}" aria-label="Yuqoriga">↑</button><button class="pill" type="button" data-wadn="${i}" aria-label="Pastga">↓</button><button class="pill" type="button" data-waddel="${i}" aria-label="Olib tashlash">✕</button></div>`).join("");
         const L = ADS.map((u, i) => `<div class="adm-row"><span class="adm-name">${i + 1}. ${esc(String(u).split("/").pop())}</span>
           <button class="pill" type="button" data-adup="${i}" aria-label="Yuqoriga">↑</button><button class="pill" type="button" data-addn="${i}" aria-label="Pastga">↓</button><button class="pill" type="button" data-addel="${i}" aria-label="Olib tashlash">✕</button></div>`).join("");
         const G = GAL.map((g, i) => `<div class="adm-row"><img class="adm-th" src="${esc(g.src)}" alt=""><input type="text" data-gcap="${i}" value="${esc(g.cap)}" aria-label="Rasm izohi"><button class="pill" type="button" data-gdel="${i}" aria-label="Olib tashlash">✕</button></div>`).join("");
         return `<p class="bk-sub" style="margin-top:0">Katta ekran videolari (televizor, 2:1 keng video)</p>${W || `<p class="note">Video yo‘q.</p>`}
           <div style="margin-top:10px">${fileBtn("adw", "new", "Katta ekranga video qo‘shish", "video/mp4,video/webm")}</div>
+          <form class="sg-form" id="admYtF" autocomplete="off" style="margin-top:10px"><input type="url" id="admYt" placeholder="yoki YouTube havolasi: https://youtu.be/..." aria-label="YouTube havolasi"><button class="pill gold" type="submit">YouTube’dan qo‘shish</button></form>
+          <p class="note">YouTube havolasini qo‘shsangiz, katta ekranda o‘sha video aylanib turadi (ro‘yxatda birinchi bo‘ladi).</p>
           <p class="note">Zaldagi katta televizor va Reklamalar oynasining yuqori qismi uchun. Bir nechta bo‘lsa, navbat bilan aylanadi.</p>
           <p class="bk-sub">Telefon ekrani videolari (9:16, tik video)</p>${L || `<p class="note">Video yo‘q.</p>`}
           <div style="margin-top:10px">${fileBtn("ad", "new", "Telefon ekraniga video qo‘shish", "video/mp4,video/webm")}</div>
@@ -3901,6 +3911,13 @@ if (typeof module !== "undefined") module.exports = makeQR;
         if (r.ok) adm.tf = null;
         msg(r.ok ? "Saqlandi. Banket oynasida darrov ko‘rinadi." : failMsg(r), !r.ok);
         return;
+      }
+      if (e.target.id === "admYtF") {
+        const u = box.querySelector("#admYt").value.trim(), id = ytIdOf(u);
+        if (!id) return msg("Bu YouTube havolasi emas. Masalan: https://youtu.be/AbCdEf12345", true);
+        WADS.unshift("https://youtu.be/" + id);
+        const r = await admSave("adsw", WADS.slice());
+        draw(); msg(r.ok ? "Qo‘shildi. Katta ekranda shu YouTube video ko‘rinadi." : failMsg(r), !r.ok); return;
       }
       if (e.target.id === "admTxF") {
         const g = Math.round(Number(box.querySelector("#txG").value)), items = box.querySelector("#txI").value.trim(), total = Math.round(Number(box.querySelector("#txT").value) || 0);
