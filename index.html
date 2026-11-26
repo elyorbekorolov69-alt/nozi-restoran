@@ -862,7 +862,7 @@ function Table3D(canvas, opts) {
         // the restaurant's real dish photographs-as-texture (atlas pages 0, 1, 2), uv in vL.xy
         base = (uP < 19.5 ? texture2D(uA0, vL.xy).rgb : uP < 20.5 ? texture2D(uA1, vL.xy).rgb : texture2D(uA2, vL.xy).rgb) * vC.rgb;
         float lb = dot(base, vec3(0.299, 0.587, 0.114));
-        base = clamp(mix(vec3(lb), base, 1.45), 0.0, 1.0);          // more colour: food looks fresh, not grey
+        base = clamp(mix(vec3(lb), base, 1.45 - 0.9 * uE), 0.0, 1.0);   // more colour: food looks fresh, not grey (uE: per-model 'less colour', e.g. bread)
         base = clamp((base - 0.5) * 1.12 + 0.5, 0.0, 1.0) * 1.04;   // a little more contrast
       } else if (uP > 16.5 && uP < 17.5) {
         vec2 p = vW.xz; vec2 q = vec2(p.x + p.y, p.x - p.y) * 0.7071;
@@ -883,7 +883,7 @@ function Table3D(canvas, opts) {
       col += vec3(1.0, 0.97, 0.92) * pow(max(dot(N, H), 0.0), uSh) * uS * uSun * shw;
       col += uLC * pow(max(dot(N, normalize(pn + V)), 0.0), uSh) * uS * att * 1.6;
       float fr = pow(1.0 - max(dot(N, V), 0.0), 3.0);
-      col += vec3(0.85, 0.88, 1.0) * fr * 0.12 * uSun + base * uE;
+      col += vec3(0.85, 0.88, 1.0) * fr * 0.12 * uSun + base * ((uP > 18.5 && uP < 21.5) ? 0.0 : uE);
       if (uTM > 0.5) col = (1.0 - exp(-col * 2.1)) * 1.03;
       float a = alpha < 0.99 ? clamp(alpha + fr * 0.5, 0.0, 1.0) : 1.0;
       gl_FragColor = vec4(col, a);
@@ -964,7 +964,7 @@ function Table3D(canvas, opts) {
       const uv = new Float32Array(o.n * 2);
       for (let k = 0; k < o.n * 2; k++, q += 2) uv[k] = dv.getUint16(q, true) / 65535;
       for (let k = 0; k < o.i; k++, q += 2) idx[k] = dv.getUint16(q, true);
-      return { pos, nor, idx, n: o.n, uv, tp: 19 + (o.t || 0), s: o.s, sh: o.sh, a: o.a };
+      return { pos, nor, idx, n: o.n, uv, tp: 19 + (o.t || 0), s: o.s, sh: o.sh, a: o.a, e: o.e || 0 };
     }
     for (let k = 0; k < o.n * 3; k++, q += 1) col[k] = u[q];
     for (let k = 0; k < o.i; k++, q += 2) idx[k] = dv.getUint16(q, true);
@@ -1174,7 +1174,7 @@ function Table3D(canvas, opts) {
   // a ready-made model, scaled by sc, standing at x,y,z; false if it has not arrived (the caller then draws the plain shape)
   function putA(name, x, y, z, r, sc = 1, sy = sc, tint = null) {
     const parts = (!HQON && ASLO[name]) || AS[name]; if (!parts) return false;
-    parts.forEach(g => items.push({ g, c: tint || [255, 255, 255], M: model(x, y, z, r, sc, sy, sc, 0), a: g.a, s: tint ? 0.75 : g.s, sh: tint ? 90 : g.sh, e: 0, p: g.tp || 0 }));
+    parts.forEach(g => items.push({ g, c: tint || [255, 255, 255], M: model(x, y, z, r, sc, sy, sc, 0), a: g.a, s: tint ? 0.75 : g.s, sh: tint ? 90 : g.sh, e: g.e || 0, p: g.tp || 0 }));
     return true;
   }
   // bake a list of pieces into as few GPU buffers as 16-bit indices allow
