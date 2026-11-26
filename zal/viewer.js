@@ -283,8 +283,8 @@ export async function start({ canvas, id, url, onProgress, shell }) {
     const now = performance.now();
     if (now - t0 >= 2500) {
       const fps = frames * 1000 / (now - t0); frames = 0; t0 = now;
-      slow = fps < 15 ? slow + 1 : 0;   // sifatni faqat ketma-ket ikki marta juda sekin bo'lsa tushiramiz (oyna va aniqlik tez yo'qolmasin)
-      if (slow >= 2 && document.visibilityState === 'visible') {
+      slow = fps < 8 ? slow + 1 : 0;   // sifatni faqat ketma-ket ikki marta juda sekin bo'lsa tushiramiz (oyna va aniqlik tez yo'qolmasin)
+      if (slow >= 3 && document.visibilityState === 'visible') {
         slow = 0;
         if (stage === 0 && pixelRatio > 1) { pixelRatio = 1; renderer.setPixelRatio(1); resize(); }
         else if (stage === 1 && wallRefl) setMirror(false);

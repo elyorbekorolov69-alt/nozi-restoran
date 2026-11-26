@@ -4335,6 +4335,11 @@ if (typeof module !== "undefined") module.exports = makeQR;
         if (r.status === 401) { bkTok.set(""); bkChecked = false; bk.chatBusy = false; viewBanketGate(body, "Sessiya tugadi. Kodni qayta kiriting."); return; }
         if (!r.ok || !j.ok) { bk.chat.push({ r: "a", t: (j.error || "Yordamchi hozir javob bermadi.") + (Array.isArray(j.detail) && j.detail.length ? " [kod: " + j.detail.join("; ") + "]" : r.ok ? "" : " [HTTP " + r.status + "]"), err: true }); return done(); }
         agentApply(j);
+        {   // mijoz stol shaklini aytsa (to'rtburchak / dumaloq), agent uni o'zgartirib yubormasin
+          const all = bk.chat.filter(m => m.r === "u").map(m => m.t).join(" ").toLowerCase();
+          const lastLong = Math.max(all.search(/to['‘’`]?rt\s*burchak|4\s*burchak|to['‘’`]?g['‘’`]?ri\s*stol|uzun\s*stol/), -1), lastRound = Math.max(all.search(/dumaloq|doira/), -1);
+          if (lastLong >= 0 || lastRound >= 0) { bk.shape = lastLong > lastRound ? "long" : "round"; bk.rest = null; }
+        }
         bk.chat.push({ r: "a", t: j.reply || "Tayyor." });
         if (bk.askWater) bk.chat.push({ r: "a", t: `${bk.guests} kishiga ${bk.waterN} komplekt suv qo‘ydim (1 komplekt = 10 kishi). Yana 1 komplekt qo‘shaymi? “ha” yoki “yo‘q” deb yozing.` });
         done();

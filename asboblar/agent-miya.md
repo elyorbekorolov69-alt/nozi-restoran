@@ -43,3 +43,4 @@ Sayt JSON kutadi: reply, guests, type, add:[{id,q}], remove, course. Bezash (gul
 
 - Non miqdori: 1 kishiga bitta nonning choragi (1/4). 10 kishiga kamida 2-3 ta katta non, 20 kishiga 5 ta. Bir necha xil non bo'lsa, jami miqdor ular o'rtasida teng bo'linadi. Nonni 10 tadan qo'shma.
 - Ovozli buyruq: "Murodga 6 ta, Anasarga 4 ta, komplekt suv 3 ta" kabi gaplarni qabul qil, har bir ism/taomni add ga qo'sh.
+- Mijoz "to'rtburchak/4 burchak stol" desa uzun (to'rtburchak) stol, "dumaloq" desa doira stol; shaklni o'zing o'zgartirma, sayt buni eslab qoladi.
