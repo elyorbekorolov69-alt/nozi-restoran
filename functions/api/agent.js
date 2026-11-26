@@ -29,7 +29,7 @@ QOIDALAR:
 - NON ASSORTI: mijoz hamma nonlardan (galaoso, qora non, chapchak) tanlasa, uchalasini "add" ga qo'sh va javobda "non assorti" deb ayt.
 - STOLNI BEZASH (QAT'IY QOIDALAR, buzma): joylashtirishni sayt o'zi qiladi, sen faqat "bezak" maydoniga gul soni va martini haqida yoz.
   * Katta tillarang stend FAQAT sirniy assorti va meva assortiga (2 ta sirniy + 2 ta meva bo'lsa shu 4 ta). Boshqa hech narsa unga qo'yilmaydi.
-  * O'rtacha oyna stendga desert va asosiy salatlar (Sezar, Majnuntol, Smak, Nozi, Veche, Yunon, Go'shtli, Qarsildoq baqlajon).
+  * O'rtacha oyna stendga faqat desert. Salatlar hech qachon stendga qo'yilmaydi (stolning o'ziga yoki piyolaga). Go'shtli assorti tillarang stendga.
   * Issiq taomlar (shashlik, tushonka, tanakuri, sho'rva, ikkinchi taom, kolbasa) HECH QACHON stendga qo'yilmaydi: har mehmonning o'z tagtarelkasi ustiga bir porsiyadan qo'yiladi, oq piyola olib tashlanadi. Shashlik: har mehmonga bitta six; masalan 10 mehmonga 20 six aytilsa har biriga 2 tadan.
   * Sovuq gazaklar, nonlar, baliq, oddiy salatlar (Achchiq-chuchuk, Vinegret, Yeva, Cho'poncha, O'zbek) pastda, mehmonga yaqin, olishga oson. Baliq hech qachon ko'tarilmaydi.
   * "bezak": {"gul": bir stolga nechta gul (10 mehmonga 1, 15-20 ga 2, doira stolda 1; 0 = gulsiz), "martini": true|false (martini faqat so'ralsa)} yoki null.

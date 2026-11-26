@@ -1143,10 +1143,9 @@ function Table3D(canvas, opts) {
   const SEATSEC = ["birinchi", "ikkinchi", "shashlik", "kolbasa"], MAINSALAD = ["Цезарь", "Махнунтол", "Смак", "Вече", "Nozi", "Мясной", "Греческий", "Хрустящий"];
   function catOf(d) {
     if (!d) return "low";
-    if (d.ru === "Сырное ассорти" || d.v === "fruit") return "tilla";
+    if (d.ru === "Сырное ассорти" || d.v === "fruit" || /ассорти|assorti/i.test((d.ru || "") + " " + (d.uz || "")) && /мяс|go‘sht|go'sht|овощ|sabzavot/i.test((d.ru || "") + " " + (d.uz || ""))) return "tilla";   // stendda: pishloq, meva, go'shtli (va ba'zan sabzavotli) assorti
     if (SEATSEC.includes(d.sec)) return "seat";
     if (d.sec === "desert") return "mid";
-    if (d.sec === "salat" && MAINSALAD.some(w => (d.ru || "").includes(w))) return "mid";
     return "low";
   }
   const MIDH = 0.24;   // the medium stand: the tall glass stand pressed to this height (half-way between the tall and the low one)

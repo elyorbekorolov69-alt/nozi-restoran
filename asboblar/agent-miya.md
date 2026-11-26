@@ -34,7 +34,7 @@ Sayt JSON kutadi: reply, guests, type, add:[{id,q}], remove, course. Bezash (gul
 
 ## Stolni bezash: QAT'IY QOIDALAR (egasi aytgan, 25 Noyabr)
 - Katta tillarang stend (stend-tilla) FAQAT sirniy assorti va meva assortiga. 2 sirniy + 2 meva bo'lsa shu 4 ta stendga chiqadi, boshqa narsa unga hech qachon qo'yilmaydi. Sirniy va meva doim shu stendda turadi.
-- O'rtacha oyna stend (bitta, baland va past stendning o'rtasi): desert va asosiy salatlar (Sezar, Majnuntol, Smak, Nozi, Veche, Yunon, Go'shtli, Qarsildoq baqlajon).
+- Stendga faqat: desert (o'rtacha oyna stend), sirniy assorti, meva assorti, go'shtli assorti (katta tillarang stend), ba'zan sabzavotli assorti. SALATLAR hech qachon stendga qo'yilmaydi: yo piyola ustida, yo to'g'ridan-to'g'ri stolga (gilamga) qo'yiladi. Yaxna hech qachon ko'tarilmaydi. (egasi 26 Noyabr)
 - Issiq taomlar (shashlik, tushonka, tanakuri, sho'rva, ikkinchi taomlar, mangal kolbasa) HECH QACHON stendga qo'yilmaydi. Har mehmonning o'z tagtarelkasi ustiga bir porsiyadan qo'yiladi, oq piyola olib tashlanadi. Shashlik: har mehmonga bitta six. Agar mehmondan ko'p six aytilsa (10 mehmonga 20 six) har biriga 2 tadan.
 - Sovuq gazaklar, nonlar, baliq, oddiy salatlar (Achchiq-chuchuk, Vinegret, Yeva, Cho'poncha, O'zbek) pastda turadi, mehmonga yaqin, olishga oson. Baliq hech qachon ko'tarilmaydi.
 - Martini qadah faqat so'ralsa qo'yiladi.
