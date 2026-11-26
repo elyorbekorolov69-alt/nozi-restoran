@@ -367,6 +367,7 @@ body {
 .ag-m.a { align-self: flex-start; background: rgba(255, 255, 255, 0.08); color: var(--petal); }
 .ag-m.err { color: #ff9b9b; }
 .ag-f { display: flex; gap: 8px; padding: 12px 14px; }
+.ag-f .btn.rec { background: #b3261e; color: #fff; }
 .ag-g { padding: 0 14px 14px; }
 .ag-g .ag-q { margin: 0 0 10px; font-size: 15px; line-height: 1.45; color: var(--petal); }
 .ag-g .ag-q b { color: var(--gold-soft); font-weight: 600; }
@@ -4053,7 +4054,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
         <p class="bk-todo"><span><b>Nima qilish kerak:</b> pastdagi bo‘limni tanlang (masalan, Salatlar), keyin taom yonidagi <b>+</b> tugmasi bilan qo‘shing. Tanlaganingiz stolda ko‘rinadi. Hammasini tanlab bo‘lgach, “Tartibni ko‘rish” ni bosing.</span></p>
         <details class="ag" ${bk.chatOpen || !bk.agGuided ? "open" : ""}><summary>AI yordamchi: avval bir necha savolga javob bering, u taomlarni o‘zi tanlab beradi</summary>
           ${bk.agGuided || bk.chat.length ? `<div class="ag-log" id="agLog">${bk.chat.map(m => `<div class="ag-m ${m.r}${m.err ? " err" : ""}">${esc(m.t)}</div>`).join("")}${bk.chatBusy ? `<div class="ag-m a">Yozyapman…</div>` : ""}</div>
-          <form class="ag-f" id="agForm" autocomplete="off"><input type="text" id="agIn" maxlength="600" placeholder="Masalan: salatlarni ko‘paytir, shashlik qo‘sh" aria-label="AI yordamchiga xabar" ${bk.chatBusy ? "disabled" : ""}><button class="btn primary" type="submit" ${bk.chatBusy ? "disabled" : ""}>Yuborish</button></form>` : agGuideHTML()}</details>
+          <form class="ag-f" id="agForm" autocomplete="off"><input type="text" id="agIn" maxlength="600" placeholder="Masalan: salatlarni ko‘paytir, shashlik qo‘sh" aria-label="AI yordamchiga xabar" ${bk.chatBusy ? "disabled" : ""}><button class="btn" type="button" id="agMic" title="Ovozda gapirish" aria-label="Ovozda gapirish" ${bk.chatBusy ? "disabled" : ""}>🎤</button><button class="btn primary" type="submit" ${bk.chatBusy ? "disabled" : ""}>Yuborish</button></form>` : agGuideHTML()}</details>
         <p class="bk-p">Taomdan tortib suvgacha ${setWord()} qanchadan qo‘yilishini tanlang. ${tablesNow() > 1 ? `Taomlar ${tablesNow()} ta ${tblWord()}ga navbat bilan taqsimlanadi: 1-taom 1-${tblWord()}ga, 2-taom 2-${tblWord()}ga va hokazo. Har bir ${tblWord()} faqat o‘z taomlari uchun hisoblanadi.` : `Tanlaganingiz stolda paydo bo‘ladi${n > 1 ? `, soni ${n} ta qismga o‘zi ko‘paytiriladi` : ""}.`}</p>
         ${isTab() ? "" : view3DHTML(metaText())}
         <div class="chips" role="toolbar" aria-label="Bo‘limlar">
@@ -4283,6 +4284,24 @@ if (typeof module !== "undefined") module.exports = makeQR;
         done();
       } catch (err) { bk.chat.push({ r: "a", t: "Internet yo‘q yoki server javob bermadi.", err: true }); done(); }
     };
+    const agMic = body.querySelector("#agMic");   // ovozda gapirish: gap matnga aylanib, agentga ketadi
+    if (agMic) {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) { agMic.style.display = "none"; }
+      else {
+        let rec = null;
+        agMic.addEventListener("click", () => {
+          if (rec) { rec.stop(); return; }
+          rec = new SR(); rec.lang = "uz-UZ"; rec.interimResults = true; rec.continuous = true;
+          const inp = body.querySelector("#agIn"); let fin = "";
+          agMic.textContent = "⏹"; agMic.classList.add("rec");
+          rec.onresult = ev => { let tmp = ""; for (let i = ev.resultIndex; i < ev.results.length; i++) { const r = ev.results[i]; if (r.isFinal) fin += r[0].transcript + " "; else tmp += r[0].transcript; } if (inp) inp.value = (fin + tmp).trim(); };
+          rec.onerror = () => { if (inp && !inp.value) inp.placeholder = "Mikrofon ishlamadi — ruxsat bering yoki yozing"; };
+          rec.onend = () => { rec = null; agMic.textContent = "🎤"; agMic.classList.remove("rec"); const t = inp ? inp.value.trim() : ""; if (t) sendAgent(t); };
+          try { rec.start(); } catch (e) { rec = null; agMic.textContent = "🎤"; }
+        });
+      }
+    }
     if (agF) agF.addEventListener("submit", e => { e.preventDefault(); sendAgent(agF.querySelector("#agIn").value.trim()); });
     // savollar bittadan: narx, taom turi, komplekt suv. Oxirida hammasi bitta xabar bo‘lib AI ga ketadi
     const agNext = () => { if (bk.agq < 2) { bk.agq = bk.agTier && bk.agq === 0 ? 2 : bk.agq + 1; bk.chatOpen = true; rerender(); } else { bk.agGuided = true; bk.chatOpen = true; sendAgent(agGuideText()); } };
