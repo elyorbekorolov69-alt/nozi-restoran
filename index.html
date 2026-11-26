@@ -3724,7 +3724,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
   const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   const bk = { step: 0, type: "banket", guests: 30, date: "", time: "18:00", hall: null, shape: null, rows: null, corner: "round", change: false,
     items: {}, order: [], course: {}, sec: "", view: "dasturxon", name: "", phone: "", note: "", sent: false, posted: "", link: "",
-    rest: null, tcount: null, tview: null, lastDish: null, plates: {}, chat: [], chatOpen: false, chatBusy: false, agGuided: false, decor: {}, agq: 0, agTier: "", agBudget: 0, agTotal: 0, agKind: "", agWater: "", event: "", pop: {}, popLoaded: false };
+    rest: null, tcount: null, tview: null, lastDish: null, plates: {}, chat: [], chatOpen: false, chatBusy: false, agGuided: false, decor: {}, agq: 0, agTier: "", agBudget: 0, agTotal: 0, agKind: "", agWater: "", waterN: 0, askWater: 0, waterAsked: 0, event: "", pop: {}, popLoaded: false };
 
   // ----- kilogramm bilan hisoblanadigan taomlar: kishiga gramm, stol va tarelkalarga bo‘linadi -----
   const KG_STEP = 50, PLATE_PER = 5, PLATE_STEP = 5;     // jami 50 g gacha yuqoriga; har 5 kishiga 1 tarelka
@@ -4231,10 +4231,12 @@ if (typeof module !== "undefined") module.exports = makeQR;
       const br = DISHES.filter(d => d.sec === "non" && bk.items[d.id] > 0);
       if (br.length >= 2) br.forEach(d => { bk.items[d.id] = Math.max(1, Math.min(bk.items[d.id], Math.ceil(bk.guests / (br.length * 3)))); });
     }
-    if (/kerak/i.test(bk.agWater || "") && !/emas/i.test(bk.agWater)) {   // komplekt suv: gazsiz suv, gazli ichimlik, sharbat (har 10 mehmonga bittadan)
-      const n = Math.max(1, Math.ceil(bk.guests / 10)), pick = v => DISHES.find(d => d.sec === "ichimlik" && d.v === v);
+    if (/kerak/i.test(bk.agWater || "") && !/emas/i.test(bk.agWater)) {   // komplekt suv: 1 komplekt = 10 mehmon (gazsiz suv, gazli ichimlik, sharbat); to'liq o'nliklar qo'yiladi, ortig'i uchun so'raydi
+      const n = Math.max(1, Math.floor(bk.guests / 10)), rem = bk.guests - n * 10, pick = v => DISHES.find(d => d.sec === "ichimlik" && d.v === v);
       const gazli = ["cola", "fanta", "pepsi"].map(pick).find(d => d && bk.items[d.id] > 0) || pick("cola");
       [pick("water"), gazli, pick("juice")].forEach(d => { if (d && !(bk.items[d.id] > 0)) { bk.items[d.id] = n; bk.order = bk.order.filter(x => x !== d.id); bk.order.push(d.id); } });
+      bk.waterN = n;
+      if (rem >= 5 && bk.waterAsked !== bk.guests) { bk.waterAsked = bk.guests; bk.askWater = n + 1; } else if (rem < 5) bk.askWater = 0;
     }
     if (o.bezak && typeof o.bezak === "object") {   // bezak: gul soni, martini, qaysi taom stendda (sayt koordinatani o'zi hisoblaydi)
       const z = o.bezak, d = { gul: bk.decor.gul, martini: !!bk.decor.martini, raise: Object.assign({}, bk.decor.raise) };
@@ -4258,6 +4260,12 @@ if (typeof module !== "undefined") module.exports = makeQR;
     const agF = body.querySelector("#agForm");
     const sendAgent = async text => {
       if (!text || bk.chatBusy) return;
+      if (bk.askWater && /^\s*(ha|xa|ha,|ok|ok\b|kerak|qo‘sh|qosh|yo‘q|yoq|yo'q|kerak emas|kerakmas|bo‘ldi|boldi)\b/i.test(text)) {   // komplekt suv savoliga javob: sayt o'zi hal qiladi
+        const yes = /^\s*(ha|xa|ok|kerak\b|qo‘sh|qosh)/i.test(text) && !/emas|yo/i.test(text), n = bk.askWater; bk.askWater = 0;
+        bk.chat.push({ r: "u", t: text });
+        if (yes) { ["water", "cola", "fanta", "pepsi", "juice"].forEach(v => { const d = DISHES.find(x => x.sec === "ichimlik" && x.v === v); if (d && bk.items[d.id] > 0) bk.items[d.id] = n; }); }
+        bk.chat.push({ r: "a", t: yes ? `Tayyor, ${n} komplekt suv qo‘ydim.` : `Yaxshi, ${bk.waterN} komplekt qoldi.` }); bk.chatOpen = true; rerender(); return;
+      }
       bk.chat.push({ r: "u", t: text }); bk.chatBusy = true; bk.chatOpen = true; rerender();
       const done = () => { bk.chatBusy = false; rerender(); const i2 = body.querySelector("#agIn"); if (i2) i2.focus({ preventScroll: true }); };
       try {
@@ -4269,6 +4277,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
         if (!r.ok || !j.ok) { bk.chat.push({ r: "a", t: (j.error || "Yordamchi hozir javob bermadi.") + (Array.isArray(j.detail) && j.detail.length ? " [kod: " + j.detail.join("; ") + "]" : r.ok ? "" : " [HTTP " + r.status + "]"), err: true }); return done(); }
         agentApply(j);
         bk.chat.push({ r: "a", t: j.reply || "Tayyor." });
+        if (bk.askWater) bk.chat.push({ r: "a", t: `${bk.guests} kishiga ${bk.waterN} komplekt suv qo‘ydim (1 komplekt = 10 kishi). Yana 1 komplekt qo‘shaymi? “ha” yoki “yo‘q” deb yozing.` });
         done();
       } catch (err) { bk.chat.push({ r: "a", t: "Internet yo‘q yoki server javob bermadi.", err: true }); done(); }
     };
