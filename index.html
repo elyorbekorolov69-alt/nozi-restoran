@@ -1925,9 +1925,11 @@ function Table3D(canvas, opts) {
         if (fixed.length) spotsAll = spotsAll.filter(q => !fixed.some(c => Math.hypot(q[0] - c[0], q[1] - c[1]) < 0.17));
       }
       if (layout.kind === "long" || t.long) {
-        const sets = 1, all = [];
-        for (let s2 = 0; s2 < sets; s2++) placed.forEach(p => all.push(p));
-        all.slice(0, spotsAll.length).forEach((p, i) => { const [x, z] = spotsAll[i]; dish(p.k, p.col, x, z, 0.3 * (i % 3), t.top, p.d); });
+        // uzun stol: taomlar bir chetga yig'ilmasin. Bir xil taomlar navbat bilan (salat, yaxna, non, salat, yaxna, non...), butun uzunlik bo'ylab teng oraliqda
+        const groups = []; placed.forEach(p => { let g = groups.find(q => q[0].d === p.d); if (!g) groups.push(g = []); g.push(p); });
+        const all = []; for (let r = 0; all.length < placed.length; r++) groups.forEach(g => { if (g[r]) all.push(g[r]); });
+        const S = spotsAll.length, m = Math.min(all.length, S);
+        all.slice(0, m).forEach((p, i) => { const j = m < S ? Math.min(S - 1, Math.floor((i + 0.5) * S / m)) : i, [x, z] = spotsAll[j]; dish(p.k, p.col, x, z, 0.3 * (i % 3), t.top, p.d); });
       } else {
         // cheese and fruit on the big stands go in the middle, the medium stand next, everything low towards the guests
         // stendlar (pishloq/meva assorti, katta salat, desert) bir-biriga tegmasin: 0.45 va 0.58 halqada bittadan oralatib, qolgan taomlar bo'sh joyga
@@ -2812,7 +2814,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
   const MODEL3D = { "issiq-3": "baliq2", "sovuq-8": "pishloq", "meva-0": "meva-a", "meva-1": "oreh", "meva-2": "konfet", "shashlik-9": "qiymali_hq", "shashlik-10": "qiymali_hq", "shashlik-11": "qiymali_hq", "shashlik-13": "lyulya", "issiq-12": "til", "salat-8": "sezar2", "salat-11": "salat_nozi", "sovuq-2": "limon", "sovuq-3": "sarimsoq", "sovuq-4": "zaytun", "sovuq-7": "qalampir", "sovuq-5": "yaxna_new", "salat-12": "baqlajon",
     "kolbasa-0": "kolbasa", "kolbasa-1": "kolbasa", "issiq-8": "sabzavot", "shashlik-5": "qanot2", "shashlik-19": "qanot2",
     "birinchi-2": "tushonka", "salat-5": "veche", "issiq-7": "mulatka", "issiq-5": "kotlet", "issiq-6": "kotlet",
-    "issiq-9": "baliq2", "ichimlik-2": "cola", "ichimlik-3": "fanta", "ichimlik-4": "pepsi", "desert-7": "des_assorti", "non-1": "qora_non", "non-0": "non_assorti", "non-2": "chapchak", "non-3": "chapchak", "ichimlik-1": "suv" };
+    "issiq-9": "baliq2", "ichimlik-2": "cola", "ichimlik-3": "fanta", "ichimlik-4": "pepsi", "desert-7": "des_assorti", "non-1": "qora_non", "non-0": "non_assorti", "non-2": "chapchak", "non-3": "chapchak", "ichimlik-1": "suv", "birinchi-4": "kok_shi", "birinchi-1": "sorva", "birinchi-3": "sorva" };
   window.NZI_M3D = MODEL3D;   // kroket: menyudagi taomi aytilgach shu yerga qo‘shiladi
   const M3D = {};   // admin orqali yuklangan modellar: taom id -> { glb, img }
   const READY3D = [["baliq","Baliq"],["baqlajon","Qarsildoq baqlajon"],["kolbasa","Kolbasa"],["kroket","Kroket"],["lyulya","Lyulya (Beyti)"],["meva","Meva"],["non","Non savat"],["pishloq","Pishloq"],["sabzavot","Sabzavot"],["salat3","Salat (shisha likopcha)"],["sezar","Sezar"],["sorva","Sho‘rva"],["tushonka","Tushonka (yangi)"],["osh","Osh (yangi)"],["til","Til"],["qanot","Qanot"],["yaxna","Yaxna (karpachcho)"],["desert","Desert (pishloqli)"],["qovun","Qovun (shishda)"],["meva-stend","Meva (tayanchda)"],["kroket2","Kroket (yangi)"],["baliq2","Baliq (yangi, jonli)"],["veche","Salat Вече (yangi)"],["non2","Non assorti (yangi)"],["meva-a","Meva assorti 1 (yangi)"],["meva-b","Meva assorti 2 (yangi)"],["myasnoy","Мясное ассорти (yangi)"],["ovoshi","Овощной букет (yangi)"],["mulatka","Мулатка (yangi)"],["sezar2","Sezar (yangi)"],["qovun2","Qovun (yangi)"],["qanot2","Qanotcha (yangi)"],["gul2","Gul (yangi)"],["kotlet","Котлета (yangi)"]];
