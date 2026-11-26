@@ -1730,7 +1730,7 @@ function Table3D(canvas, opts) {
       if (obstacles.some(o => Math.abs(o - x) < 0.27)) continue;
       spots.push([x, z0 - 0.115], [x + 0.13, z0 + 0.115]);
     }
-    return { z0, seats, seatsAt, spots, top };
+    return { z0, seats, seatsAt, spots, top, obst: obstacles };
   }
 
   function buildLong(guests, rows, served) {
@@ -1878,14 +1878,34 @@ function Table3D(canvas, opts) {
     // dishes for every table, or every ten guests along a long row
     items = []; LO = layout.lo;
     layout.list.forEach((t, ti) => {
-      const { placed, perSeat } = perTable ? (perTable[ti] || { placed: [], perSeat: [] }) : common;
+      const pk = perTable ? (perTable[ti] || { placed: [], perSeat: [] }) : common, perSeat = pk.perSeat;
+      // drinks: komplekt = water + one fizzy drink + juice, standing together; komplekts spread evenly (round: ring around the flower, long: along the length); fizzy kinds differ between komplekts
+      const BOT = ["water", "mineral", "cola", "fanta", "pepsi", "juice"], isBot = p => p.k === "drink" && p.d && BOT.includes(p.d.v);
+      const bots = pk.placed.filter(isBot), placed = pk.placed.filter(p => !isBot(p));
+      const wat = bots.filter(p => p.d.v === "water" || p.d.v === "mineral"), juc = bots.filter(p => p.d.v === "juice"), gaz = bots.filter(p => ["cola", "fanta", "pepsi"].includes(p.d.v));
+      const kinds = {}; gaz.forEach(p => (kinds[p.d.v] = kinds[p.d.v] || []).push(p));
+      const gz = []; { const ks = Object.values(kinds); for (let i = 0; gz.length < gaz.length; i++) ks.forEach(a2 => { if (a2[Math.floor(i)] && gz.length < gaz.length) gz.push(a2[i]); }); }
+      const nK = Math.max(wat.length, juc.length, gz.length), clusters = [];
+      for (let k = 0; k < nK; k++) clusters.push([wat[k], gz[k], juc[k]].filter(Boolean));
+      let spotsAll = t.spots.map(x => x.slice()); const cpos = [];
+      if (nK) {
+        if (layout.kind === "long" || t.long) {
+          const Lx = spotsAll.length ? Math.max(...spotsAll.map(q => q[0])) - Math.min(...spotsAll.map(q => q[0])) : 4, x0 = spotsAll.length ? Math.min(...spotsAll.map(q => q[0])) : 0, zc = t.z0 || 0;
+          for (let k = 0; k < nK; k++) { let x = x0 + Lx * (k + 0.5) / nK; (t.obst || []).forEach(o => { if (Math.abs(o - x) < 0.3) x += 0.38; }); cpos.push([x, zc]); }
+        } else {
+          const R = 0.55, a0 = 0.35;
+          for (let k = 0; k < nK; k++) { const a = a0 + k * 2 * PI / nK; cpos.push([t.cx + Math.cos(a) * R, t.cz + Math.sin(a) * R]); }
+        }
+        spotsAll = spotsAll.filter(q => !cpos.some(c => Math.hypot(q[0] - c[0], q[1] - c[1]) < 0.2));
+        clusters.forEach((cl, k) => cl.forEach((p, j) => { const aj = j * 2 * PI / 3 + 0.6, [cx2, cz2] = cpos[k]; dish(p.k, p.col, cx2 + Math.cos(aj) * 0.05, cz2 + Math.sin(aj) * 0.05, aj, t.top, p.d); }));
+      }
       if (layout.kind === "long" || t.long) {
         const sets = 1, all = [];
         for (let s2 = 0; s2 < sets; s2++) placed.forEach(p => all.push(p));
-        all.slice(0, t.spots.length).forEach((p, i) => { const [x, z] = t.spots[i]; dish(p.k, p.col, x, z, 0.3 * (i % 3), t.top, p.d); });
+        all.slice(0, spotsAll.length).forEach((p, i) => { const [x, z] = spotsAll[i]; dish(p.k, p.col, x, z, 0.3 * (i % 3), t.top, p.d); });
       } else {
         // cheese and fruit on the big stands go in the middle, the medium stand next, everything low towards the guests
-        const ord = { tilla: 0, mid: 1, drink: 1.5, low: 2 }, sp = t.spots.slice().sort((a, b) => Math.hypot(a[0] - (t.cx || 0), a[1] - (t.cz || 0)) - Math.hypot(b[0] - (t.cx || 0), b[1] - (t.cz || 0)));
+        const ord = { tilla: 0, mid: 1, drink: 1.5, low: 2 }, sp = spotsAll.slice().sort((a, b) => Math.hypot(a[0] - (t.cx || 0), a[1] - (t.cz || 0)) - Math.hypot(b[0] - (t.cx || 0), b[1] - (t.cz || 0)));
         placed.slice().sort((a, b) => (ord[a.k === "drink" ? "drink" : a.cat] ?? 2) - (ord[b.k === "drink" ? "drink" : b.cat] ?? 2)).slice(0, sp.length).forEach((p, i) => { const [x, z, a] = sp[i]; dish(p.k, p.col, x, z, a, t.top, p.d); });
       }
       // hot food: one portion on each guest's own charger (more portions than guests: two or three each, side by side)
@@ -3863,7 +3883,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
   function rebuild3D() {
     if (!t3d) return;
     const round = shapeNow() === "round";
-    const cap = x => ({ d: x.d, q: Math.min(x.q, ["c1", "c2", "c3"].includes(x.course) ? 60 : (x.d && x.d.sec === "non" ? Math.min(10, Math.max(2, Math.ceil(Math.ceil(bk.guests / 4) / Math.max(1, DISHES.filter(d => d.sec === "non" && bk.items[d.id] > 0).length)))) : x.d && x.d.sec === "ichimlik" ? 2 : 6)), course: x.course });   // bread and drinks: a few on the table, not twenty
+    const cap = x => ({ d: x.d, q: Math.min(x.q, ["c1", "c2", "c3"].includes(x.course) ? 60 : (x.d && x.d.sec === "non" ? Math.min(10, Math.max(2, Math.ceil(Math.ceil(bk.guests / 4) / Math.max(1, DISHES.filter(d => d.sec === "non" && bk.items[d.id] > 0).length)))) : x.d && x.d.sec === "ichimlik" ? 10 : 6)), course: x.course });   // bread and drinks: a few on the table, not twenty
     const tv = tviewNow();
     t3d.build({
       shape: round ? "round" : "long",
@@ -4236,7 +4256,13 @@ if (typeof module !== "undefined") module.exports = makeQR;
     if (/kerak/i.test(bk.agWater || "") && !/emas/i.test(bk.agWater)) {   // komplekt suv: 1 komplekt = 10 mehmon (gazsiz suv, gazli ichimlik, sharbat); to'liq o'nliklar qo'yiladi, ortig'i uchun so'raydi
       const n = Math.max(1, Math.floor(bk.guests / 10)), rem = bk.guests - n * 10, pick = v => DISHES.find(d => d.sec === "ichimlik" && d.v === v);
       const gazli = ["cola", "fanta", "pepsi"].map(pick).find(d => d && bk.items[d.id] > 0) || pick("cola");
-      [pick("water"), gazli, pick("juice")].forEach(d => { if (d && !(bk.items[d.id] > 0)) { bk.items[d.id] = n; bk.order = bk.order.filter(x => x !== d.id); bk.order.push(d.id); } });
+      {   // gazli ichimlik komplektlar o'rtasida har xil bo'lsin (cola, fanta, pepsi navbat bilan)
+        const own = ["cola", "fanta", "pepsi"].map(pick).filter(d => d && bk.items[d.id] > 0), ks = own.length ? own : ["cola", "fanta", "pepsi"].map(pick).filter(Boolean);
+        ks.forEach(d => { bk.items[d.id] = 0; });
+        for (let i = 0; i < n; i++) { const d = ks[i % ks.length]; bk.items[d.id] = (bk.items[d.id] || 0) + 1; if (!bk.order.includes(d.id)) bk.order.push(d.id); }
+        ks.forEach(d => { if (!(bk.items[d.id] > 0)) delete bk.items[d.id]; });
+      }
+      [pick("water"), pick("juice")].forEach(d => { if (d && !(bk.items[d.id] > 0)) { bk.items[d.id] = n; bk.order = bk.order.filter(x => x !== d.id); bk.order.push(d.id); } });
       bk.waterN = n;
       if (rem >= 5 && bk.waterAsked !== bk.guests) { bk.waterAsked = bk.guests; bk.askWater = n + 1; } else if (rem < 5) bk.askWater = 0;
     }
@@ -4266,7 +4292,13 @@ if (typeof module !== "undefined") module.exports = makeQR;
       if (bk.askWater && /^\s*(ha|xa|ha,|ok|ok\b|kerak|qo‘sh|qosh|yo‘q|yoq|yo'q|kerak emas|kerakmas|bo‘ldi|boldi)\b/i.test(text)) {   // komplekt suv savoliga javob: sayt o'zi hal qiladi
         const yes = /^\s*(ha|xa|ok|kerak\b|qo‘sh|qosh)/i.test(text) && !/emas|yo/i.test(text), n = bk.askWater; bk.askWater = 0;
         bk.chat.push({ r: "u", t: text });
-        if (yes) { ["water", "cola", "fanta", "pepsi", "juice"].forEach(v => { const d = DISHES.find(x => x.sec === "ichimlik" && x.v === v); if (d && bk.items[d.id] > 0) bk.items[d.id] = n; }); }
+        if (yes) {
+          const pk2 = v => DISHES.find(x => x.sec === "ichimlik" && x.v === v);
+          ["water", "juice"].forEach(v => { const d = pk2(v); if (d && bk.items[d.id] > 0) bk.items[d.id] = n; });
+          const ks = ["cola", "fanta", "pepsi"].map(pk2).filter(d => d && bk.items[d.id] > 0); ks.forEach(d => { bk.items[d.id] = 0; });
+          if (ks.length) for (let i = 0; i < n; i++) bk.items[ks[i % ks.length].id]++;
+          ks.forEach(d => { if (!(bk.items[d.id] > 0)) delete bk.items[d.id]; });
+        }
         bk.chat.push({ r: "a", t: yes ? `Tayyor, ${n} komplekt suv qo‘ydim.` : `Yaxshi, ${bk.waterN} komplekt qoldi.` }); bk.chatOpen = true; rerender(); return;
       }
       bk.chat.push({ r: "u", t: text }); bk.chatBusy = true; bk.chatOpen = true; rerender();
