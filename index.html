@@ -1407,7 +1407,6 @@ function Table3D(canvas, opts) {
       m1("kartochka", 0, -0.105, 0.018);
       m1("vilka", -0.205, 0); m1("pichoq", 0.19, 0); m1("qoshiq", 0.235, 0);
       m1("stakan", 0.1, 0.2); m1("vino", 0.19, 0.14);
-      if (DECOR.martini) m1("martini", -0.04, 0.26);
       return;
     }
     put("plate", C.gold, x, top - 0.003, z, face, 0.292 * k, 0.4, 0.292 * k, GOLD);   // thin gold rim
@@ -1881,7 +1880,8 @@ function Table3D(canvas, opts) {
       const pk = perTable ? (perTable[ti] || { placed: [], perSeat: [] }) : common, perSeat = pk.perSeat;
       // drinks: komplekt = water + one fizzy drink + juice, standing together; komplekts spread evenly (round: ring around the flower, long: along the length); fizzy kinds differ between komplekts
       const BOT = ["water", "mineral", "cola", "fanta", "pepsi", "juice"], isBot = p => p.k === "drink" && p.d && BOT.includes(p.d.v);
-      const bots = pk.placed.filter(isBot), placed = pk.placed.filter(p => !isBot(p));
+      const isNut = p => p.d && (p.d.v === "nuts" || p.d.v === "candy");
+      const nutsL = pk.placed.filter(isNut), bots = pk.placed.filter(isBot), placed = pk.placed.filter(p => !isBot(p) && !isNut(p));
       const wat = bots.filter(p => p.d.v === "water" || p.d.v === "mineral"), juc = bots.filter(p => p.d.v === "juice"), gaz = bots.filter(p => ["cola", "fanta", "pepsi"].includes(p.d.v));
       const kinds = {}; gaz.forEach(p => (kinds[p.d.v] = kinds[p.d.v] || []).push(p));
       const gz = []; { const ks = Object.values(kinds); for (let i = 0; gz.length < gaz.length; i++) ks.forEach(a2 => { if (a2[Math.floor(i)] && gz.length < gaz.length) gz.push(a2[i]); }); }
@@ -1898,6 +1898,23 @@ function Table3D(canvas, opts) {
         }
         spotsAll = spotsAll.filter(q => !cpos.some(c => Math.hypot(q[0] - c[0], q[1] - c[1]) < 0.2));
         clusters.forEach((cl, k) => cl.forEach((p, j) => { const aj = j * 2 * PI / 3 + 0.6, [cx2, cz2] = cpos[k]; dish(p.k, p.col, cx2 + Math.cos(aj) * 0.05, cz2 + Math.sin(aj) * 0.05, aj, t.top, p.d); }));
+      }
+      {   // pista / keshyu / konfet: gul yonida, stol o'rtasida, uchtasi ketma-ket; martini: 3 joyda 3 tadan (9 ta bo'lsa), teng oraliqda
+        const round2 = !(layout.kind === "long" || t.long), fixed = [];
+        const mid = round2 ? [t.cx, t.cz] : [t.spots.length ? (Math.min(...t.spots.map(q => q[0])) + Math.max(...t.spots.map(q => q[0]))) / 2 : 0, t.z0 || 0];
+        nutsL.forEach((p, j) => {
+          const a = 1.2 + j * 0.62, x = round2 ? mid[0] + Math.cos(a) * 0.17 : mid[0] + (j - (nutsL.length - 1) / 2) * 0.2, z = round2 ? mid[1] + Math.sin(a) * 0.17 : mid[1] + 0.2;
+          fixed.push([x, z]); dish(p.k, p.col, x, z, a, t.top, p.d);
+        });
+        if (DECOR.martini && AS.martini) {
+          const nG = 3, perG = 3;
+          for (let g = 0; g < nG; g++) {
+            const a = 0.9 + g * 2 * PI / nG, gx = round2 ? mid[0] + Math.cos(a) * 0.3 : mid[0] + (g - 1) * 0.9, gz = round2 ? mid[1] + Math.sin(a) * 0.3 : mid[1] + (g % 2 ? 0.14 : -0.14);
+            fixed.push([gx, gz]);
+            for (let q = 0; q < perG; q++) { const aq = q * 2 * PI / 3; putA("martini", gx + Math.cos(aq) * 0.035, t.top, gz + Math.sin(aq) * 0.035, aq, 1); }
+          }
+        }
+        if (fixed.length) spotsAll = spotsAll.filter(q => !fixed.some(c => Math.hypot(q[0] - c[0], q[1] - c[1]) < 0.17));
       }
       if (layout.kind === "long" || t.long) {
         const sets = 1, all = [];
