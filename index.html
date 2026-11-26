@@ -861,6 +861,9 @@ function Table3D(canvas, opts) {
       } else if (uP > 18.5 && uP < 20.5) {
         // the restaurant's real dish photographs-as-texture (atlas pages 0 and 1), uv in vL.xy
         base = (uP < 19.5 ? texture2D(uA0, vL.xy).rgb : texture2D(uA1, vL.xy).rgb) * vC.rgb;
+        float lb = dot(base, vec3(0.299, 0.587, 0.114));
+        base = clamp(mix(vec3(lb), base, 1.45), 0.0, 1.0);          // more colour: food looks fresh, not grey
+        base = clamp((base - 0.5) * 1.12 + 0.5, 0.0, 1.0) * 1.04;   // a little more contrast
       } else if (uP > 16.5 && uP < 17.5) {
         vec2 p = vW.xz; vec2 q = vec2(p.x + p.y, p.x - p.y) * 0.7071;
         vec2 t = floor(q / 0.6); float par = mod(t.x + t.y, 2.0); vec2 lc = fract(q / 0.6); if (par > 0.5) lc = lc.yx;
@@ -1169,9 +1172,9 @@ function Table3D(canvas, opts) {
   }
 
   // a ready-made model, scaled by sc, standing at x,y,z; false if it has not arrived (the caller then draws the plain shape)
-  function putA(name, x, y, z, r, sc = 1, sy = sc) {
+  function putA(name, x, y, z, r, sc = 1, sy = sc, tint = null) {
     const parts = ((LO || !HQON) && ASLO[name]) || AS[name]; if (!parts) return false;
-    parts.forEach(g => items.push({ g, c: [255, 255, 255], M: model(x, y, z, r, sc, sy, sc, 0), a: g.a, s: g.s, sh: g.sh, e: 0, p: g.tp || 0 }));
+    parts.forEach(g => items.push({ g, c: tint || [255, 255, 255], M: model(x, y, z, r, sc, sy, sc, 0), a: g.a, s: tint ? 0.75 : g.s, sh: tint ? 90 : g.sh, e: 0, p: g.tp || 0 }));
     return true;
   }
   // bake a list of pieces into as few GPU buffers as 16-bit indices allow
@@ -1237,10 +1240,10 @@ function Table3D(canvas, opts) {
 
   // the restaurant's serving stand (see the banquet photos): ribbed gold foot, crystal knop,
   // and a mirror top in a gold rim, round or oblong; returns the height of the mirror
-  const GOLD = { s: 0.85, sh: 70 }, MIRROR = "#2b333d";
+  const GOLD = { s: 0.85, sh: 70 }, MIRROR = "#2b333d", GOLDT = [236, 196, 118];   // GOLDT: the gold stand model warmed to real gold
   function goldStand(x, z, y, dia, rot = 0, oblong = false) {
     if (CURD && catOf(CURD) !== "tilla") return y;   // strict rule: nothing but cheese and fruit assorti stands on the gold stand
-    if (!oblong && !LO && AS["stend-tilla"]) { const sc = dia / 0.32; putA("stend-tilla", x, y, z, rot, sc); return y + STH["stend-tilla"] * sc; }   // the restaurant's gold stand
+    if (!oblong && !LO && AS["stend-tilla"]) { const sc = dia / 0.32; putA("stend-tilla", x, y, z, rot, sc, sc, GOLDT); return y + STH["stend-tilla"] * sc; }   // the restaurant's gold stand
     const H = dia * (oblong ? 0.5 : 0.55), fw = dia * (oblong ? 0.56 : 0.62), sy = 0.15;
     put("goldFoot", C.gold, x, y, z, 0, fw, H * 0.5, fw, GOLD);
     put("gem", C.glass, x, y + H * 0.5, z, 0.2, dia * 0.2, H * 0.22, dia * 0.2, { a: 0.45, s: 1, sh: 100, p: 3 });
@@ -1263,7 +1266,7 @@ function Table3D(canvas, opts) {
     // the restaurant's own 3D model of this dish (light copy in asboblar/engine.json), if it has one
     CURD = d || null;
     const rn = d && DECOR.raise ? DECOR.raise[d.id] : "", cat = catOf(d);   // cheese and fruit assorti on the big gold stand, desserts and main salads on the medium one; nothing else is lifted
-    if (!LO && rn === "tilla" && cat === "tilla" && AS["stend-tilla"]) { putA("stend-tilla", x, top, z, rot, 1); top += STH["stend-tilla"]; }
+    if (!LO && rn === "tilla" && cat === "tilla" && AS["stend-tilla"]) { putA("stend-tilla", x, top, z, rot, 1, 1, GOLDT); top += STH["stend-tilla"]; }
     else if (!LO && rn === "orta" && cat === "mid" && AS["stend-oyna-baland"]) { putA("stend-oyna-baland", x, top, z, rot, 0.94, 0.75); top += MIDH; }
     const mn = d && (window.NZI_M3D || {})[d.id]; if (mn && AS[mn] && putA(mn, x, top, z, rot, 1)) return;
     const y = top, c = Math.cos(rot), s = Math.sin(rot);
