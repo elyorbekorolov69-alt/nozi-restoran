@@ -967,6 +967,7 @@ function Table3D(canvas, opts) {
     for (let k = 0; k < o.i; k++, q += 2) idx[k] = dv.getUint16(q, true);
     return { pos, nor, idx, n: o.n, col, s: o.s, sh: o.sh, a: o.a };
   }
+  const PHONE = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent); let HQON = true;   // sharp models: on phones only when one table is shown
   const AS = {}, ASLO = {};   // name -> parts, filled once the file has arrived (ASLO: the light vertex-colour copy, for whole halls)
   let lastOpts = null;
   // solid of revolution from a profile of [radius, height] points
@@ -1169,7 +1170,7 @@ function Table3D(canvas, opts) {
 
   // a ready-made model, scaled by sc, standing at x,y,z; false if it has not arrived (the caller then draws the plain shape)
   function putA(name, x, y, z, r, sc = 1, sy = sc) {
-    const parts = (LO && ASLO[name]) || AS[name]; if (!parts) return false;
+    const parts = ((LO || !HQON) && ASLO[name]) || AS[name]; if (!parts) return false;
     parts.forEach(g => items.push({ g, c: [255, 255, 255], M: model(x, y, z, r, sc, sy, sc, 0), a: g.a, s: g.s, sh: g.sh, e: 0, p: g.tp || 0 }));
     return true;
   }
@@ -1885,6 +1886,7 @@ function Table3D(canvas, opts) {
     // dishes for every table, or every ten guests along a long row
     items = []; LO = layout.lo;
     layout.list.forEach((t, ti) => {
+      HQON = !(PHONE && layout.list.length > 1) && ti < 4;
       const pk = perTable ? (perTable[ti] || { placed: [], perSeat: [] }) : common, perSeat = pk.perSeat;
       // drinks: komplekt = water + one fizzy drink + juice, standing together; komplekts spread evenly (round: ring around the flower, long: along the length); fizzy kinds differ between komplekts
       const BOT = ["water", "mineral", "cola", "fanta", "pepsi", "juice"], isBot = p => p.k === "drink" && p.d && BOT.includes(p.d.v);
@@ -1945,7 +1947,7 @@ function Table3D(canvas, opts) {
       const ns = t.seatsAt.length;
       if (ns) perSeat.slice(0, ns * 3).forEach((p, i) => { const [x, z] = t.seatsAt[i % ns], j = Math.floor(i / ns); dish(p.k, p.col, x + (j ? (j === 1 ? 0.06 : -0.06) : 0), z, 0, t.top + (AS.tagtarelka ? 0.018 : 0.012) + j * 0.004, p.d); });
     });
-    setDyn(items);
+    HQON = true; setDyn(items);
     items = [];
 
     {   // where the sun's shadow map looks: the whole layout, or just the table being studied
