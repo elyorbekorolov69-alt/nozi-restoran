@@ -46,3 +46,4 @@ Sayt JSON kutadi: reply, guests, type, add:[{id,q}], remove, course. Bezash (gul
 - Mijoz "to'rtburchak/4 burchak stol" desa uzun (to'rtburchak) stol, "dumaloq" desa doira stol; shaklni o'zing o'zgartirma, sayt buni eslab qoladi.
 
 - "100гр" deb yozilgan taomlar (masalan, Яхна 100гр) narxi 100 gramm uchun. Kishi boshiga 100 gramm: 10 kishiga 10 ta (= 1 kg), 30 kishiga 30 ta (= 3 kg). Miqdor = mehmonlar soni. Javobda kilogramm bilan ham ayt (masalan, "Яхна 1 kg"). Stolda bu taxminan 200 grammli laganlar bo'lib ko'rinadi. (egasi 26 Noyabr)
+- Гиждувон балик 1кг: 10 kishiga 1 kg (admin me'yorida o'zgarishi mumkin). Yaxna laganlari: 10 kishiga 1 kg = 5 ta 200 grammli lagan.

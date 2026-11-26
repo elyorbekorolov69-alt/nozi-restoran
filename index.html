@@ -2922,6 +2922,10 @@ if (typeof module !== "undefined") module.exports = makeQR;
   const DISHES = [];
   MENU.forEach(s => s.t.forEach((t, i) => { t.id = s.id + "-" + i; t.sec = s.id; DISHES.push(t); }));
   const byId = Object.fromEntries(DISHES.map(d => [d.id, d]));
+  // miqdor me'yorlari (admin "Banket tarixi" bo'limida o'zgartiriladi): yaxna kishiga necha gramm va bitta lagan necha gramm; baliq 10 kishiga necha kg
+  const NORMA = { yaxnaG: 100, yaxnaPlate: 200, baliqKg10: 1 };
+  const isGram = d => d && /100\s*гр/i.test(d.ru || "");
+  const qtyTxt = x => isGram(x.d) ? `${x.q} (${+(x.q / 10).toFixed(2)} kg, ${Math.max(1, Math.ceil(x.q * 100 / NORMA.yaxnaPlate))} lagan)` : /1\s*кг/i.test(x.d.ru || "") ? `${x.q} kg` : String(x.q);
   // real 3D models (Tripo + Blender), loaded only when the dish is opened: dish id -> file name in /taom
   const MODEL3D = { "issiq-3": "baliq2", "sovuq-8": "pishloq", "meva-0": "meva-a", "meva-1": "oreh", "meva-2": "konfet", "shashlik-9": "qiymali_hq", "shashlik-10": "qiymali_hq", "shashlik-11": "qiymali_hq", "shashlik-13": "lyulya", "issiq-12": "til", "salat-8": "sezar2", "salat-11": "salat_nozi", "sovuq-2": "limon", "sovuq-3": "sarimsoq", "sovuq-4": "zaytun", "sovuq-7": "qalampir", "sovuq-5": "yaxna_new", "salat-12": "baqlajon",
     "kolbasa-0": "kolbasa", "kolbasa-1": "kolbasa", "issiq-8": "sabzavot", "shashlik-5": "qanot2", "shashlik-19": "qanot2",
@@ -3616,7 +3620,14 @@ if (typeof module !== "undefined") module.exports = makeQR;
       },
       tarix() {
         const L = adm.tx === null ? `<p class="note">Yuklanmoqda…</p>` : adm.tx.length ? adm.tx.slice().reverse().map(t => `<div class="adm-row"><span><b>${esc(t.date || "sana yo‘q")} · ${t.guests} kishi${t.shape ? " · " + (t.shape === "long" ? "to‘rtburchak" : "dumaloq") + " stol" : ""} · ${fmt(t.total || 0)} so‘m${t.guests && t.total ? " (kishiga " + fmt(t.total / t.guests) + ")" : ""}</b><br><small class="muted" style="white-space:pre-wrap">${esc(t.items)}${t.note ? "\n" + esc(t.note) : ""}</small></span><button class="pill" type="button" data-txdel="${esc(t.id)}">O‘chirish</button></div>`).join("") : `<p class="note">Hali tarix yo‘q.</p>`;
-        return `<p class="note" style="margin:0 0 10px">Oldingi banketlarni kiriting: necha kishi, nimalar qanchadan aytilgan, umumiy summa. AI yordamchi yangi buyurtmada shu tarixni eslab, mehmon soniga qarab miqdorlarni moslaydi. Bu ma’lumotni faqat admin va AI yordamchi ko‘radi.</p>
+        const normF = `<p class="bk-sub" style="margin-top:0">Miqdor me’yorlari (agent va stol shunga qarab hisoblaydi)</p>
+          <form class="adm-form" id="admNormF" autocomplete="off" style="max-width:560px">
+            <label>Яхна: bir kishiga necha gramm<input type="number" id="nmYG" min="10" max="1000" step="10" value="${NORMA.yaxnaG}"></label>
+            <label>Яхна: bitta laganda necha gramm<input type="number" id="nmYP" min="50" max="2000" step="10" value="${NORMA.yaxnaPlate}"></label>
+            <label>Гиждувон балик: 10 kishiga necha kg<input type="number" id="nmBK" min="0.1" max="10" step="0.1" value="${NORMA.baliqKg10}"></label>
+            <p class="note">Hozir: 10 kishiga yaxna ${(10 * NORMA.yaxnaG / 1000).toFixed(1)} kg = ${Math.ceil(10 * NORMA.yaxnaG / NORMA.yaxnaPlate)} ta lagan; baliq ${NORMA.baliqKg10} kg.</p>
+            <button class="pill gold" type="submit">Me’yorni saqlash</button></form>`;
+        return normF + `<p class="note" style="margin:16px 0 10px">Oldingi banketlarni kiriting: necha kishi, nimalar qanchadan aytilgan, umumiy summa. AI yordamchi yangi buyurtmada shu tarixni eslab, mehmon soniga qarab miqdorlarni moslaydi. Bu ma’lumotni faqat admin va AI yordamchi ko‘radi.</p>
           <form class="adm-form" id="admTxF" autocomplete="off" style="max-width:560px">
             <label>Sana<input type="date" id="txD"></label>
             <label>Mehmonlar soni<input type="number" id="txG" min="1" max="1500" inputmode="numeric"></label>
@@ -3912,6 +3923,13 @@ if (typeof module !== "undefined") module.exports = makeQR;
         msg(r.ok ? "Saqlandi. Banket oynasida darrov ko‘rinadi." : failMsg(r), !r.ok);
         return;
       }
+      if (e.target.id === "admNormF") {
+        const v = { yaxnaG: +box.querySelector("#nmYG").value, yaxnaPlate: +box.querySelector("#nmYP").value, baliqKg10: +box.querySelector("#nmBK").value };
+        if (!(v.yaxnaG > 0 && v.yaxnaPlate > 0 && v.baliqKg10 > 0)) return msg("Hamma raqamni yozing.", true);
+        const r = await admSave("norma", v);
+        if (r.ok) { Object.assign(NORMA, v); draw(); msg("Saqlandi."); } else msg(failMsg(r), true);
+        return;
+      }
       if (e.target.id === "admYtF") {
         const u = box.querySelector("#admYt").value.trim(), id = ytIdOf(u);
         if (!id) return msg("Bu YouTube havolasi emas. Masalan: https://youtu.be/AbCdEf12345", true);
@@ -4121,7 +4139,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
     const tillaQ = x => !isT(x) ? x.q : round ? Math.max(2, x.q) : Math.min(x.q, 2 * Math.max(1, Math.ceil(bk.guests / Math.max(1, rowsNow() || 1) / 14)));   // doira: 2 ta; uzun qator: har ~14 kishiga 1 juft (ko'payib ketmasin)   // doira stolga odatda 2 ta pishloq va 2 ta meva assorti
     // "100гр" taom (yaxna): q = 100 grammlar soni (butun banket); stolda bitta lagan ~200 gr, har stolga o'z ulushi
     const perT = round ? 10 : Math.max(1, bk.guests / Math.max(1, rowsNow() || 1)), nT = Math.max(1, Math.round(bk.guests / perT));
-    const gramQ = x => x.d && /100\s*гр/i.test(x.d.ru || "") ? Math.min(6, Math.max(1, Math.ceil(x.q / nT / 2))) : null;
+    const gramQ = x => isGram(x.d) ? Math.min(6, Math.max(1, Math.ceil(x.q * 100 / NORMA.yaxnaPlate / nT))) : null;
     const cap = x => gramQ(x) != null ? { d: x.d, q: gramQ(x), course: x.course } : ({ d: x.d, q: Math.min(tillaQ(x), ["c1", "c2", "c3"].includes(x.course) ? 60 : (x.d && x.d.sec === "non" ? Math.min(6, Math.max(1, Math.ceil(Math.ceil(bk.guests / 4) / 3 / Math.max(1, DISHES.filter(d => d.sec === "non" && bk.items[d.id] > 0).length)))) : x.d && x.d.sec === "ichimlik" ? 10 : 6)), course: x.course });   // bread and drinks: a few on the table, not twenty
     const tv = tviewNow();
     t3d.build({
@@ -4340,14 +4358,14 @@ if (typeof module !== "undefined") module.exports = makeQR;
         ${COURSES.map(([k, name]) => {
           const g = items.filter(x => x.course === k);
           if (!g.length) return "";
-          return `<div class="course-group"><h4>${name} <small>${g.length} xil</small></h4>${g.map(x => `<div class="cg-row"><span>${esc(x.d.uz)} <small>× ${x.q}${tablesNow() > 1 ? ` · ${tableOf(x.d.id) + 1}-${tblWord()}` : ""}</small></span>
+          return `<div class="course-group"><h4>${name} <small>${g.length} xil</small></h4>${g.map(x => `<div class="cg-row"><span>${esc(x.d.uz)} <small>× ${qtyTxt(x)}${tablesNow() > 1 ? ` · ${tableOf(x.d.id) + 1}-${tblWord()}` : ""}</small></span>
             <select data-course="${x.d.id}" aria-label="${esc(x.d.uz)}: qachon tortiladi">${COURSES.map(([k2, n2]) => `<option value="${k2}" ${k2 === k ? "selected" : ""}>${n2}</option>`).join("")}</select></div>`).join("")}</div>`;
         }).join("")}
       ` + nav("Orqaga", "Hisobni ko‘rish");
     } else if (bk.step === 4) {
       const items = chosenItems(), us = units(), food = foodTotal(), fee = food * SERVICE, unk = unpriced(), multi = us.length > 1;
       const kgRow = k => `<tr><td>${esc(k.d.uz)} <small class="muted">${k.plates.length} tarelka: ${plateText(k.plates)}</small></td><td>${fmtG(k.grams)}</td><td>${fmt(k.price)} / kg</td><td>${fmt(k.cost)}</td></tr>`;
-      const dishRow = x => `<tr><td>${esc(x.d.uz)}${x.d.s ? ` <span class="tag">taxminiy</span>` : ""}</td><td>${x.q}</td><td>${x.d.n == null ? `<span class="muted">aniqlanmoqda</span>` : fmt(x.d.n)}</td><td>${x.d.n == null ? "—" : fmt(x.d.n * x.q)}</td></tr>`;
+      const dishRow = x => `<tr><td>${esc(x.d.uz)}${x.d.s ? ` <span class="tag">taxminiy</span>` : ""}</td><td>${qtyTxt(x)}</td><td>${x.d.n == null ? `<span class="muted">aniqlanmoqda</span>` : fmt(x.d.n)}</td><td>${x.d.n == null ? "—" : fmt(x.d.n * x.q)}</td></tr>`;
       const colName = shapeNow() === "round" ? "Stolga" : "10 kishiga";
       let rows;
       if (!multi) {
@@ -4402,7 +4420,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
       const us = units(), food = foodTotal();
       const courseLines = (arr, pre) => COURSES.map(([k, name]) => {
         const g = arr.filter(x => x.course === k);
-        return g.length ? `${pre}${name}: ${g.map(x => `${x.d.uz} × ${x.q}`).join(", ")}` : null;
+        return g.length ? `${pre}${name}: ${g.map(x => `${x.d.uz} × ${qtyTxt(x)}`).join(", ")}` : null;
       }).filter(Boolean);
       const kgLines = (u, pre) => u.kgs.map(k => `${pre}${k.d.uz}: ${fmtG(k.grams)}, ${k.plates.length} tarelka (${plateText(k.plates)}), ${fmt(k.cost)} so‘m`);
       const dishLines = us.length > 1
@@ -4505,7 +4523,9 @@ if (typeof module !== "undefined") module.exports = makeQR;
       [[bk.agFirst, "c1"], [bk.agSecond, "c2"]].forEach(([id, c]) => { const d = id && id !== "none" && DISHES.find(x => x.id === id); if (!d) return; bk.items[id] = bk.guests; bk.course[id] = c; if (!bk.order.includes(id)) bk.order.push(id); });
       if (bk.agSecond) DISHES.filter(d => d.sec === "shashlik" && bk.items[d.id] > 0 && bk.course[d.id] === "c2" && d.id !== bk.agSecond).forEach(d => { delete bk.items[d.id]; delete bk.course[d.id]; });
       // "100гр" li taomlar (Яхна 100гр): narx 100 gramm uchun, kishi boshiga 100 gr -> 10 kishiga 10 ta (= 1 kg). Agent 1 ta deb qo'ysa ham shunga to'g'rilanadi
-      DISHES.filter(d => /100\s*гр/i.test(d.ru || "") && bk.items[d.id] > 0).forEach(d => { if (bk.items[d.id] < bk.guests) bk.items[d.id] = bk.guests; });
+      DISHES.filter(d => isGram(d) && bk.items[d.id] > 0).forEach(d => { const need = Math.ceil(bk.guests * NORMA.yaxnaG / 100); if (bk.items[d.id] < need) bk.items[d.id] = need; });
+      // kilogrammli baliq (Гиждувон балик 1кг): 10 kishiga NORMA.baliqKg10 kg
+      DISHES.filter(d => d.sec === "issiq" && /балик/i.test(d.ru || "") && /кг/i.test(d.ru || "") && bk.items[d.id] > 0).forEach(d => { const need = Math.max(1, Math.ceil(bk.guests / 10 * NORMA.baliqKg10)); if (bk.items[d.id] < need) bk.items[d.id] = need; });
     }
     if (/kerak/i.test(bk.agWater || "") && !/emas/i.test(bk.agWater)) {   // komplekt suv: 1 komplekt = 10 mehmon (gazsiz suv, gazli ichimlik, sharbat); to'liq o'nliklar qo'yiladi, ortig'i uchun so'raydi
       const n = Math.max(1, Math.floor(bk.guests / 10)), rem = bk.guests - n * 10, pick = v => DISHES.find(d => d.sec === "ichimlik" && d.v === v);
@@ -5032,6 +5052,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
     const m3d = cfg("m3d", {});
     Object.keys(M3D).forEach(k => delete M3D[k]);
     if (m3d && typeof m3d === "object") Object.entries(m3d).forEach(([k, v]) => { if (v && typeof v.glb === "string") M3D[k] = { glb: v.glb, img: typeof v.img === "string" ? v.img : "" }; });
+    const nm = cfg("norma", null); if (nm && typeof nm === "object") ["yaxnaG", "yaxnaPlate", "baliqKg10"].forEach(k => { if (+nm[k] > 0) NORMA[k] = +nm[k]; });
     const ads = cfg("ads", null), adsw = cfg("adsw", null), gal = cfg("gal", null), hl = cfg("halls", {});
     if (Array.isArray(adsw) && adsw.length) WADS.splice(0, WADS.length, ...adsw.filter(u => typeof u === "string"));
     if (Array.isArray(ads) && ads.length) ADS.splice(0, ADS.length, ...ads.filter(u => typeof u === "string"));
