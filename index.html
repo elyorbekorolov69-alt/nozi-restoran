@@ -1748,7 +1748,7 @@ function Table3D(canvas, opts) {
   }
 
   function buildLong(guests, rows, served) {
-    LO = guests > 40;
+    LO = guests > (PHONE ? 40 : 70);   // kompyuterda katta zalda ham chiroyli stul va joylar
     const per = Math.ceil(guests / rows), side = Math.max(1, Math.ceil((per - (per >= 6 ? 2 : 0)) / 2)), gap = 0.62, L = side * gap + 0.5, top = 0.77;
     // Terrasa: the rows go one after another ALONG the glass wall (end to end), never side by side: a second row beside the first would stand out through the window
     const inLine = curHall === "terrasa" && rows > 1, step = L + 1.1;
@@ -1795,7 +1795,7 @@ function Table3D(canvas, opts) {
   const TERR_LINE = 5, TERR_SPARE = [-7.9, 3.8];   // Terrasa (table-scene x,z; hall x = 3.3 + z, hall y = 16.9 + x): 5 tables along the glass-wall strip (y 9.5 to 24.3), the 6th in the green corner by the brick wall (hall 7.1, 9.0)
   function buildRound(guests, served, seatsList, corner) {
     const n = seatsList && seatsList.length ? seatsList.length : Math.max(1, Math.ceil(guests / 14));
-    LO = n > 3;
+    LO = n > (PHONE ? 3 : 6);
     // Terrasa: the tables stand in ONE line along the glass wall (the carpet strip, 5 tables fit); more than 5 go to the spare spot by the entrance
     if (curHall === "terrasa") {
       const sp = 3.7, line = Math.min(n, TERR_LINE), list = [];
