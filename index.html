@@ -4246,6 +4246,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
       Object.entries(z.stend || {}).forEach(([id, n]) => { if (byId[id]) { if (n && n !== "yoq") d.raise[id] = n; else delete d.raise[id]; } });
       bk.decor = d;
     }
+    if (bk.decor.gul === undefined || bk.decor.gul === null) bk.decor = Object.assign({}, bk.decor, { gul: bk.guests <= 10 ? 1 : 2 });   // agent bezak bermasa ham, stol bo'sh qolmasin: gul qo'yiladi
     Object.entries(o.course || {}).forEach(([id, c]) => { if (byId[id] && ["dasturxon", "c1", "c2", "c3", "desert"].includes(c)) bk.course[id] = c; });
     bk.view = "dasturxon";
   }
