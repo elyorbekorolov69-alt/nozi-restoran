@@ -3979,7 +3979,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
   const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   const bk = { step: 0, type: "banket", guests: 30, date: "", time: "18:00", hall: null, shape: null, rows: null, corner: "round", change: false,
     items: {}, order: [], course: {}, sec: "", view: "dasturxon", name: "", phone: "", note: "", sent: false, posted: "", link: "",
-    rest: null, tcount: null, tview: null, lastDish: null, plates: {}, chat: [], chatOpen: false, chatBusy: false, agGuided: false, decor: {}, agq: 0, agTier: "", agBudget: 0, agTotal: 0, agKind: "", agWater: "", waterN: 0, askWater: 0, waterAsked: 0, event: "", pop: {}, popLoaded: false };
+    rest: null, tcount: null, tview: null, lastDish: null, plates: {}, chat: [], chatOpen: false, chatBusy: false, agGuided: false, decor: {}, agq: 0, agTier: "", agBudget: 0, agTotal: 0, agKind: "", agFirst: "", agSecond: "", agWater: "", waterN: 0, askWater: 0, waterAsked: 0, event: "", pop: {}, popLoaded: false };
 
   // ----- kilogramm bilan hisoblanadigan taomlar: kishiga gramm, stol va tarelkalarga bo‘linadi -----
   const KG_STEP = 50, PLATE_PER = 5, PLATE_STEP = 5;     // jami 50 g gacha yuqoriga; har 5 kishiga 1 tarelka
@@ -4238,14 +4238,19 @@ if (typeof module !== "undefined") module.exports = makeQR;
   const tierLines = () => { const t = tierNow(); if (!t) return []; const ex = Object.values(t.secs || {}).map(c => c.extra).filter(Boolean); return [`Toifa: ${t.name}`].concat(ex.length ? [`Menyuda yo‘q qo‘shimcha taomlar: ${ex.join(", ")}`] : []); };
   function agGuideHTML() {
     const q = bk.agq, who = `${bk.type === "toy" ? "To‘y" : "Banket"} · ${bk.guests} kishi`;
-    if (q === 0) return `<div class="ag-g"><p class="ag-q">${esc(who)}. <b>1/3.</b> Bir kishi uchun taxminan qancha so‘m sarflamoqchisiz?</p>
+    if (q === 0) return `<div class="ag-g"><p class="ag-q">${esc(who)}. <b>1/4.</b> Bir kishi uchun taxminan qancha so‘m sarflamoqchisiz?</p>
       <div class="opts">${tiersList().length ? tiersList().map(t => `<button class="opt" type="button" data-agt="${esc(t.id)}" aria-pressed="${bk.agTier === t.id}"><b>${esc(t.name)}</b><small>${fmt(t.price)} so‘m / kishi</small></button>`).join("") : AG_BUDGETS.map(v => `<button class="opt" type="button" data-agb="${v}" aria-pressed="${bk.agBudget === v}"><b>${fmt(v)}</b><small>so‘m / kishi</small></button>`).join("")}</div>
       <div class="ag-custom"><input type="number" id="agBp" inputmode="numeric" min="10000" step="5000" placeholder="Kishiga (so‘m)" aria-label="Bir kishi uchun summa"><input type="number" id="agBt" inputmode="numeric" min="10000" step="100000" placeholder="Umumiy summa (so‘m)" aria-label="Umumiy summa"><button class="btn" type="button" data-agbc="1">Davom etish</button></div>
       <p class="muted" id="agBh">Bittasini yozing, ikkinchisini o‘zim hisoblayman.</p></div>`;
-    if (q === 1) return `<div class="ag-g"><p class="ag-q"><b>2/3.</b> Qanday taomlar bo‘lsin?</p>
-      <div class="opts"><button class="opt" type="button" data-agk="milliy"><b>Milliy</b><small>Osh, kabob, sho‘rva</small></button><button class="opt" type="button" data-agk="yevropa"><b>Yevropa</b><small>Steyk, sezar, desert</small></button><button class="opt" type="button" data-agk="aralash"><b>Aralash</b><small>Ikkalasidan</small></button></div>
-      <button class="btn ag-skip" type="button" data-agk="">O‘tkazib yuborish</button></div>`;
-    return `<div class="ag-g"><p class="ag-q"><b>3/3.</b> Komplekt suv (sok, gazli ichimlik, Mojito, gazsiz suv) kerakmi?</p>
+    // 2/4 birinchi ovqat (sho'rvalar), 3/4 ikkinchi ovqat (issiq taomlar): mijozning o'zi tanlaydi, agent o'zidan shashlik qo'shmaydi
+    const pickList = (secs, attr, cur) => DISHES.filter(d => secs.includes(d.sec)).map(d => `<button class="opt" type="button" ${attr}="${esc(d.id)}" aria-pressed="${cur === d.id}"><b>${esc(d.ru)}</b>${d.n ? `<small>${fmt(d.n)} so‘m</small>` : ""}</button>`).join("");
+    if (q === 1) return `<div class="ag-g"><p class="ag-q"><b>2/4.</b> Birinchi ovqat (1-taom) nima bo‘lsin?</p>
+      <div class="opts">${pickList(["birinchi"], "data-ag1", bk.agFirst)}</div>
+      <button class="btn ag-skip" type="button" data-ag1="none">Birinchi ovqat kerak emas</button></div>`;
+    if (q === 2) return `<div class="ag-g"><p class="ag-q"><b>3/4.</b> Ikkinchi ovqat (2-taom) nima bo‘lsin?</p>
+      <div class="opts">${pickList(["ikkinchi", "issiq"], "data-ag2", bk.agSecond)}</div>
+      <button class="btn ag-skip" type="button" data-ag2="none">Ikkinchi ovqat kerak emas</button></div>`;
+    return `<div class="ag-g"><p class="ag-q"><b>4/4.</b> Komplekt suv (sok, gazli ichimlik, Mojito, gazsiz suv) kerakmi?</p>
       <div class="opts"><button class="opt" type="button" data-agw="kerak"><b>Ha, kerak</b></button><button class="opt" type="button" data-agw="kerak emas"><b>Yo‘q, kerak emas</b></button></div>
       <button class="btn ag-skip" type="button" data-agw="">O‘tkazib yuborish</button></div>`;
   }
@@ -4255,6 +4260,11 @@ if (typeof module !== "undefined") module.exports = makeQR;
     if (bk.event) p.push(`Marosim: ${bk.event}.`);
     if (bk.agBudget) p.push(`Bir kishi uchun taxminan ${fmt(bk.agBudget)} so‘m, umumiy ${fmt(bk.agTotal || bk.agBudget * bk.guests)} so‘m. Summani tartib bilan taqsimla: avval 1-taom va 2-taom, keyin salatlar (nechta xil), non (nechta), yaxna, Nozi salati, issiq go‘shtlar.`);
     if (bk.agKind) p.push(`Taomlar: ${bk.agKind}.`);
+    const dn = id => (DISHES.find(d => d.id === id) || {}).ru || "";
+    if (bk.agFirst && bk.agFirst !== "none") p.push(`1-taom (birinchi ovqat): ${dn(bk.agFirst)} — har mehmonga 1 porsiya (id ${bk.agFirst}, course c1).`);
+    if (bk.agFirst === "none") p.push("1-taom kerak emas.");
+    if (bk.agSecond && bk.agSecond !== "none") p.push(`2-taom (ikkinchi ovqat): ${dn(bk.agSecond)} — har mehmonga 1 porsiya (id ${bk.agSecond}, course c2). Ikkinchi ovqatga shashlikni o'zing qo'shma.`);
+    if (bk.agSecond === "none") p.push("2-taom kerak emas, shashlikni ham o'zing qo'shma.");
     if (bk.agWater) p.push(`Komplekt suv: ${bk.agWater}.`);
     p.push("Shunga qarab taomlarni tanlab bering.");
     return p.join(" ");
@@ -4491,6 +4501,9 @@ if (typeof module !== "undefined") module.exports = makeQR;
       const br = DISHES.filter(d => d.sec === "non" && bk.items[d.id] > 0);
       // 1 kishiga non chorak (1/4): 10 kishiga ~3 ta, 20 kishiga 5 ta; bir necha xil bo'lsa teng bo'linadi
       if (br.length) { const per = Math.max(1, Math.ceil(Math.ceil(bk.guests / 4) / br.length)); br.forEach(d => { bk.items[d.id] = per; }); }
+      // mijoz tanlagan 1-taom va 2-taom: har mehmonga bir porsiya; 2-taomga agent o'zidan shashlik qo'shgan bo'lsa olib tashlanadi
+      [[bk.agFirst, "c1"], [bk.agSecond, "c2"]].forEach(([id, c]) => { const d = id && id !== "none" && DISHES.find(x => x.id === id); if (!d) return; bk.items[id] = bk.guests; bk.course[id] = c; if (!bk.order.includes(id)) bk.order.push(id); });
+      if (bk.agSecond) DISHES.filter(d => d.sec === "shashlik" && bk.items[d.id] > 0 && bk.course[d.id] === "c2" && d.id !== bk.agSecond).forEach(d => { delete bk.items[d.id]; delete bk.course[d.id]; });
       // "100гр" li taomlar (Яхна 100гр): narx 100 gramm uchun, kishi boshiga 100 gr -> 10 kishiga 10 ta (= 1 kg). Agent 1 ta deb qo'ysa ham shunga to'g'rilanadi
       DISHES.filter(d => /100\s*гр/i.test(d.ru || "") && bk.items[d.id] > 0).forEach(d => { if (bk.items[d.id] < bk.guests) bk.items[d.id] = bk.guests; });
     }
@@ -4582,7 +4595,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
     }
     if (agF) agF.addEventListener("submit", e => { e.preventDefault(); sendAgent(agF.querySelector("#agIn").value.trim()); });
     // savollar bittadan: narx, taom turi, komplekt suv. Oxirida hammasi bitta xabar bo‘lib AI ga ketadi
-    const agNext = () => { if (bk.agq < 2) { bk.agq = bk.agTier && bk.agq === 0 ? 2 : bk.agq + 1; bk.chatOpen = true; rerender(); } else { bk.agGuided = true; bk.chatOpen = true; sendAgent(agGuideText()); } };
+    const agNext = () => { if (bk.agq < 3) { bk.agq = bk.agq + 1; bk.chatOpen = true; rerender(); } else { bk.agGuided = true; bk.chatOpen = true; sendAgent(agGuideText()); } };
     body.querySelectorAll("[data-agt]").forEach(b => b.addEventListener("click", () => { const t = tiersList().find(x => x.id === b.dataset.agt); if (!t) return; bk.agTier = t.id; bk.agBudget = t.price; agNext(); }));
     body.querySelectorAll("[data-agb]").forEach(b => b.addEventListener("click", () => { bk.agBudget = Number(b.dataset.agb); agNext(); }));
     const agBtn = body.querySelector("[data-agbc]");
@@ -4593,6 +4606,8 @@ if (typeof module !== "undefined") module.exports = makeQR;
     }
     if (agBtn) agBtn.addEventListener("click", () => { const pp = Math.round(Number(agBp.value)), tt = Math.round(Number(agBt.value)); const v = pp >= 10000 ? pp : (tt >= 10000 ? Math.round(tt / bk.guests) : 0); if (v >= 10000) { bk.agBudget = v; bk.agTotal = tt >= 10000 && !(pp >= 10000) ? tt : v * bk.guests; agNext(); } else { agBtn.textContent = "Kishiga 10 000 dan kam bo‘lmaydi"; } });
     body.querySelectorAll("[data-agk]").forEach(b => b.addEventListener("click", () => { bk.agKind = b.dataset.agk; agNext(); }));
+    body.querySelectorAll("[data-ag1]").forEach(b => b.addEventListener("click", () => { bk.agFirst = b.dataset.ag1; agNext(); }));
+    body.querySelectorAll("[data-ag2]").forEach(b => b.addEventListener("click", () => { bk.agSecond = b.dataset.ag2; agNext(); }));
     body.querySelectorAll("[data-agw]").forEach(b => b.addEventListener("click", () => { bk.agWater = b.dataset.agw; agNext(); }));
     body.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => {
       const dir = Number(b.dataset.go);
