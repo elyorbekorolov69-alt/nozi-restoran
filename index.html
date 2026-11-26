@@ -735,7 +735,7 @@ function Table3D(canvas, opts) {
     varying vec3 vN; varying vec3 vW; varying vec3 vL; varying vec4 vC; varying vec4 vM; varying vec4 vSh;
     uniform sampler2D uSM; uniform float uShOn, uShB;
     uniform vec3 uEye, uLP, uLC, uTint, uSk1, uSk2;
-    uniform float uAm, uSun, uTM, uAO; uniform sampler2D uTex;
+    uniform float uAm, uSun, uTM, uAO; uniform sampler2D uTex; uniform sampler2D uA0, uA1;
     float hh(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
     float unp(vec4 c){ return dot(c, vec4(1.0, 1.0 / 255.0, 1.0 / 65025.0, 1.0 / 16581375.0)); }
     float shadowAt(vec3 N, vec3 L){
@@ -858,6 +858,9 @@ function Table3D(canvas, opts) {
         vec2 q = vL.xz; float r = length(q) * 2.0;
         vec3 tc = texture2D(uTex, vec2(q.x + 0.5, 0.5 - q.y)).rgb;
         base = mix(tc, vec3(0.93, 0.92, 0.9), smoothstep(0.94, 1.0, r));
+      } else if (uP > 18.5 && uP < 20.5) {
+        // the restaurant's real dish photographs-as-texture (atlas pages 0 and 1), uv in vL.xy
+        base = (uP < 19.5 ? texture2D(uA0, vL.xy).rgb : texture2D(uA1, vL.xy).rgb) * vC.rgb;
       } else if (uP > 16.5 && uP < 17.5) {
         vec2 p = vW.xz; vec2 q = vec2(p.x + p.y, p.x - p.y) * 0.7071;
         vec2 t = floor(q / 0.6); float par = mod(t.x + t.y, 2.0); vec2 lc = fract(q / 0.6); if (par > 0.5) lc = lc.yx;
@@ -915,7 +918,7 @@ function Table3D(canvas, opts) {
     LPV = mul(P, V);
   }
   const A = {}; ["aP", "aN", "aL", "aC", "aM"].forEach(k => A[k] = gl.getAttribLocation(prog, k));
-  const U = {}; ["uPV", "uLPV", "uSM", "uShOn", "uShB", "uEye", "uLP", "uLC", "uTint", "uSk1", "uSk2", "uAm", "uSun", "uTM", "uAO", "uTex"].forEach(k => U[k] = gl.getUniformLocation(prog, k));
+  const U = {}; ["uPV", "uLPV", "uSM", "uShOn", "uShB", "uEye", "uLP", "uLC", "uTint", "uSk1", "uSk2", "uAm", "uSun", "uTM", "uAO", "uTex", "uA0", "uA1"].forEach(k => U[k] = gl.getUniformLocation(prog, k));
   gl.enable(gl.DEPTH_TEST);
   gl.disable(gl.CULL_FACE);
   // the real photo of a dish, laid on the plate (texture unit 0; a plain plate colour until the photo arrives)
@@ -954,11 +957,17 @@ function Table3D(canvas, opts) {
     const dv = new DataView(u.buffer), pos = new Float32Array(o.n * 3), nor = new Float32Array(o.n * 3), col = new Uint8Array(o.n * 3), idx = new Uint16Array(o.i); let q = 0;
     for (let k = 0; k < o.n * 3; k++, q += 2) pos[k] = dv.getInt16(q, true) / 1000;
     for (let k = 0; k < o.n * 3; k++, q += 1) nor[k] = dv.getInt8(q) / 127;
+    if (o.uv) {   // textured model: uv into one of the atlas pages instead of a colour per vertex
+      const uv = new Float32Array(o.n * 2);
+      for (let k = 0; k < o.n * 2; k++, q += 2) uv[k] = dv.getUint16(q, true) / 65535;
+      for (let k = 0; k < o.i; k++, q += 2) idx[k] = dv.getUint16(q, true);
+      return { pos, nor, idx, n: o.n, uv, tp: 19 + (o.t || 0), s: o.s, sh: o.sh, a: o.a };
+    }
     for (let k = 0; k < o.n * 3; k++, q += 1) col[k] = u[q];
     for (let k = 0; k < o.i; k++, q += 2) idx[k] = dv.getUint16(q, true);
     return { pos, nor, idx, n: o.n, col, s: o.s, sh: o.sh, a: o.a };
   }
-  const AS = {};   // name -> parts, filled once the file has arrived
+  const AS = {}, ASLO = {};   // name -> parts, filled once the file has arrived (ASLO: the light vertex-colour copy, for whole halls)
   let lastOpts = null;
   // solid of revolution from a profile of [radius, height] points
   function lathe(prof, seg = 28) {
@@ -1160,8 +1169,8 @@ function Table3D(canvas, opts) {
 
   // a ready-made model, scaled by sc, standing at x,y,z; false if it has not arrived (the caller then draws the plain shape)
   function putA(name, x, y, z, r, sc = 1, sy = sc) {
-    const parts = AS[name]; if (!parts) return false;
-    parts.forEach(g => items.push({ g, c: [255, 255, 255], M: model(x, y, z, r, sc, sy, sc, 0), a: g.a, s: g.s, sh: g.sh, e: 0, p: 0 }));
+    const parts = (LO && ASLO[name]) || AS[name]; if (!parts) return false;
+    parts.forEach(g => items.push({ g, c: [255, 255, 255], M: model(x, y, z, r, sc, sy, sc, 0), a: g.a, s: g.s, sh: g.sh, e: 0, p: g.tp || 0 }));
     return true;
   }
   // bake a list of pieces into as few GPU buffers as 16-bit indices allow
@@ -1188,7 +1197,7 @@ function Table3D(canvas, opts) {
           const o = v * 9;
           F[o] = m[0] * x + m[4] * y + m[8] * z + m[12]; F[o + 1] = m[1] * x + m[5] * y + m[9] * z + m[13]; F[o + 2] = m[2] * x + m[6] * y + m[10] * z + m[14];
           F[o + 3] = wx / l; F[o + 4] = wy / l; F[o + 5] = wz / l;
-          F[o + 6] = x; F[o + 7] = y; F[o + 8] = z;
+          if (g.uv) { F[o + 6] = g.uv[k * 2]; F[o + 7] = g.uv[k * 2 + 1]; F[o + 8] = 0; } else { F[o + 6] = x; F[o + 7] = y; F[o + 8] = z; }
           const q = v * 8;
           if (g.col) { B[q] = g.col[k * 3] * it.c[0] / 255; B[q + 1] = g.col[k * 3 + 1] * it.c[1] / 255; B[q + 2] = g.col[k * 3 + 2] * it.c[2] / 255; }
           else { B[q] = it.c[0]; B[q + 1] = it.c[1]; B[q + 2] = it.c[2]; }
@@ -2057,7 +2066,38 @@ function Table3D(canvas, opts) {
     if (!j || !alive) return;
     try { for (const k in j) AS[k] = j[k].map(assetPart); } catch (e) { return; }
     if (lastOpts) { build(lastOpts); draw(); }
+    loadHQ();
   });
+  // the sharp copies: real textures in two atlas pages (asboblar/atlas0.jpg, atlas1.jpg) + denser shapes (asboblar/engine-hq.json)
+  const atlasTex = [0, 1].map(i => { const t = gl.createTexture(); gl.activeTexture(gl.TEXTURE2 + i); gl.bindTexture(gl.TEXTURE_2D, t); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([200, 190, 175, 255])); return t; });
+  gl.activeTexture(gl.TEXTURE0);
+  gl.uniform1i(U.uA0, 2); gl.uniform1i(U.uA1, 3);
+  function loadHQ() {
+    if (!window.__nziHQ) window.__nziHQ = Promise.all([
+      fetch("asboblar/engine-hq.json").then(r => r.ok ? r.json() : null),
+      ...[0, 1].map(i => new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = "asboblar/atlas" + i + ".jpg"; })),
+    ]).catch(() => [null]);
+    window.__nziHQ.then(([j, ...ims]) => {
+      if (!j || !alive || ims.some(im => !im)) return;
+      try {
+        const max = gl.getParameter(gl.MAX_TEXTURE_SIZE), phone = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || max < 4096;
+        const an = gl.getExtension("EXT_texture_filter_anisotropic") || gl.getExtension("WEBKIT_EXT_texture_filter_anisotropic");
+        ims.forEach((im, i) => {
+          let src = im;
+          if (phone && im.naturalWidth > 2048) { const c = document.createElement("canvas"); c.width = c.height = 2048; c.getContext("2d").drawImage(im, 0, 0, 2048, 2048); src = c; }   // phones: a quarter of the memory
+          gl.activeTexture(gl.TEXTURE2 + i); gl.bindTexture(gl.TEXTURE_2D, atlasTex[i]);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
+          gl.generateMipmap(gl.TEXTURE_2D);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+          if (an) gl.texParameterf(gl.TEXTURE_2D, an.TEXTURE_MAX_ANISOTROPY_EXT, Math.min(8, gl.getParameter(an.MAX_TEXTURE_MAX_ANISOTROPY_EXT)));
+        });
+        gl.activeTexture(gl.TEXTURE0);
+        for (const k in j) { if (!ASLO[k] && AS[k]) ASLO[k] = AS[k]; AS[k] = j[k].map(assetPart); }
+      } catch (e) { gl.activeTexture(gl.TEXTURE0); return; }
+      if (lastOpts) { staticKey = ""; build(lastOpts); draw(); }
+    });
+  }
 
   return {
     build(o) { lastOpts = o; return build(o); },
