@@ -3862,7 +3862,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
   function rebuild3D() {
     if (!t3d) return;
     const round = shapeNow() === "round";
-    const cap = x => ({ d: x.d, q: Math.min(x.q, ["c1", "c2", "c3"].includes(x.course) ? 60 : (x.d && (x.d.sec === "non" || x.d.sec === "ichimlik") ? 2 : 6)), course: x.course });   // bread and drinks: a few on the table, not twenty
+    const cap = x => ({ d: x.d, q: Math.min(x.q, ["c1", "c2", "c3"].includes(x.course) ? 60 : (x.d && x.d.sec === "non" ? Math.min(10, Math.max(2, Math.ceil(Math.ceil(bk.guests / 4) / Math.max(1, DISHES.filter(d => d.sec === "non" && bk.items[d.id] > 0).length)))) : x.d && x.d.sec === "ichimlik" ? 2 : 6)), course: x.course });   // bread and drinks: a few on the table, not twenty
     const tv = tviewNow();
     t3d.build({
       shape: round ? "round" : "long",
@@ -4229,7 +4229,8 @@ if (typeof module !== "undefined") module.exports = makeQR;
     });
     {   // non: bir necha xil bo'lsa, har biridan oz (assorti kabi), 10 tadan emas
       const br = DISHES.filter(d => d.sec === "non" && bk.items[d.id] > 0);
-      if (br.length >= 2) br.forEach(d => { bk.items[d.id] = Math.max(1, Math.min(bk.items[d.id], Math.ceil(bk.guests / (br.length * 3)))); });
+      // 1 kishiga non chorak (1/4): 10 kishiga ~3 ta, 20 kishiga 5 ta; bir necha xil bo'lsa teng bo'linadi
+      if (br.length) { const per = Math.max(1, Math.ceil(Math.ceil(bk.guests / 4) / br.length)); br.forEach(d => { bk.items[d.id] = per; }); }
     }
     if (/kerak/i.test(bk.agWater || "") && !/emas/i.test(bk.agWater)) {   // komplekt suv: 1 komplekt = 10 mehmon (gazsiz suv, gazli ichimlik, sharbat); to'liq o'nliklar qo'yiladi, ortig'i uchun so'raydi
       const n = Math.max(1, Math.floor(bk.guests / 10)), rem = bk.guests - n * 10, pick = v => DISHES.find(d => d.sec === "ichimlik" && d.v === v);

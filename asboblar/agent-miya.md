@@ -40,3 +40,5 @@ Sayt JSON kutadi: reply, guests, type, add:[{id,q}], remove, course. Bezash (gul
 - Martini qadah faqat so'ralsa qo'yiladi.
 - Joy yetmasa piyola, stakan, kichik stulcha kabi asboblar bilan turli balandlik qilish mumkin, lekin [tasdiqlanmagan: faqat salat va desert uchun] hozircha sayt buni qilmaydi.
 - Sayt bu qoidalarni agentdan mustaqil, o'zi bajaradi: agent xato aytsa ham qoida buzilmaydi.
+
+- Non miqdori: 1 kishiga bitta nonning choragi (1/4). 10 kishiga kamida 2-3 ta katta non, 20 kishiga 5 ta. Bir necha xil non bo'lsa, jami miqdor ular o'rtasida teng bo'linadi. Nonni 10 tadan qo'shma.
