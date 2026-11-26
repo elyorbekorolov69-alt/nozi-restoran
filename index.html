@@ -1974,11 +1974,27 @@ function Table3D(canvas, opts) {
           for (let d = 0; d < 1.2 && !ok; d += 0.06) for (const sx of [x + d, x - d]) for (const sz of [z0, z0 + 0.12, z0 - 0.12]) if (!ok && freeL(sx, sz, 0.09)) { x = sx; z = sz; ok = true; }
           used.push([x, z, 0.09]); cl.forEach((p, j) => { const aj = j * 2 * PI / 3 + 0.6; dd(p, x + Math.cos(aj) * 0.05, z + Math.sin(aj) * 0.05, aj); });
         });
-        {   // qolganlar: bir xil taomlar navbat bilan, bo'sh joylarga teng oraliqda
-          const sp2 = spotsAll.filter(q => freeL(q[0], q[1], 0.11));
-          const groups = groupsOf(rest), all = []; for (let r = 0; all.length < rest.length; r++) groups.forEach(g => { if (g[r]) all.push(g[r]); });
-          const S = sp2.length, m = Math.min(all.length, S);
-          all.slice(0, m).forEach((p, i) => { const j = m < S ? Math.min(S - 1, Math.floor((i + 0.5) * S / m)) : i, [x, z] = sp2[j]; dd(p, x, z, 0.3 * (i % 3)); });
+        {   // qolganlar (yaxna, salat, gazaklar): har bir taom o'z soniga qarab stol uzunligini teng bo'laklarga bo'lib, har bo'lakka bittadan;
+            // nuqta stendga to'g'ri kelsa, yaqindagi bo'sh joyga (stendlar orasiga); bir xil ikki taom yonma-yon tushmaydi
+          const cand = spotsAll.map(q => [q[0], q[1]]);
+          for (let x = xmin; x <= xmax + 0.01; x += 0.135) [z0 - 0.2, z0 + 0.2, z0].forEach(z => cand.push([x, z]));   // oraliq joylar ham
+          { const sx = t.seatsAt.filter(q => Math.abs(q[1] - z0) > 0.05).map(q => q[0]);   // stol cheti, likopchalar orasi
+            for (let x = xmin; x <= xmax + 0.01; x += 0.09) if (sx.every(v => Math.abs(v - x) > 0.21)) cand.push([x, z0 - 0.3], [x, z0 + 0.3]); }
+          const mine = [];   // [x, z, dish]
+          groupsOf(rest).sort((a, b) => b.length - a.length).forEach((g, gi) => g.forEach((p, i) => {
+            const tx = xmin + (xmax - xmin) * (i + 0.5) / g.length, tz = z0 + ((i + gi) % 2 ? 0.115 : -0.115);
+            let best = null, bd = 1e9;
+            for (const strict of [true, false]) {
+              for (const c of cand) {
+                if (!freeL(c[0], c[1], 0.11)) continue;
+                if (strict && mine.some(m => m[2] === p.d && Math.hypot(m[0] - c[0], m[1] - c[1]) < Math.max(0.45, (xmax - xmin) / g.length * 0.6))) continue;
+                const d = Math.abs(c[0] - tx) + 0.4 * Math.abs(c[1] - tz); if (d < bd) { bd = d; best = c; }
+              }
+              if (best) break;
+            }
+            if (!best) return;
+            used.push([best[0], best[1], 0.11]); mine.push([best[0], best[1], p.d]); dd(p, best[0], best[1], 0.3 * (i % 3));
+          }));
         }
       } else {
         // DUMALOQ STOL, "X" tartibi (egasi aytgan): gul o'rtada; bir xil taomlar juft bo'lib gulning ikki qarama-qarshi tomonida
@@ -2018,7 +2034,23 @@ function Table3D(canvas, opts) {
         // 4) martini: 3 joyda 3 tadan
         if (DECOR.martini && AS.martini) for (let g = 0; g < 3; g++) { const q = oneAt(0.06, [0.28, 0.32, 0.5, 0.56]); if (!q) break; for (let k = 0; k < 3; k++) { const ak = k * 2 * PI / 3; putA("martini", q[0] + Math.cos(ak) * 0.035, t.top, q[1] + Math.sin(ak) * 0.035, ak, 1); } }
         // 5) qolgan taomlar (salat, yaxna, non, gazaklar): ham juft-juft qarama-qarshi
-        groupsOf(placed.filter(p => !(p.cat === "tilla" || p.cat === "mid"))).forEach(g => putGroup(g, 0.12, [0.5, 0.54, 0.46, 0.4, 0.3, 0.58], dd));
+        {   // har taom o'z soniga qarab doira bo'ylab teng burchaklarda; stendga tushsa yaqin bo'sh joyga; bir xil ikki taom yonma-yon emas
+          const mine = [];
+          groupsOf(placed.filter(p => !(p.cat === "tilla" || p.cat === "mid"))).sort((a, b) => b.length - a.length).forEach((g, gi) => g.forEach((p, i) => {
+            const ta = a0 + PI / 8 + gi * 0.37 + i * 2 * PI / g.length, r = 0.12;
+            let q = null;
+            for (const strict of [true, false]) {
+              for (let dv = 0; dv <= PI && !q; dv += PI / 24) for (const a of dv ? [ta + dv, ta - dv] : [ta]) { if (q) break; for (const R of [0.5, 0.54, 0.46, 0.4, 0.58, 0.32]) {
+                const x = cx + Math.cos(a) * R, z = cz + Math.sin(a) * R;
+                if (!fits(x, z, r)) continue;
+                if (strict && mine.some(m => m[2] === p.d && Math.hypot(m[0] - x, m[1] - z) < 0.42)) continue;
+                q = [x, z, a]; break; } }
+              if (q) break;
+            }
+            if (!q) return;
+            reg(q[0], q[1], r); mine.push([q[0], q[1], p.d]); dd(p, q);
+          }));
+        }
         LOW = false;
       }
       // hot food: one portion on each guest's own charger (more portions than guests: two or three each, side by side)
