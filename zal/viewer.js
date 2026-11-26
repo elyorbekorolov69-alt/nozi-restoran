@@ -38,7 +38,8 @@ export async function start({ canvas, id, url, onProgress, shell }) {
   const { parts, cfg } = unpack(buf);
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-  let pixelRatio = Math.min(window.devicePixelRatio || 1, 1.5);
+  const PHONE = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+  let pixelRatio = PHONE ? Math.min(window.devicePixelRatio || 1, 1.5) : Math.min(Math.max(window.devicePixelRatio || 1, 1.25), 1.5);   // kompyuterda biroz yuqori aniqlik: qirralar tishli bo'lmasin
   renderer.setPixelRatio(pixelRatio);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.NoToneMapping;
