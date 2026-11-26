@@ -6,14 +6,16 @@ const KEY = /^[a-z0-9_.:-]{1,80}$/i;
 
 export const onRequestOptions = () => new Response(null, { status: 204 });
 
-export async function onRequestGet({ env }) {
+export async function onRequestGet({ request, env }) {
   const { base, H } = sb(env);
   try {
+    // "priv." bilan boshlanadigan kalitlar (masalan, banket tarixi) faqat adminga
+    const admin = request.headers.get("x-admin") ? await isAdmin(request, env) : false;
     const r = await fetch(`${base}/content?select=key,value`, { headers: H });
     const rows = await r.json();
     if (!r.ok || !Array.isArray(rows)) throw new Error(JSON.stringify(rows));
-    const data = {}; for (const x of rows) data[x.key] = x.value;
-    return json(200, { ok: true, data }, { "Cache-Control": "public, max-age=15" });
+    const data = {}; for (const x of rows) if (admin || !String(x.key).startsWith("priv.")) data[x.key] = x.value;
+    return json(200, { ok: true, data }, { "Cache-Control": admin ? "no-store" : "public, max-age=15" });
   } catch (e) { console.log("content GET:", e.message); return json(200, { ok: false, data: {} }); }
 }
 

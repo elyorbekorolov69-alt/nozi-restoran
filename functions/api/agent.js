@@ -4,7 +4,7 @@
 // AI faqat tavsiya beradi. Narxni sayt o'zi menyudan hisoblaydi, id larni sayt tekshiradi.
 // Kalitlar (Cloudflare > Variables and Secrets), bor bo'lganlari shu tartibda sinab ko'riladi:
 //   ANTHROPIC_API_KEY (Claude), GEMINI_API_KEY, GROQ_API_KEY, OPENROUTER_API_KEY
-import { json, limited } from "./_h.js";
+import { json, limited, sb } from "./_h.js";
 import { verifyToken } from "./_bk.js";
 
 export const onRequestOptions = () => new Response(null, { status: 204 });
@@ -115,6 +115,23 @@ async function miya(request) {
   return MIYA;
 }
 
+// Banket tarixi: egasi admin panelda kiritgan oldingi banketlar (content jadvali, kalit "priv.tarix"). Mehmon soni yaqinlarini tanlab beramiz.
+let TARIX = null, TARIX_T = 0;
+async function tarixBlock(env, guests) {
+  try {
+    if (!TARIX || Date.now() - TARIX_T > 120000) {
+      const { base, H } = sb(env);
+      const r = await fetch(`${base}/content?select=value&key=eq.priv.tarix`, { headers: H });
+      const rows = await r.json(); TARIX = Array.isArray(rows) && rows[0] && Array.isArray(rows[0].value) ? rows[0].value : []; TARIX_T = Date.now();
+    }
+  } catch (e) { TARIX = TARIX || []; }
+  if (!TARIX.length) return "";
+  const g = +guests || 0;
+  const pick = TARIX.slice().sort((a, b) => g ? Math.abs((+a.guests || 0) - g) - Math.abs((+b.guests || 0) - g) : 0).slice(0, 10);
+  return "\n\nBANKET TARIXI (egasi kiritgan, haqiqatda bo'lgan banketlar; miqdorlarni mehmon soniga qarab SHULARGA o'xshatib tanla, javobda 'tarixdagi N kishilik banketga qarab' deb qisqa ayt):\n" +
+    pick.map(t => `- ${clip(t.date, 12) || "sana yo'q"}, ${+t.guests || "?"} kishi${t.shape ? ", " + (t.shape === "long" ? "to'rtburchak" : "dumaloq") + " stol" : ""}, jami ${+t.total || "?"} so'm${+t.total && +t.guests ? " (kishiga " + Math.round(t.total / t.guests) + ")" : ""}: ${clip(String(t.items || "").replace(/\s*\n\s*/g, "; "), 600)}${t.note ? " [" + clip(t.note, 120) + "]" : ""}`).join("\n");
+}
+
 export async function onRequestPost({ request, env }) {
   if (!(await verifyToken(env, request.headers.get("x-banket")))) return json(401, { ok: false, error: "Banket kodi kerak" });
   if (await limited(env, request, "agent", 60, 3600)) return json(429, { ok: false, error: "juda ko‘p so‘rov, birozdan keyin urinib ko‘ring" });
@@ -124,7 +141,7 @@ export async function onRequestPost({ request, env }) {
   const menu = clip(p.menu, 14000), st = p.state && typeof p.state === "object" ? p.state : {};
   const sys = RULES + (await miya(request) ? "\n\nEGASINING QOIDALARI (miya, doim bajar):\n" + MIYA : "") + "\n\nMENYU (id|nom|narx so'm|bo'lim|kg belgisi):\n" + menu +
     "\n\nHOZIRGI HOLAT: mehmonlar " + (+st.guests || "noma'lum") + ", tur " + clip(st.type, 20) + ", zal " + clip(st.hall, 40) + ", sana " + clip(st.date, 12) +
-    ", tanlanganlar: " + clip(JSON.stringify(Array.isArray(st.chosen) ? st.chosen.slice(0, 80) : []), 1500) + tierBlock(st.tier) + budgetBlock(st);
+    ", tanlanganlar: " + clip(JSON.stringify(Array.isArray(st.chosen) ? st.chosen.slice(0, 80) : []), 1500) + tierBlock(st.tier) + budgetBlock(st) + await tarixBlock(env, st.guests);
   const msgs = [];
   (Array.isArray(p.history) ? p.history.slice(-8) : []).forEach(h => { if (h && h.t) msgs.push({ role: h.r === "a" ? "assistant" : "user", content: clip(h.t, 800) }); });
   msgs.push({ role: "user", content: message });
