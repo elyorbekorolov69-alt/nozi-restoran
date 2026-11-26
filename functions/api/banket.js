@@ -37,7 +37,7 @@ export async function onRequestPost({ request, env }) {
     const hits = await (await fetch(q, { headers: H })).json();
     if (Array.isArray(hits) && hits.length >= 5) return json(429, { ok: false, error: "juda ko‘p so‘rov, keyinroq urinib ko‘ring" });
     await fetch(`${base}/hits`, { method: "POST", headers: H, body: JSON.stringify({ ip, kind: "banket", ts: now }) });
-    await fetch(`${base}/hits?ts=lt.${now - 86400}`, { method: "DELETE", headers: H });
+    await fetch(`${base}/hits?ts=lt.${now - 86400}&kind=not.like.st:*`, { method: "DELETE", headers: H });   // statistika (st:*) o'chmaydi
 
     code = [...crypto.getRandomValues(new Uint8Array(3))].map(b => b.toString(16).padStart(2, "0")).join("");
     const r = await fetch(`${base}/banket`, { method: "POST", headers: { ...H, Prefer: "return=representation" },

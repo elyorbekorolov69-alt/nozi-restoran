@@ -3096,6 +3096,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
   function openDish(id) {
     const t = byId[id];
     if (!t) return;
+    stat("taom3d");
     let sheet = document.getElementById("dishSheet");
     if (!sheet) {
       sheet = document.createElement("div");
@@ -3480,7 +3481,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
       return { id: (adm.tf[i] && adm.tf[i].id) || ("t" + Date.now().toString(36) + i), name: g(el, "name").slice(0, 40), price: Math.round(Number(g(el, "price")) || 0), secs, _open: el.open };
     });
   }
-  const ADM_TABS = [["menyu", "Menyu"], ["reklama", "Televizor reklamalari"], ["banket", "Banket zallari"], ["toifa", "Narx toifalari"], ["bkodlar", "Banket kodlari"], ["tarix", "Banket tarixi"], ["qr", "QR oynasi"], ["kodlar", "Sovg‘a kodlari"], ["video", "Stol videosi"], ["qoshiq", "Qo‘shiq navbati"], ["parol", "Parol"]];
+  const ADM_TABS = [["menyu", "Menyu"], ["reklama", "Televizor reklamalari"], ["banket", "Banket zallari"], ["toifa", "Narx toifalari"], ["bkodlar", "Banket kodlari"], ["tarix", "Banket tarixi"], ["stat", "Statistika"], ["qr", "QR oynasi"], ["kodlar", "Sovg‘a kodlari"], ["video", "Stol videosi"], ["qoshiq", "Qo‘shiq navbati"], ["parol", "Parol"]];
   const admStore = { get() { try { return sessionStorage.getItem("nozi_adm") || ""; } catch (e) { return ""; } }, set(v) { try { v ? sessionStorage.setItem("nozi_adm", v) : sessionStorage.removeItem("nozi_adm"); } catch (e) {} } };
   // one call to the server; a wrong or expired password sends the admin back to the login form
   async function admApi(method, path, body, headers) {
@@ -3639,6 +3640,20 @@ if (typeof module !== "undefined") module.exports = makeQR;
           <p id="admMsg" class="adm-ok" role="status"></p>
           <p class="bk-sub">Tarix (bundan oldingi banketlar)</p>${L}`;
       },
+      stat() {
+        const S = adm.st, L = [["kirish", "Saytga kirish (bir kishi bir marta)"], ["menyu", "Menyu ochildi"], ["taom3d", "Taom 3D da ko‘rildi"], ["banket", "Banket oynasi ochildi"], ["agent", "AI yordamchiga yozildi"], ["banket_yubor", "Banket so‘rovi yuborildi"], ["reklamalar", "Reklamalar oynasi"], ["kartochka", "Kartochka (QR) oynasi"]];
+        if (S == null) return `<p class="note">Yuklanmoqda…</p>`;
+        if (!S) return `<p class="note">Statistikani olib bo‘lmadi.</p>`;
+        const pct = (a, b) => b ? " (" + Math.round(a / b * 100) + "%)" : "";
+        const k = S.kirish || {}, bs = S.banket_yubor || {};
+        return `<p class="note" style="margin:0 0 10px">Sayt faqat hodisa nomi va vaqtini yozadi (kim ekanini emas). Sonlar 32 kungacha saqlanadi.</p>
+          <div style="overflow-x:auto"><table class="adm-tbl" style="border-collapse:collapse;width:100%;max-width:620px">
+          <tr><th style="text-align:left;padding:6px">Hodisa</th><th style="padding:6px">Bugun (24 soat)</th><th style="padding:6px">7 kun</th><th style="padding:6px">30 kun</th></tr>
+          ${L.map(([id, nm]) => { const v = S[id] || {}; return `<tr style="border-top:1px solid var(--line2,#8884)"><td style="padding:6px">${nm}</td><td style="text-align:center;padding:6px">${v.d1 || 0}</td><td style="text-align:center;padding:6px">${v.d7 || 0}</td><td style="text-align:center;padding:6px">${v.d30 || 0}</td></tr>`; }).join("")}
+          </table></div>
+          <p class="note">30 kunda kirganlardan banket so‘rovi yuborgani: <b>${bs.d30 || 0}</b>${pct(bs.d30 || 0, k.d30 || 0)}.</p>
+          <div class="pills"><button class="pill" type="button" id="admStR">Yangilash</button></div>`;
+      },
       qr() {
         const h = hcfg(), w = h.wifi || {};
         const f = (id, label, val, ph, type) => `<label>${label}<input type="${type || "text"}" id="${id}" value="${esc(val == null ? "" : val)}" placeholder="${ph || ""}"></label>`;
@@ -3690,7 +3705,8 @@ if (typeof module !== "undefined") module.exports = makeQR;
           <p class="note">Parolni hech kimga chatda yozmang. Kamida 8 belgi bo‘lsin.</p>`;
       }
     };
-    const draw = () => { box.innerHTML = tabs[adm.tab](); if (adm.tab === "kodlar" && adm.codes === null) loadCodes(); if (adm.tab === "bkodlar" && adm.bk === null) loadBk(); if (adm.tab === "tarix" && adm.tx === null) loadTx(); };
+    const draw = () => { box.innerHTML = tabs[adm.tab](); if (adm.tab === "kodlar" && adm.codes === null) loadCodes(); if (adm.tab === "bkodlar" && adm.bk === null) loadBk(); if (adm.tab === "tarix" && adm.tx === null) loadTx(); if (adm.tab === "stat" && adm.st === undefined) loadSt(); const sr = box.querySelector("#admStR"); if (sr) sr.onclick = () => { adm.st = undefined; draw(); }; };
+    async function loadSt() { adm.st = null; const r = await admApi("GET", "/api/stat"); adm.st = r.ok && r.j.stat ? r.j.stat : false; if (adm.tab === "stat" && root.isConnected) draw(); }
     async function loadTx() {
       const r = await admApi("GET", "/api/content");
       const v = r.ok && r.j.data ? r.j.data["priv.tarix"] : null;
@@ -4575,6 +4591,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
         }
         bk.chat.push({ r: "a", t: yes ? `Tayyor, ${n} komplekt suv qo‘ydim.` : `Yaxshi, ${bk.waterN} komplekt qoldi.` }); bk.chatOpen = true; rerender(); return;
       }
+      stat("agent");
       bk.chat.push({ r: "u", t: text }); bk.chatBusy = true; bk.chatOpen = true; rerender();
       const done = () => { bk.chatBusy = false; rerender(); const i2 = body.querySelector("#agIn"); if (i2) i2.focus({ preventScroll: true }); };
       try {
@@ -4631,7 +4648,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
     body.querySelectorAll("[data-agw]").forEach(b => b.addEventListener("click", () => { bk.agWater = b.dataset.agw; agNext(); }));
     body.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => {
       const dir = Number(b.dataset.go);
-      if (bk.step === 5 && dir > 0) bk.sent = true;
+      if (bk.step === 5 && dir > 0) { bk.sent = true; stat("banket_yubor"); }
       else bk.step = Math.max(0, Math.min(5, bk.step + dir));
       if ((bk.step === 3 || bk.step === 1) && dir > 0) bk.view = "dasturxon";
       viewBanket(body); body.scrollTop = 0;
@@ -4917,6 +4934,13 @@ if (typeof module !== "undefined") module.exports = makeQR;
     drawList();
   }
 
+  // oddiy statistika: qaysi oyna ochildi, nechta banket so'rovi (faqat hodisa nomi yuboriladi)
+  const statLast = {};
+  function stat(e) {
+    const t = Date.now(); if (statLast[e] && t - statLast[e] < 8000) return; statLast[e] = t;
+    try { const b = JSON.stringify({ e }); if (!(navigator.sendBeacon && navigator.sendBeacon("/api/stat", new Blob([b], { type: "application/json" })))) fetch("/api/stat", { method: "POST", headers: { "Content-Type": "application/json" }, body: b, keepalive: true }).catch(() => {}); } catch (err) {}
+  }
+  try { if (!sessionStorage.getItem("nozi_st")) { sessionStorage.setItem("nozi_st", "1"); stat("kirish"); } } catch (err) { stat("kirish"); }
   // ---------- a window grows out of its petal and shrinks back into it ----------
   let enterAt = 0;
   function petalCentre(i) {
@@ -4927,6 +4951,7 @@ if (typeof module !== "undefined") module.exports = makeQR;
     applyMode(); modeBtn.hidden = !(key === "menyu" || key === "banket");
     winKey = key;
     winTitle.textContent = TITLES[key];
+    if (["menyu", "banket", "reklamalar", "kartochka"].includes(key)) stat(key);
     if (key === "menyu") viewMenu(winBody);
     else if (key === "reklamalar") viewAds(winBody);
     else if (key === "kartochka") viewCard(winBody);
