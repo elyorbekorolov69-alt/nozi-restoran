@@ -1473,11 +1473,14 @@ function Table3D(canvas, opts) {
 
   // tall gold candlestick with a crystal bead, a white vase, and a rounded bouquet like the restaurant's:
   // a dome of white and pale-blue hydrangea florets, peach and pink roses (layered petals), pale feather leaves, dark green foliage
-  function centrepiece(x, z, top, seed = 1) {
+  function centrepiece(x, z, top, seed = 1, lift = 0) {
     let sd = seed * 9301 + 49297;
     const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
     if (DECOR.gul === 0) return;   // the owner / agent asked for no flowers
-    if (AS.gul) { putA("gul", x, top, z, seed * 1.7, 1); return; }   // the restaurant's own flower arrangement
+    if (AS.gul) {   // the restaurant's own flower arrangement; on a round table it stands higher, on a thin gold stem, above the stands
+      if (lift > 0) { put("column", C.gold, x, top, z, 0, 0.075, lift + 0.02, 0.075, { s: 0.85, sh: 70 }); put("disc", C.gold, x, top + 0.002, z, 0, 0.2, 0.4, 0.2, { s: 0.85, sh: 70 }); }
+      putA("gul", x, top + lift, z, seed * 1.7, 1, lift > 0 ? 1.08 : 1); return;
+    }
     put("column", C.gold, x, top, z, 0, 0.2, 0.56, 0.2, { s: 0.85, sh: 70 });
     put("ball", C.glass, x, top + 0.335, z, 0, 0.065, 0.065, 0.065, { a: 0.35, s: 1, sh: 90 });
     put("vase", "#f3f1ee", x, top + 0.555, z, 0, 0.17, 0.25, 0.17, { s: 0.55, sh: 60 });
@@ -1781,7 +1784,7 @@ function Table3D(canvas, opts) {
     }
     // green velvet mat under the dishes, as on the restaurant's decorated table
     if (STYLE === "nozi") put("disc", "#0c5a3d", cx, top, cz, 0, 1.1, 0.12, 1.1, { s: 0.1, sh: 14, p: 4 });
-    centrepiece(cx, cz, top, 7 + Math.round(cx + cz * 5));
+    centrepiece(cx, cz, top, 7 + Math.round(cx + cz * 5), 0.34);
     const spots = [];
     [{ r: 0.45, n: 10 }, { r: 0.27, n: 6 }, { r: 0.58, n: 12 }].forEach((g, gi) => {
       for (let k = 0; k < g.n; k++) { const a = (k + (gi === 2 ? 0.5 : gi * 0.5)) * 2 * PI / g.n + 0.1; spots.push([cx + Math.cos(a) * g.r, cz + Math.sin(a) * g.r, a]); }
@@ -1901,7 +1904,7 @@ function Table3D(canvas, opts) {
       const nK = Math.max(wat.length, juc.length, gz.length), clusters = [];
       for (let k = 0; k < nK; k++) clusters.push([wat[k], gz[k], juc[k]].filter(Boolean));
       let spotsAll = t.spots.map(x => x.slice()); const cpos = [], isLong = layout.kind === "long" || t.long;
-      if (nK && isLong) {
+      if (nK && isLong && false) {   // (uzun stolda suv endi pastdagi tartibda qo'yiladi)
         if (layout.kind === "long" || t.long) {
           const Lx = spotsAll.length ? Math.max(...spotsAll.map(q => q[0])) - Math.min(...spotsAll.map(q => q[0])) : 4, x0 = spotsAll.length ? Math.min(...spotsAll.map(q => q[0])) : 0, zc = t.z0 || 0;
           for (let k = 0; k < nK; k++) { let x = x0 + Lx * (k + 0.5) / nK; (t.obst || []).forEach(o => { if (Math.abs(o - x) < 0.3) x += 0.38; }); cpos.push([x, zc]); }
@@ -1930,11 +1933,53 @@ function Table3D(canvas, opts) {
         if (fixed.length) spotsAll = spotsAll.filter(q => !fixed.some(c => Math.hypot(q[0] - c[0], q[1] - c[1]) < 0.17));
       }
       if (layout.kind === "long" || t.long) {
-        // uzun stol: taomlar bir chetga yig'ilmasin. Bir xil taomlar navbat bilan (salat, yaxna, non, salat, yaxna, non...), butun uzunlik bo'ylab teng oraliqda
-        const groups = []; placed.forEach(p => { let g = groups.find(q => q[0].d === p.d); if (!g) groups.push(g = []); g.push(p); });
-        const all = []; for (let r = 0; all.length < placed.length; r++) groups.forEach(g => { if (g[r]) all.push(g[r]); });
-        const S = spotsAll.length, m = Math.min(all.length, S);
-        all.slice(0, m).forEach((p, i) => { const j = m < S ? Math.min(S - 1, Math.floor((i + 0.5) * S / m)) : i, [x, z] = spotsAll[j]; dish(p.k, p.col, x, z, 0.3 * (i % 3), t.top, p.d); });
+        // UZUN (TO'RTBURCHAK) STOL, egasi chizgan tartib:
+        // 1) stendlar (meva, pishloq, desert) "+" shaklidagi to'dalarda: bir juft stol bo'ylab, ikkinchi juft unga ko'ndalang;
+        //    to'dalar soniga qarab stol uzunligi bo'ylab teng taqsimlanadi (gul turgan joydan chetroq)
+        // 2) nonlar mehmonga iloji boricha yaqin (likopchalar oralig'ida, stol chetiga yaqin)
+        // 3) suv komplektlari o'rta chiziqda, bo'sh joyga; 4) qolgan taomlar qolgan joyga teng
+        const z0 = t.z0 || 0, xs = t.spots.map(q => q[0]), xmin = xs.length ? Math.min(...xs) : -1, xmax = xs.length ? Math.max(...xs) : 1;
+        const used = [], freeL = (x, z, r) => x > xmin - 0.12 && x < xmax + 0.12 && used.every(u => Math.hypot(x - u[0], z - u[1]) >= r + u[2] - 0.012);
+        (t.obst || []).forEach(o => used.push([o, z0, 0.14]));
+        const groupsOf = arr => { const g = []; arr.forEach(p => { let q = g.find(x => x[0].d === p.d); if (!q) g.push(q = []); q.push(p); }); return g; };
+        const dd = (p, x, z, a) => dish(p.k, p.col, x, z, a, t.top, p.d);
+        const st = placed.filter(p => p.cat === "tilla" || p.cat === "mid"), breads = placed.filter(p => p.d && p.d.sec === "non"), rest = placed.filter(p => !(p.cat === "tilla" || p.cat === "mid") && !(p.d && p.d.sec === "non"));
+        if (st.length) {
+          // har juftning biri stolning chap yarmida, ikkinchisi o'ng yarmida, ko'zgudek (gul o'rtada); har yarmida to'da "+" shaklida
+          const xmid = (xmin + xmax) / 2, L = [], R = [];
+          groupsOf(st).forEach(g => g.forEach((p, i) => (i % 2 ? R : L).push(p)));
+          const C = Math.ceil(L.length / 4), half = (xmid - xmin);
+          const place = (list, side) => {
+            for (let k = 0; k < C; k++) {
+              const mem = list.slice(k * 4, k * 4 + 4); if (!mem.length) continue;
+              let x = xmin + half * (k + 0.5) / C;
+              if (xmid - x < 0.5) x = xmid - 0.5;
+              (t.obst || []).forEach(o => { const ox = side > 0 ? 2 * xmid - o : o; if (Math.abs(ox - x) < 0.45 && Math.abs(ox - xmid) > 0.05) x = ox + (x >= ox ? 0.47 : -0.47); });
+              const DX = mem.length <= 2 ? 0.17 : 0.27, DZ = 0.21;
+              const arms = [[x - DX, z0], [x + DX, z0], [x, z0 - DZ], [x, z0 + DZ]];
+              mem.forEach((p, i) => { let [px, pz] = arms[i]; if (side > 0) px = 2 * xmid - px; used.push([px, pz, 0.15]); dd(p, px, pz, i * PI / 2); });
+            }
+          };
+          place(L, -1); place(R, 1);
+        }
+        if (breads.length) {   // nonlar: mehmonlarga eng yaqin joy - stol chetida, ikki likopcha orasida, navbat bilan ikki tomonda
+          const seatX = [...new Set(t.seatsAt.filter(q => Math.abs(q[1] - z0) > 0.05).map(q => Math.round(q[0] * 100) / 100))].sort((a, b) => a - b);
+          const gaps = []; for (let i = 0; i + 1 < seatX.length; i++) gaps.push((seatX[i] + seatX[i + 1]) / 2);
+          const cand = []; gaps.forEach((gx, i) => cand.push([gx, z0 + (i % 2 ? 0.3 : -0.3)], [gx, z0 + (i % 2 ? -0.3 : 0.3)]));
+          const order = []; const nb = breads.length;
+          for (let i = 0; i < nb; i++) { const want = xmin + (xmax - xmin) * (i + 0.5) / nb; cand.sort((a, b) => Math.abs(a[0] - want) - Math.abs(b[0] - want)); const c = cand.find(q => freeL(q[0], q[1], 0.11)); if (!c) break; used.push([c[0], c[1], 0.11]); dd(breads[i], c[0], c[1], 0.3 * i); }
+        }
+        if (clusters.length) clusters.forEach((cl, k) => {   // suv: o'rta chiziq bo'ylab teng, bo'sh joyga
+          let x = xmin + (xmax - xmin) * (k + 0.5) / clusters.length, z = z0, ok = false;
+          for (let d = 0; d < 1.2 && !ok; d += 0.06) for (const sx of [x + d, x - d]) for (const sz of [z0, z0 + 0.12, z0 - 0.12]) if (!ok && freeL(sx, sz, 0.09)) { x = sx; z = sz; ok = true; }
+          used.push([x, z, 0.09]); cl.forEach((p, j) => { const aj = j * 2 * PI / 3 + 0.6; dd(p, x + Math.cos(aj) * 0.05, z + Math.sin(aj) * 0.05, aj); });
+        });
+        {   // qolganlar: bir xil taomlar navbat bilan, bo'sh joylarga teng oraliqda
+          const sp2 = spotsAll.filter(q => freeL(q[0], q[1], 0.11));
+          const groups = groupsOf(rest), all = []; for (let r = 0; all.length < rest.length; r++) groups.forEach(g => { if (g[r]) all.push(g[r]); });
+          const S = sp2.length, m = Math.min(all.length, S);
+          all.slice(0, m).forEach((p, i) => { const j = m < S ? Math.min(S - 1, Math.floor((i + 0.5) * S / m)) : i, [x, z] = sp2[j]; dd(p, x, z, 0.3 * (i % 3)); });
+        }
       } else {
         // DUMALOQ STOL, "X" tartibi (egasi aytgan): gul o'rtada; bir xil taomlar juft bo'lib gulning ikki qarama-qarshi tomonida
         // (tayoqcha kabi: bir uchida biri, narigi uchida ikkinchisi). Birinchi juft bir chiziqda, ikkinchisi unga tik (X), keyingilari diagonalda.
